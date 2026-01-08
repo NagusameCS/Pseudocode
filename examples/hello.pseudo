@@ -1,0 +1,8 @@
+// Hello World - Basic Pseudocode example
+print("Hello, World!")
+
+// Variables
+let name = "Pseudocode"
+let version = 1
+print(name)
+print(version)

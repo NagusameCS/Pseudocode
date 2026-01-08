@@ -1,0 +1,14 @@
+// Factorial calculation
+fn factorial(n: int) -> int
+    if n <= 1 then
+        return 1
+    end
+    return n * factorial(n - 1)
+end
+
+// Calculate factorials 1-10
+for i in 1..11 do
+    let result = factorial(i)
+    print(i)
+    print(result)
+end

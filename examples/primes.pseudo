@@ -1,0 +1,34 @@
+// Prime number checker
+fn is_prime(n: int) -> bool
+    if n < 2 then
+        return false
+    end
+    if n == 2 then
+        return true
+    end
+    if n % 2 == 0 then
+        return false
+    end
+    
+    let i = 3
+    while i * i <= n do
+        if n % i == 0 then
+            return false
+        end
+        i = i + 2
+    end
+    return true
+end
+
+// Find primes up to 100
+let primes = []
+for n in 2..101 do
+    if is_prime(n) then
+        push(primes, n)
+    end
+end
+
+print("Primes up to 100:")
+for p in primes do
+    print(p)
+end

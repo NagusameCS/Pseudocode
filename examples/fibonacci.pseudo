@@ -1,0 +1,17 @@
+// Fibonacci - Performance benchmark
+fn fib(n: int) -> int
+    if n <= 1 then
+        return n
+    end
+    return fib(n - 1) + fib(n - 2)
+end
+
+// Calculate fibonacci
+let start = time()
+let result = fib(30)
+let elapsed = time() - start
+
+print("fib(30) =")
+print(result)
+print("Time (ns):")
+print(elapsed)

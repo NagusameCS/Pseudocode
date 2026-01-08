@@ -1,0 +1,32 @@
+// Array operations
+let numbers = [5, 2, 8, 1, 9, 3, 7, 4, 6]
+
+print("Original array:")
+for n in numbers do
+    print(n)
+end
+
+// Find sum
+let total = 0
+for n in numbers do
+    total = total + n
+end
+print("Sum:")
+print(total)
+
+// Find min and max
+let min_val = numbers[0]
+let max_val = numbers[0]
+for n in numbers do
+    if n < min_val then
+        min_val = n
+    end
+    if n > max_val then
+        max_val = n
+    end
+end
+
+print("Min:")
+print(min_val)
+print("Max:")
+print(max_val)
