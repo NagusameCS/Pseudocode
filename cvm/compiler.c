@@ -443,6 +443,104 @@ static void variable(bool can_assign) {
             emit_byte(OP_INPUT);
             return;
         }
+        /* Type conversion functions */
+        if (name.length == 3 && memcmp(name.start, "int", 3) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after int argument.");
+            emit_byte(OP_INT);
+            return;
+        }
+        if (name.length == 5 && memcmp(name.start, "float", 5) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after float argument.");
+            emit_byte(OP_FLOAT);
+            return;
+        }
+        if (name.length == 3 && memcmp(name.start, "str", 3) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after str argument.");
+            emit_byte(OP_STR);
+            return;
+        }
+        if (name.length == 4 && memcmp(name.start, "type", 4) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after type argument.");
+            emit_byte(OP_TYPE);
+            return;
+        }
+        /* Math functions */
+        if (name.length == 3 && memcmp(name.start, "abs", 3) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after abs argument.");
+            emit_byte(OP_ABS);
+            return;
+        }
+        if (name.length == 3 && memcmp(name.start, "min", 3) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_COMMA, "Expect ',' after first min argument.");
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after min arguments.");
+            emit_byte(OP_MIN);
+            return;
+        }
+        if (name.length == 3 && memcmp(name.start, "max", 3) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_COMMA, "Expect ',' after first max argument.");
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after max arguments.");
+            emit_byte(OP_MAX);
+            return;
+        }
+        if (name.length == 4 && memcmp(name.start, "sqrt", 4) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after sqrt argument.");
+            emit_byte(OP_SQRT);
+            return;
+        }
+        if (name.length == 5 && memcmp(name.start, "floor", 5) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after floor argument.");
+            emit_byte(OP_FLOOR);
+            return;
+        }
+        if (name.length == 4 && memcmp(name.start, "ceil", 4) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after ceil argument.");
+            emit_byte(OP_CEIL);
+            return;
+        }
+        if (name.length == 5 && memcmp(name.start, "round", 5) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after round argument.");
+            emit_byte(OP_ROUND);
+            return;
+        }
+        if (name.length == 4 && memcmp(name.start, "rand", 4) == 0) {
+            advance();
+            consume(TOKEN_RPAREN, "Expect ')' after rand.");
+            emit_byte(OP_RAND);
+            return;
+        }
+        if (name.length == 3 && memcmp(name.start, "pow", 3) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_COMMA, "Expect ',' after first pow argument.");
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after pow arguments.");
+            emit_byte(OP_POW);
+            return;
+        }
     }
     
     named_variable(name, can_assign);

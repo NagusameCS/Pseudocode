@@ -75,6 +75,7 @@ ObjArray* new_array(VM* vm, uint32_t capacity) {
 
 ObjRange* new_range(VM* vm, int32_t start, int32_t end) {
     ObjRange* range = (ObjRange*)allocate_object(vm, sizeof(ObjRange), OBJ_RANGE);
+    range->start = start;
     range->current = start;
     range->end = end;
     return range;

@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pseudocode - A Fast, Intuitive Programming Language</title>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --bg: #0f172a;
+            --bg-light: #1e293b;
+            --text: #e2e8f0;
+            --text-muted: #94a3b8;
+            --accent: #22d3ee;
+            --code-bg: #1e293b;
+            --success: #22c55e;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        /* Header */
+        header {
+            padding: 1rem 0;
+            border-bottom: 1px solid var(--bg-light);
+        }
+
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .nav-links a:hover {
+            color: var(--text);
+        }
+
+        /* Hero */
+        .hero {
+            padding: 6rem 0;
+            text-align: center;
+        }
+
+        .hero h1 {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, var(--accent), var(--primary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            max-width: 600px;
+            margin: 0 auto 2rem;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-secondary {
+            background: var(--bg-light);
+            color: var(--text);
+            border: 1px solid var(--text-muted);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        /* Features */
+        .features {
+            padding: 4rem 0;
+        }
+
+        .features h2 {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .feature-card {
+            background: var(--bg-light);
+            padding: 2rem;
+            border-radius: 1rem;
+            border: 1px solid transparent;
+            transition: border-color 0.2s;
+        }
+
+        .feature-card:hover {
+            border-color: var(--primary);
+        }
+
+        .feature-icon {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .feature-card h3 {
+            margin-bottom: 0.5rem;
+            color: var(--accent);
+        }
+
+        .feature-card p {
+            color: var(--text-muted);
+        }
+
+        /* Code Example */
+        .code-section {
+            padding: 4rem 0;
+        }
+
+        .code-section h2 {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .code-section>p {
+            text-align: center;
+            color: var(--text-muted);
+            margin-bottom: 2rem;
+        }
+
+        .code-examples {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 2rem;
+        }
+
+        .code-block {
+            background: var(--code-bg);
+            border-radius: 1rem;
+            overflow: hidden;
+        }
+
+        .code-header {
+            background: #0f172a;
+            padding: 0.75rem 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .code-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .code-dot.red {
+            background: #ef4444;
+        }
+
+        .code-dot.yellow {
+            background: #eab308;
+        }
+
+        .code-dot.green {
+            background: #22c55e;
+        }
+
+        .code-title {
+            margin-left: 0.5rem;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        pre {
+            padding: 1.5rem;
+            overflow-x: auto;
+            font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+            font-size: 0.9rem;
+            line-height: 1.7;
+        }
+
+        .keyword {
+            color: #c084fc;
+        }
+
+        .function {
+            color: #60a5fa;
+        }
+
+        .string {
+            color: #4ade80;
+        }
+
+        .number {
+            color: #f97316;
+        }
+
+        .comment {
+            color: #64748b;
+        }
+
+        .operator {
+            color: #f472b6;
+        }
+
+        /* Performance */
+        .performance {
+            padding: 4rem 0;
+            text-align: center;
+        }
+
+        .performance h2 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .performance>p {
+            color: var(--text-muted);
+            margin-bottom: 2rem;
+        }
+
+        .perf-bars {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .perf-bar {
+            margin-bottom: 1.5rem;
+        }
+
+        .perf-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+        }
+
+        .perf-track {
+            height: 2rem;
+            background: var(--bg-light);
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+
+        .perf-fill {
+            height: 100%;
+            border-radius: 0.5rem;
+            display: flex;
+            align-items: center;
+            padding-left: 1rem;
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+
+        .perf-fill.fast {
+            background: linear-gradient(90deg, var(--success), #059669);
+        }
+
+        .perf-fill.medium {
+            background: linear-gradient(90deg, #eab308, #ca8a04);
+        }
+
+        .perf-fill.slow {
+            background: linear-gradient(90deg, #ef4444, #dc2626);
+        }
+
+        /* Getting Started */
+        .getting-started {
+            padding: 4rem 0;
+        }
+
+        .getting-started h2 {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .steps {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .step {
+            display: flex;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .step-number {
+            width: 3rem;
+            height: 3rem;
+            background: var(--primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .step-content h3 {
+            margin-bottom: 0.5rem;
+        }
+
+        .step-content p {
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+        }
+
+        .step-code {
+            background: var(--code-bg);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            font-family: monospace;
+        }
+
+        /* Footer */
+        footer {
+            padding: 3rem 0;
+            border-top: 1px solid var(--bg-light);
+            text-align: center;
+            color: var(--text-muted);
+        }
+
+        footer a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+
+            .hero-buttons {
+                flex-direction: column;
+            }
+
+            .code-examples {
+                grid-template-columns: 1fr;
+            }
+
+            .nav-links {
+                display: none;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <nav class="container">
+            <a href="/" class="logo">⚡ Pseudocode</a>
+            <ul class="nav-links">
+                <li><a href="#features">Features</a></li>
+                <li><a href="#examples">Examples</a></li>
+                <li><a href="#performance">Performance</a></li>
+                <li><a href="reference.html">Reference</a></li>
+                <li><a href="https://github.com/yourusername/Pseudocode">GitHub</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <section class="hero container">
+            <h1>Write Code Like You Think</h1>
+            <p>A blazingly fast programming language with intuitive syntax that reads like pseudocode. Compiled to
+                bytecode and executed on a high-performance VM.</p>
+            <div class="hero-buttons">
+                <a href="#getting-started" class="btn btn-primary">Get Started</a>
+                <a href="reference.html" class="btn btn-secondary">Documentation</a>
+            </div>
+        </section>
+
+        <section class="features container" id="features">
+            <h2>Why Pseudocode?</h2>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">⚡</div>
+                    <h3>Blazingly Fast</h3>
+                    <p>Our C-based VM with NaN-boxing and computed gotos runs faster than native Python. fib(30)
+                        completes in under 80ms.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📖</div>
+                    <h3>Readable Syntax</h3>
+                    <p>Write code that reads like natural language. No cryptic symbols or complex syntax — just clear,
+                        intuitive expressions.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔧</div>
+                    <h3>Rich Built-ins</h3>
+                    <p>Math functions, type conversions, array operations, and more — all available out of the box
+                        without imports.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🎯</div>
+                    <h3>Simple & Focused</h3>
+                    <p>Learn the entire language in minutes. Perfect for learning algorithms, rapid prototyping, and
+                        teaching.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔄</div>
+                    <h3>First-Class Functions</h3>
+                    <p>Define functions with fn/end, pass them around, and use recursion naturally.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📦</div>
+                    <h3>Dynamic Arrays</h3>
+                    <p>Flexible arrays with push, pop, slicing, and iteration. Build data structures with ease.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="code-section container" id="examples">
+            <h2>See It In Action</h2>
+            <p>Clean, readable code that does exactly what it looks like</p>
+            <div class="code-examples">
+                <div class="code-block">
+                    <div class="code-header">
+                        <span class="code-dot red"></span>
+                        <span class="code-dot yellow"></span>
+                        <span class="code-dot green"></span>
+                        <span class="code-title">fibonacci.pseudo</span>
+                    </div>
+                    <pre><span class="comment">// Recursive Fibonacci</span>
+<span class="keyword">fn</span> <span class="function">fib</span>(n)
+    <span class="keyword">if</span> n &lt;= <span class="number">1</span> <span class="keyword">then</span>
+        <span class="keyword">return</span> n
+    <span class="keyword">end</span>
+    <span class="keyword">return</span> <span class="function">fib</span>(n - <span class="number">1</span>) + <span class="function">fib</span>(n - <span class="number">2</span>)
+<span class="keyword">end</span>
+
+<span class="function">print</span>(<span class="function">fib</span>(<span class="number">30</span>))  <span class="comment">// 832040</span></pre>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span class="code-dot red"></span>
+                        <span class="code-dot yellow"></span>
+                        <span class="code-dot green"></span>
+                        <span class="code-title">fizzbuzz.pseudo</span>
+                    </div>
+                    <pre><span class="keyword">for</span> i <span class="keyword">in</span> <span class="number">1</span>..<span class="number">100</span> <span class="keyword">do</span>
+    <span class="keyword">if</span> i % <span class="number">15</span> == <span class="number">0</span> <span class="keyword">then</span>
+        <span class="function">print</span>(<span class="string">"FizzBuzz"</span>)
+    <span class="keyword">elif</span> i % <span class="number">3</span> == <span class="number">0</span> <span class="keyword">then</span>
+        <span class="function">print</span>(<span class="string">"Fizz"</span>)
+    <span class="keyword">elif</span> i % <span class="number">5</span> == <span class="number">0</span> <span class="keyword">then</span>
+        <span class="function">print</span>(<span class="string">"Buzz"</span>)
+    <span class="keyword">else</span>
+        <span class="function">print</span>(i)
+    <span class="keyword">end</span>
+<span class="keyword">end</span></pre>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span class="code-dot red"></span>
+                        <span class="code-dot yellow"></span>
+                        <span class="code-dot green"></span>
+                        <span class="code-title">arrays.pseudo</span>
+                    </div>
+                    <pre><span class="comment">// Dynamic arrays</span>
+<span class="keyword">let</span> nums = [<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>]
+
+<span class="comment">// Built-in functions</span>
+<span class="function">print</span>(<span class="function">len</span>(nums))     <span class="comment">// 5</span>
+<span class="function">push</span>(nums, <span class="number">6</span>)
+<span class="function">print</span>(<span class="function">pop</span>(nums))     <span class="comment">// 6</span>
+
+<span class="comment">// Indexing</span>
+<span class="function">print</span>(nums[<span class="number">0</span>])       <span class="comment">// 1</span>
+<span class="function">print</span>(nums[<span class="number">-1</span>])      <span class="comment">// 5 (negative index)</span></pre>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">
+                        <span class="code-dot red"></span>
+                        <span class="code-dot yellow"></span>
+                        <span class="code-dot green"></span>
+                        <span class="code-title">math.pseudo</span>
+                    </div>
+                    <pre><span class="comment">// Math functions</span>
+<span class="function">print</span>(<span class="function">sqrt</span>(<span class="number">16</span>))      <span class="comment">// 4</span>
+<span class="function">print</span>(<span class="function">abs</span>(<span class="number">-42</span>))      <span class="comment">// 42</span>
+<span class="function">print</span>(<span class="function">pow</span>(<span class="number">2</span>, <span class="number">10</span>))    <span class="comment">// 1024</span>
+<span class="function">print</span>(<span class="function">min</span>(<span class="number">5</span>, <span class="number">3</span>))     <span class="comment">// 3</span>
+<span class="function">print</span>(<span class="function">max</span>(<span class="number">5</span>, <span class="number">3</span>))     <span class="comment">// 5</span>
+
+<span class="comment">// Type conversions</span>
+<span class="function">print</span>(<span class="function">int</span>(<span class="string">"123"</span>))    <span class="comment">// 123</span>
+<span class="function">print</span>(<span class="function">str</span>(<span class="number">456</span>))      <span class="comment">// "456"</span>
+<span class="function">print</span>(<span class="function">type</span>([]))      <span class="comment">// "array"</span></pre>
+                </div>
+            </div>
+        </section>
+
+        <section class="performance container" id="performance">
+            <h2>Performance That Matters</h2>
+            <p>fib(30) benchmark — lower is better</p>
+            <div class="perf-bars">
+                <div class="perf-bar">
+                    <div class="perf-label">
+                        <span>Pseudocode (C VM)</span>
+                        <span>~79ms</span>
+                    </div>
+                    <div class="perf-track">
+                        <div class="perf-fill fast" style="width: 7%;">⚡</div>
+                    </div>
+                </div>
+                <div class="perf-bar">
+                    <div class="perf-label">
+                        <span>Native Python 3.12</span>
+                        <span>~123ms</span>
+                    </div>
+                    <div class="perf-track">
+                        <div class="perf-fill medium" style="width: 11%;"></div>
+                    </div>
+                </div>
+                <div class="perf-bar">
+                    <div class="perf-label">
+                        <span>Pseudocode (Python VM)</span>
+                        <span>~23,000ms</span>
+                    </div>
+                    <div class="perf-track">
+                        <div class="perf-fill slow" style="width: 100%;"></div>
+                    </div>
+                </div>
+            </div>
+            <p style="margin-top: 2rem; font-size: 0.875rem;">The C VM is <strong>~290x faster</strong> than the Python
+                VM and <strong>faster than native Python</strong>!</p>
+        </section>
+
+        <section class="getting-started container" id="getting-started">
+            <h2>Getting Started</h2>
+            <div class="steps">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <h3>Clone the Repository</h3>
+                        <p>Get the source code from GitHub</p>
+                        <div class="step-code">git clone https://github.com/yourusername/Pseudocode.git</div>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <h3>Build the VM</h3>
+                        <p>Compile the high-performance C VM</p>
+                        <div class="step-code">cd Pseudocode/cvm && make</div>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <h3>Run Your First Program</h3>
+                        <p>Execute a Pseudocode file</p>
+                        <div class="step-code">./pseudo ../examples/hello.pseudo</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>Pseudocode is open source under the MIT License</p>
+            <p>Made with ⚡ for speed and 💜 for simplicity</p>
+            <p><a href="https://github.com/yourusername/Pseudocode">GitHub</a> • <a
+                    href="reference.html">Documentation</a></p>
+        </div>
+    </footer>
+</body>
+
+</html>

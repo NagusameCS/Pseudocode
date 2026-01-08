@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Language Reference - Pseudocode</title>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --bg: #0f172a;
+            --bg-light: #1e293b;
+            --text: #e2e8f0;
+            --text-muted: #94a3b8;
+            --accent: #22d3ee;
+            --code-bg: #1e293b;
+            --success: #22c55e;
+            --sidebar-width: 280px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.7;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: var(--sidebar-width);
+            height: 100vh;
+            background: var(--bg-light);
+            padding: 2rem;
+            overflow-y: auto;
+            border-right: 1px solid #334155;
+        }
+
+        .sidebar-logo {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--accent);
+            text-decoration: none;
+            display: block;
+            margin-bottom: 2rem;
+        }
+
+        .sidebar-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .sidebar-section h3 {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+        }
+
+        .sidebar-section ul {
+            list-style: none;
+        }
+
+        .sidebar-section a {
+            display: block;
+            padding: 0.25rem 0;
+            color: var(--text);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+        }
+
+        .sidebar-section a:hover {
+            color: var(--accent);
+        }
+
+        /* Main content */
+        .main {
+            margin-left: var(--sidebar-width);
+            padding: 3rem 4rem;
+            max-width: calc(100% - var(--sidebar-width));
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, var(--accent), var(--primary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        h2 {
+            font-size: 1.75rem;
+            margin: 3rem 0 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--bg-light);
+            color: var(--accent);
+        }
+
+        h3 {
+            font-size: 1.25rem;
+            margin: 2rem 0 0.75rem;
+            color: var(--text);
+        }
+
+        p {
+            margin-bottom: 1rem;
+            color: var(--text-muted);
+        }
+
+        p code,
+        li code {
+            background: var(--code-bg);
+            padding: 0.15rem 0.4rem;
+            border-radius: 0.25rem;
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            font-size: 0.875em;
+            color: var(--accent);
+        }
+
+        pre {
+            background: var(--code-bg);
+            padding: 1.25rem;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+            margin: 1rem 0;
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            border: 1px solid #334155;
+        }
+
+        .keyword {
+            color: #c084fc;
+        }
+
+        .function {
+            color: #60a5fa;
+        }
+
+        .string {
+            color: #4ade80;
+        }
+
+        .number {
+            color: #f97316;
+        }
+
+        .comment {
+            color: #64748b;
+        }
+
+        .operator {
+            color: #f472b6;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+
+        th,
+        td {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border: 1px solid #334155;
+        }
+
+        th {
+            background: var(--bg-light);
+            color: var(--accent);
+        }
+
+        td {
+            color: var(--text-muted);
+        }
+
+        td code {
+            background: var(--bg);
+            padding: 0.1rem 0.3rem;
+            border-radius: 0.25rem;
+            color: var(--text);
+        }
+
+        ul,
+        ol {
+            margin: 1rem 0 1rem 1.5rem;
+            color: var(--text-muted);
+        }
+
+        li {
+            margin-bottom: 0.5rem;
+        }
+
+        .tip {
+            background: rgba(34, 197, 94, 0.1);
+            border-left: 4px solid var(--success);
+            padding: 1rem 1.25rem;
+            margin: 1rem 0;
+            border-radius: 0 0.5rem 0.5rem 0;
+        }
+
+        .tip-title {
+            font-weight: 600;
+            color: var(--success);
+            margin-bottom: 0.5rem;
+        }
+
+        @media (max-width: 900px) {
+            .sidebar {
+                display: none;
+            }
+
+            .main {
+                margin-left: 0;
+                padding: 2rem;
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="sidebar">
+        <a href="index.html" class="sidebar-logo">⚡ Pseudocode</a>
+
+        <div class="sidebar-section">
+            <h3>Getting Started</h3>
+            <ul>
+                <li><a href="#introduction">Introduction</a></li>
+                <li><a href="#installation">Installation</a></li>
+                <li><a href="#hello-world">Hello World</a></li>
+            </ul>
+        </div>
+
+        <div class="sidebar-section">
+            <h3>Language Basics</h3>
+            <ul>
+                <li><a href="#variables">Variables</a></li>
+                <li><a href="#data-types">Data Types</a></li>
+                <li><a href="#operators">Operators</a></li>
+                <li><a href="#comments">Comments</a></li>
+            </ul>
+        </div>
+
+        <div class="sidebar-section">
+            <h3>Control Flow</h3>
+            <ul>
+                <li><a href="#if-statements">If Statements</a></li>
+                <li><a href="#while-loops">While Loops</a></li>
+                <li><a href="#for-loops">For Loops</a></li>
+            </ul>
+        </div>
+
+        <div class="sidebar-section">
+            <h3>Functions</h3>
+            <ul>
+                <li><a href="#defining-functions">Defining Functions</a></li>
+                <li><a href="#recursion">Recursion</a></li>
+            </ul>
+        </div>
+
+        <div class="sidebar-section">
+            <h3>Data Structures</h3>
+            <ul>
+                <li><a href="#arrays">Arrays</a></li>
+                <li><a href="#strings">Strings</a></li>
+            </ul>
+        </div>
+
+        <div class="sidebar-section">
+            <h3>Built-in Functions</h3>
+            <ul>
+                <li><a href="#io-functions">I/O Functions</a></li>
+                <li><a href="#math-functions">Math Functions</a></li>
+                <li><a href="#type-functions">Type Functions</a></li>
+                <li><a href="#array-functions">Array Functions</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="main">
+        <h1>Language Reference</h1>
+        <p>Complete documentation for the Pseudocode programming language.</p>
+
+        <h2 id="introduction">Introduction</h2>
+        <p>Pseudocode is a simple, fast programming language designed to be as readable as possible. It compiles to
+            bytecode and runs on a high-performance virtual machine written in C.</p>
+
+        <p>Key features:</p>
+        <ul>
+            <li><strong>Intuitive syntax</strong> — reads like natural language</li>
+            <li><strong>Blazing fast</strong> — faster than native Python</li>
+            <li><strong>Dynamic typing</strong> — no type annotations needed</li>
+            <li><strong>First-class functions</strong> — supports recursion and closures</li>
+            <li><strong>Built-in arrays</strong> — with push, pop, and slicing</li>
+        </ul>
+
+        <h2 id="installation">Installation</h2>
+        <p>Build the C VM from source:</p>
+        <pre><span class="comment"># Clone the repository</span>
+git clone https://github.com/yourusername/Pseudocode.git
+cd Pseudocode/cvm
+
+<span class="comment"># Build (requires GCC or Clang)</span>
+make
+
+<span class="comment"># Run a program</span>
+./pseudo ../examples/hello.pseudo</pre>
+
+        <h2 id="hello-world">Hello World</h2>
+        <p>Create a file called <code>hello.pseudo</code>:</p>
+        <pre><span class="function">print</span>(<span class="string">"Hello, World!"</span>)</pre>
+        <p>Run it:</p>
+        <pre>./pseudo hello.pseudo</pre>
+
+        <h2 id="variables">Variables</h2>
+        <p>Declare variables using the <code>let</code> keyword:</p>
+        <pre><span class="keyword">let</span> name = <span class="string">"Alice"</span>
+<span class="keyword">let</span> age = <span class="number">25</span>
+<span class="keyword">let</span> pi = <span class="number">3.14159</span>
+<span class="keyword">let</span> active = <span class="keyword">true</span></pre>
+
+        <p>Variables are dynamically typed and can be reassigned:</p>
+        <pre><span class="keyword">let</span> x = <span class="number">10</span>
+x = <span class="string">"now a string"</span>  <span class="comment">// Valid!</span></pre>
+
+        <h2 id="data-types">Data Types</h2>
+        <table>
+            <tr>
+                <th>Type</th>
+                <th>Examples</th>
+                <th>Description</th>
+            </tr>
+            <tr>
+                <td>Number</td>
+                <td><code>42</code>, <code>3.14</code>, <code>-7</code></td>
+                <td>Integers and floating-point</td>
+            </tr>
+            <tr>
+                <td>String</td>
+                <td><code>"hello"</code>, <code>"world"</code></td>
+                <td>Text in double quotes</td>
+            </tr>
+            <tr>
+                <td>Boolean</td>
+                <td><code>true</code>, <code>false</code></td>
+                <td>Logical values</td>
+            </tr>
+            <tr>
+                <td>Nil</td>
+                <td><code>nil</code></td>
+                <td>Absence of value</td>
+            </tr>
+            <tr>
+                <td>Array</td>
+                <td><code>[1, 2, 3]</code></td>
+                <td>Ordered collection</td>
+            </tr>
+            <tr>
+                <td>Function</td>
+                <td><code>fn name() ... end</code></td>
+                <td>Callable code block</td>
+            </tr>
+        </table>
+
+        <h2 id="operators">Operators</h2>
+        <h3>Arithmetic</h3>
+        <table>
+            <tr>
+                <th>Operator</th>
+                <th>Description</th>
+                <th>Example</th>
+            </tr>
+            <tr>
+                <td><code>+</code></td>
+                <td>Addition / String concat</td>
+                <td><code>5 + 3</code> → <code>8</code></td>
+            </tr>
+            <tr>
+                <td><code>-</code></td>
+                <td>Subtraction</td>
+                <td><code>5 - 3</code> → <code>2</code></td>
+            </tr>
+            <tr>
+                <td><code>*</code></td>
+                <td>Multiplication</td>
+                <td><code>5 * 3</code> → <code>15</code></td>
+            </tr>
+            <tr>
+                <td><code>/</code></td>
+                <td>Division</td>
+                <td><code>7 / 2</code> → <code>3.5</code></td>
+            </tr>
+            <tr>
+                <td><code>%</code></td>
+                <td>Modulo</td>
+                <td><code>7 % 3</code> → <code>1</code></td>
+            </tr>
+        </table>
+
+        <h3>Comparison</h3>
+        <table>
+            <tr>
+                <th>Operator</th>
+                <th>Description</th>
+            </tr>
+            <tr>
+                <td><code>==</code></td>
+                <td>Equal to</td>
+            </tr>
+            <tr>
+                <td><code>!=</code></td>
+                <td>Not equal to</td>
+            </tr>
+            <tr>
+                <td><code>&lt;</code></td>
+                <td>Less than</td>
+            </tr>
+            <tr>
+                <td><code>&gt;</code></td>
+                <td>Greater than</td>
+            </tr>
+            <tr>
+                <td><code>&lt;=</code></td>
+                <td>Less than or equal</td>
+            </tr>
+            <tr>
+                <td><code>&gt;=</code></td>
+                <td>Greater than or equal</td>
+            </tr>
+        </table>
+
+        <h3>Logical</h3>
+        <table>
+            <tr>
+                <th>Operator</th>
+                <th>Description</th>
+            </tr>
+            <tr>
+                <td><code>and</code></td>
+                <td>Logical AND (short-circuit)</td>
+            </tr>
+            <tr>
+                <td><code>or</code></td>
+                <td>Logical OR (short-circuit)</td>
+            </tr>
+            <tr>
+                <td><code>not</code></td>
+                <td>Logical NOT</td>
+            </tr>
+        </table>
+
+        <h2 id="comments">Comments</h2>
+        <p>Single-line comments start with <code>//</code>:</p>
+        <pre><span class="comment">// This is a comment</span>
+<span class="keyword">let</span> x = <span class="number">5</span>  <span class="comment">// Inline comment</span></pre>
+
+        <h2 id="if-statements">If Statements</h2>
+        <p>Conditional execution with <code>if</code>, <code>elif</code>, and <code>else</code>:</p>
+        <pre><span class="keyword">if</span> score >= <span class="number">90</span> <span class="keyword">then</span>
+    <span class="function">print</span>(<span class="string">"A"</span>)
+<span class="keyword">elif</span> score >= <span class="number">80</span> <span class="keyword">then</span>
+    <span class="function">print</span>(<span class="string">"B"</span>)
+<span class="keyword">elif</span> score >= <span class="number">70</span> <span class="keyword">then</span>
+    <span class="function">print</span>(<span class="string">"C"</span>)
+<span class="keyword">else</span>
+    <span class="function">print</span>(<span class="string">"F"</span>)
+<span class="keyword">end</span></pre>
+
+        <h2 id="while-loops">While Loops</h2>
+        <p>Loop while a condition is true:</p>
+        <pre><span class="keyword">let</span> i = <span class="number">0</span>
+<span class="keyword">while</span> i < <span class="number">5</span> <span class="keyword">do</span>
+    <span class="function">print</span>(i)
+    i = i + <span class="number">1</span>
+<span class="keyword">end</span></pre>
+
+        <h2 id="for-loops">For Loops</h2>
+        <p>Iterate over a range of numbers:</p>
+        <pre><span class="comment">// Prints 0 to 9</span>
+<span class="keyword">for</span> i <span class="keyword">in</span> <span class="number">0</span>..<span class="number">10</span> <span class="keyword">do</span>
+    <span class="function">print</span>(i)
+<span class="keyword">end</span></pre>
+
+        <div class="tip">
+            <div class="tip-title">💡 Tip</div>
+            <p>Ranges are exclusive of the end value. <code>0..5</code> iterates 0, 1, 2, 3, 4.</p>
+        </div>
+
+        <h2 id="defining-functions">Defining Functions</h2>
+        <p>Use <code>fn</code> and <code>end</code> to define functions:</p>
+        <pre><span class="keyword">fn</span> <span class="function">greet</span>(name)
+    <span class="function">print</span>(<span class="string">"Hello, "</span> + name + <span class="string">"!"</span>)
+<span class="keyword">end</span>
+
+<span class="function">greet</span>(<span class="string">"Alice"</span>)  <span class="comment">// Hello, Alice!</span></pre>
+
+        <p>Functions can return values:</p>
+        <pre><span class="keyword">fn</span> <span class="function">square</span>(x)
+    <span class="keyword">return</span> x * x
+<span class="keyword">end</span>
+
+<span class="function">print</span>(<span class="function">square</span>(<span class="number">5</span>))  <span class="comment">// 25</span></pre>
+
+        <h2 id="recursion">Recursion</h2>
+        <p>Functions can call themselves:</p>
+        <pre><span class="keyword">fn</span> <span class="function">factorial</span>(n)
+    <span class="keyword">if</span> n <= <span class="number">1</span> <span class="keyword">then</span>
+        <span class="keyword">return</span> <span class="number">1</span>
+    <span class="keyword">end</span>
+    <span class="keyword">return</span> n * <span class="function">factorial</span>(n - <span class="number">1</span>)
+<span class="keyword">end</span>
+
+<span class="function">print</span>(<span class="function">factorial</span>(<span class="number">10</span>))  <span class="comment">// 3628800</span></pre>
+
+        <h2 id="arrays">Arrays</h2>
+        <p>Create arrays with square brackets:</p>
+        <pre><span class="keyword">let</span> numbers = [<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>]
+<span class="keyword">let</span> mixed = [<span class="number">1</span>, <span class="string">"two"</span>, <span class="keyword">true</span>, <span class="keyword">nil</span>]
+<span class="keyword">let</span> empty = []</pre>
+
+        <p>Access elements by index (0-based):</p>
+        <pre><span class="function">print</span>(numbers[<span class="number">0</span>])   <span class="comment">// 1</span>
+<span class="function">print</span>(numbers[<span class="number">-1</span>])  <span class="comment">// 5 (last element)</span>
+
+numbers[<span class="number">0</span>] = <span class="number">10</span>     <span class="comment">// Modify element</span></pre>
+
+        <h2 id="strings">Strings</h2>
+        <p>Strings are immutable sequences of characters:</p>
+        <pre><span class="keyword">let</span> greeting = <span class="string">"Hello"</span>
+<span class="keyword">let</span> name = <span class="string">"World"</span>
+
+<span class="comment">// Concatenation</span>
+<span class="function">print</span>(greeting + <span class="string">", "</span> + name)  <span class="comment">// Hello, World</span>
+
+<span class="comment">// Length</span>
+<span class="function">print</span>(<span class="function">len</span>(greeting))  <span class="comment">// 5</span>
+
+<span class="comment">// Indexing</span>
+<span class="function">print</span>(greeting[<span class="number">0</span>])    <span class="comment">// H</span></pre>
+
+        <h2 id="io-functions">I/O Functions</h2>
+        <table>
+            <tr>
+                <th>Function</th>
+                <th>Description</th>
+            </tr>
+            <tr>
+                <td><code>print(value)</code></td>
+                <td>Print value with newline</td>
+            </tr>
+            <tr>
+                <td><code>input()</code></td>
+                <td>Read line from stdin</td>
+            </tr>
+            <tr>
+                <td><code>time()</code></td>
+                <td>Get current time in nanoseconds</td>
+            </tr>
+        </table>
+
+        <h2 id="math-functions">Math Functions</h2>
+        <table>
+            <tr>
+                <th>Function</th>
+                <th>Description</th>
+                <th>Example</th>
+            </tr>
+            <tr>
+                <td><code>abs(x)</code></td>
+                <td>Absolute value</td>
+                <td><code>abs(-5)</code> → <code>5</code></td>
+            </tr>
+            <tr>
+                <td><code>sqrt(x)</code></td>
+                <td>Square root</td>
+                <td><code>sqrt(16)</code> → <code>4</code></td>
+            </tr>
+            <tr>
+                <td><code>pow(x, y)</code></td>
+                <td>Power (x^y)</td>
+                <td><code>pow(2, 8)</code> → <code>256</code></td>
+            </tr>
+            <tr>
+                <td><code>min(a, b)</code></td>
+                <td>Minimum value</td>
+                <td><code>min(3, 7)</code> → <code>3</code></td>
+            </tr>
+            <tr>
+                <td><code>max(a, b)</code></td>
+                <td>Maximum value</td>
+                <td><code>max(3, 7)</code> → <code>7</code></td>
+            </tr>
+            <tr>
+                <td><code>floor(x)</code></td>
+                <td>Round down</td>
+                <td><code>floor(3.7)</code> → <code>3</code></td>
+            </tr>
+            <tr>
+                <td><code>ceil(x)</code></td>
+                <td>Round up</td>
+                <td><code>ceil(3.2)</code> → <code>4</code></td>
+            </tr>
+            <tr>
+                <td><code>round(x)</code></td>
+                <td>Round to nearest</td>
+                <td><code>round(3.5)</code> → <code>4</code></td>
+            </tr>
+            <tr>
+                <td><code>rand()</code></td>
+                <td>Random 0.0 to 1.0</td>
+                <td><code>rand()</code> → <code>0.547...</code></td>
+            </tr>
+        </table>
+
+        <h2 id="type-functions">Type Functions</h2>
+        <table>
+            <tr>
+                <th>Function</th>
+                <th>Description</th>
+                <th>Example</th>
+            </tr>
+            <tr>
+                <td><code>type(x)</code></td>
+                <td>Get type name as string</td>
+                <td><code>type([])</code> → <code>"array"</code></td>
+            </tr>
+            <tr>
+                <td><code>int(x)</code></td>
+                <td>Convert to integer</td>
+                <td><code>int("123")</code> → <code>123</code></td>
+            </tr>
+            <tr>
+                <td><code>float(x)</code></td>
+                <td>Convert to float</td>
+                <td><code>float("3.14")</code> → <code>3.14</code></td>
+            </tr>
+            <tr>
+                <td><code>str(x)</code></td>
+                <td>Convert to string</td>
+                <td><code>str(42)</code> → <code>"42"</code></td>
+            </tr>
+        </table>
+
+        <h2 id="array-functions">Array Functions</h2>
+        <table>
+            <tr>
+                <th>Function</th>
+                <th>Description</th>
+            </tr>
+            <tr>
+                <td><code>len(arr)</code></td>
+                <td>Get array length</td>
+            </tr>
+            <tr>
+                <td><code>push(arr, val)</code></td>
+                <td>Add element to end</td>
+            </tr>
+            <tr>
+                <td><code>pop(arr)</code></td>
+                <td>Remove and return last element</td>
+            </tr>
+        </table>
+
+        <pre><span class="keyword">let</span> arr = [<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]
+
+<span class="function">print</span>(<span class="function">len</span>(arr))     <span class="comment">// 3</span>
+
+<span class="function">push</span>(arr, <span class="number">4</span>)
+<span class="function">print</span>(arr)          <span class="comment">// [1, 2, 3, 4]</span>
+
+<span class="keyword">let</span> last = <span class="function">pop</span>(arr)
+<span class="function">print</span>(last)         <span class="comment">// 4</span>
+<span class="function">print</span>(arr)          <span class="comment">// [1, 2, 3]</span></pre>
+
+    </main>
+</body>
+
+</html>

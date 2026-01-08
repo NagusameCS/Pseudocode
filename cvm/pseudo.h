@@ -130,6 +130,7 @@ typedef struct {
 
 typedef struct {
     Obj obj;
+    int32_t start;
     int32_t current;
     int32_t end;
 } ObjRange;
@@ -159,10 +160,12 @@ typedef struct {
 typedef enum {
     /* Stack ops */
     OP_CONST,       /* Push constant */
+    OP_CONST_LONG,  /* Push constant (16-bit index) */
     OP_NIL,
     OP_TRUE,
     OP_FALSE,
     OP_POP,
+    OP_POPN,        /* Pop N values */
     OP_DUP,
     
     /* Variables */
@@ -178,6 +181,9 @@ typedef enum {
     OP_DIV,
     OP_MOD,
     OP_NEG,
+    OP_INC,         /* Increment */
+    OP_DEC,         /* Decrement */
+    OP_POW,         /* Power/exponent */
     
     /* Comparison */
     OP_EQ,
@@ -189,11 +195,14 @@ typedef enum {
     
     /* Logical */
     OP_NOT,
+    OP_AND,         /* Short-circuit AND */
+    OP_OR,          /* Short-circuit OR */
     
     /* Bitwise */
     OP_BAND,
     OP_BOR,
     OP_BXOR,
+    OP_BNOT,        /* Bitwise NOT */
     OP_SHL,
     OP_SHR,
     
@@ -214,15 +223,31 @@ typedef enum {
     OP_LEN,
     OP_PUSH,
     OP_POP_ARRAY,
+    OP_SLICE,       /* Array slicing */
+    OP_CONCAT,      /* Array/string concat */
     
     /* Iterators */
     OP_RANGE,
     OP_ITER_NEXT,
+    OP_ITER_ARRAY,  /* Array iterator */
     
     /* Built-ins */
     OP_PRINT,
+    OP_PRINTLN,     /* Print with newline */
     OP_TIME,
     OP_INPUT,
+    OP_INT,         /* Convert to int */
+    OP_FLOAT,       /* Convert to float */
+    OP_STR,         /* Convert to string */
+    OP_TYPE,        /* Get type name */
+    OP_ABS,         /* Absolute value */
+    OP_MIN,         /* Min of two values */
+    OP_MAX,         /* Max of two values */
+    OP_SQRT,        /* Square root */
+    OP_FLOOR,       /* Floor */
+    OP_CEIL,        /* Ceiling */
+    OP_ROUND,       /* Round */
+    OP_RAND,        /* Random 0-1 */
     
     OP_HALT,
 } OpCode;

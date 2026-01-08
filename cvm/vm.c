@@ -155,43 +155,41 @@ static void print_value(Value value) {
     if (IS_NUM(value)) {
         double d = as_num(value);
         if (d == (int64_t)d) {
-            printf("%lld\n", (long long)(int64_t)d);
+            printf("%lld", (long long)(int64_t)d);
         } else {
-            printf("%g\n", d);
+            printf("%g", d);
         }
     } else if (IS_INT(value)) {
-        printf("%d\n", as_int(value));
+        printf("%d", as_int(value));
     } else if (IS_NIL(value)) {
-        printf("nil\n");
+        printf("nil");
     } else if (IS_BOOL(value)) {
-        printf("%s\n", IS_TRUE(value) ? "true" : "false");
+        printf("%s", IS_TRUE(value) ? "true" : "false");
     } else if (IS_OBJ(value)) {
         Obj* obj = as_obj(value);
         switch (obj->type) {
             case OBJ_STRING:
-                printf("%s\n", ((ObjString*)obj)->chars);
+                printf("%s", ((ObjString*)obj)->chars);
                 break;
             case OBJ_ARRAY: {
                 ObjArray* arr = (ObjArray*)obj;
                 printf("[");
                 for (uint32_t i = 0; i < arr->count; i++) {
                     if (i > 0) printf(", ");
-                    /* Simplified printing for arrays */
-                    if (IS_INT(arr->values[i])) {
-                        printf("%d", as_int(arr->values[i]));
-                    } else if (IS_NUM(arr->values[i])) {
-                        printf("%g", as_num(arr->values[i]));
-                    }
+                    print_value(arr->values[i]);
                 }
-                printf("]\n");
+                printf("]");
                 break;
             }
             case OBJ_FUNCTION:
-                printf("<fn %s>\n", ((ObjFunction*)obj)->name ? 
+                printf("<fn %s>", ((ObjFunction*)obj)->name ? 
                     ((ObjFunction*)obj)->name->chars : "script");
                 break;
+            case OBJ_RANGE:
+                printf("%d..%d", ((ObjRange*)obj)->start, ((ObjRange*)obj)->end);
+                break;
             default:
-                printf("<object>\n");
+                printf("<object>");
                 break;
         }
     }
@@ -246,20 +244,78 @@ InterpretResult vm_run(VM* vm) {
     register uint8_t* ip = vm->chunk.code;
     
 #if USE_COMPUTED_GOTO
-    /* Dispatch table for computed gotos */
+    /* Dispatch table for computed gotos - must match OpCode enum order */
     static void* dispatch_table[] = {
-        &&op_const, &&op_nil, &&op_true, &&op_false, &&op_pop, &&op_dup,
-        &&op_get_local, &&op_set_local, &&op_get_global, &&op_set_global,
-        &&op_add, &&op_sub, &&op_mul, &&op_div, &&op_mod, &&op_neg,
-        &&op_eq, &&op_neq, &&op_lt, &&op_gt, &&op_lte, &&op_gte,
-        &&op_not,
-        &&op_band, &&op_bor, &&op_bxor, &&op_shl, &&op_shr,
-        &&op_jmp, &&op_jmp_false, &&op_jmp_true, &&op_loop,
-        &&op_call, &&op_return,
-        &&op_array, &&op_index, &&op_index_set, &&op_len, &&op_push, &&op_pop_array,
-        &&op_range, &&op_iter_next,
-        &&op_print, &&op_time, &&op_input,
-        &&op_halt,
+        [OP_CONST] = &&op_const,
+        [OP_CONST_LONG] = &&op_const_long,
+        [OP_NIL] = &&op_nil,
+        [OP_TRUE] = &&op_true,
+        [OP_FALSE] = &&op_false,
+        [OP_POP] = &&op_pop,
+        [OP_POPN] = &&op_popn,
+        [OP_DUP] = &&op_dup,
+        [OP_GET_LOCAL] = &&op_get_local,
+        [OP_SET_LOCAL] = &&op_set_local,
+        [OP_GET_GLOBAL] = &&op_get_global,
+        [OP_SET_GLOBAL] = &&op_set_global,
+        [OP_ADD] = &&op_add,
+        [OP_SUB] = &&op_sub,
+        [OP_MUL] = &&op_mul,
+        [OP_DIV] = &&op_div,
+        [OP_MOD] = &&op_mod,
+        [OP_NEG] = &&op_neg,
+        [OP_INC] = &&op_inc,
+        [OP_DEC] = &&op_dec,
+        [OP_POW] = &&op_pow,
+        [OP_EQ] = &&op_eq,
+        [OP_NEQ] = &&op_neq,
+        [OP_LT] = &&op_lt,
+        [OP_GT] = &&op_gt,
+        [OP_LTE] = &&op_lte,
+        [OP_GTE] = &&op_gte,
+        [OP_NOT] = &&op_not,
+        [OP_AND] = &&op_and,
+        [OP_OR] = &&op_or,
+        [OP_BAND] = &&op_band,
+        [OP_BOR] = &&op_bor,
+        [OP_BXOR] = &&op_bxor,
+        [OP_BNOT] = &&op_bnot,
+        [OP_SHL] = &&op_shl,
+        [OP_SHR] = &&op_shr,
+        [OP_JMP] = &&op_jmp,
+        [OP_JMP_FALSE] = &&op_jmp_false,
+        [OP_JMP_TRUE] = &&op_jmp_true,
+        [OP_LOOP] = &&op_loop,
+        [OP_CALL] = &&op_call,
+        [OP_RETURN] = &&op_return,
+        [OP_ARRAY] = &&op_array,
+        [OP_INDEX] = &&op_index,
+        [OP_INDEX_SET] = &&op_index_set,
+        [OP_LEN] = &&op_len,
+        [OP_PUSH] = &&op_push,
+        [OP_POP_ARRAY] = &&op_pop_array,
+        [OP_SLICE] = &&op_slice,
+        [OP_CONCAT] = &&op_concat,
+        [OP_RANGE] = &&op_range,
+        [OP_ITER_NEXT] = &&op_iter_next,
+        [OP_ITER_ARRAY] = &&op_iter_array,
+        [OP_PRINT] = &&op_print,
+        [OP_PRINTLN] = &&op_println,
+        [OP_TIME] = &&op_time,
+        [OP_INPUT] = &&op_input,
+        [OP_INT] = &&op_int,
+        [OP_FLOAT] = &&op_float,
+        [OP_STR] = &&op_str,
+        [OP_TYPE] = &&op_type,
+        [OP_ABS] = &&op_abs,
+        [OP_MIN] = &&op_min,
+        [OP_MAX] = &&op_max,
+        [OP_SQRT] = &&op_sqrt,
+        [OP_FLOOR] = &&op_floor,
+        [OP_CEIL] = &&op_ceil,
+        [OP_ROUND] = &&op_round,
+        [OP_RAND] = &&op_rand,
+        [OP_HALT] = &&op_halt,
     };
     
     #define DISPATCH() goto *dispatch_table[*ip++]
@@ -281,6 +337,12 @@ InterpretResult vm_run(VM* vm) {
         DISPATCH();
     }
     
+    CASE(const_long): {
+        uint16_t idx = READ_SHORT();
+        PUSH(vm->chunk.constants[idx]);
+        DISPATCH();
+    }
+    
     CASE(nil): {
         PUSH(VAL_NIL);
         DISPATCH();
@@ -298,6 +360,12 @@ InterpretResult vm_run(VM* vm) {
     
     CASE(pop): {
         POP();
+        DISPATCH();
+    }
+    
+    CASE(popn): {
+        uint8_t n = READ_BYTE();
+        vm->sp -= n;
         DISPATCH();
     }
     
@@ -397,6 +465,35 @@ InterpretResult vm_run(VM* vm) {
         DISPATCH();
     }
     
+    CASE(inc): {
+        Value v = POP();
+        if (IS_INT(v)) {
+            PUSH(val_int(as_int(v) + 1));
+        } else {
+            PUSH(val_num(as_num(v) + 1));
+        }
+        DISPATCH();
+    }
+    
+    CASE(dec): {
+        Value v = POP();
+        if (IS_INT(v)) {
+            PUSH(val_int(as_int(v) - 1));
+        } else {
+            PUSH(val_num(as_num(v) - 1));
+        }
+        DISPATCH();
+    }
+    
+    CASE(pow): {
+        Value b = POP();
+        Value a = POP();
+        double da = IS_INT(a) ? as_int(a) : as_num(a);
+        double db = IS_INT(b) ? as_int(b) : as_num(b);
+        PUSH(val_num(pow(da, db)));
+        DISPATCH();
+    }
+    
     CASE(eq): {
         Value b = POP();
         Value a = POP();
@@ -421,9 +518,35 @@ InterpretResult vm_run(VM* vm) {
         DISPATCH();
     }
     
+    CASE(and): {
+        uint16_t offset = READ_SHORT();
+        if (!is_truthy(PEEK(0))) {
+            ip += offset;
+        } else {
+            POP();
+        }
+        DISPATCH();
+    }
+    
+    CASE(or): {
+        uint16_t offset = READ_SHORT();
+        if (is_truthy(PEEK(0))) {
+            ip += offset;
+        } else {
+            POP();
+        }
+        DISPATCH();
+    }
+    
     CASE(band): BINARY_OP_INT(&); DISPATCH();
     CASE(bor): BINARY_OP_INT(|); DISPATCH();
     CASE(bxor): BINARY_OP_INT(^); DISPATCH();
+    CASE(bnot): {
+        Value v = POP();
+        int32_t i = IS_INT(v) ? as_int(v) : (int32_t)as_num(v);
+        PUSH(val_int(~i));
+        DISPATCH();
+    }
     CASE(shl): BINARY_OP_INT(<<); DISPATCH();
     CASE(shr): BINARY_OP_INT(>>); DISPATCH();
     
@@ -614,6 +737,63 @@ InterpretResult vm_run(VM* vm) {
         DISPATCH();
     }
     
+    CASE(slice): {
+        Value end_val = POP();
+        Value start_val = POP();
+        Value obj_val = POP();
+        
+        int32_t start = IS_INT(start_val) ? as_int(start_val) : (int32_t)as_num(start_val);
+        int32_t end = IS_INT(end_val) ? as_int(end_val) : (int32_t)as_num(end_val);
+        
+        if (IS_ARRAY(obj_val)) {
+            ObjArray* arr = AS_ARRAY(obj_val);
+            if (start < 0) start += arr->count;
+            if (end < 0) end += arr->count;
+            if (start < 0) start = 0;
+            if ((uint32_t)end > arr->count) end = arr->count;
+            
+            uint32_t len = (end > start) ? end - start : 0;
+            ObjArray* result = new_array(vm, len);
+            for (uint32_t i = 0; i < len; i++) {
+                result->values[i] = arr->values[start + i];
+            }
+            result->count = len;
+            PUSH(val_obj(result));
+        } else if (IS_STRING(obj_val)) {
+            ObjString* str = AS_STRING(obj_val);
+            if (start < 0) start += str->length;
+            if (end < 0) end += str->length;
+            if (start < 0) start = 0;
+            if (end > str->length) end = str->length;
+            
+            int len = (end > start) ? end - start : 0;
+            PUSH(val_obj(copy_string(vm, str->chars + start, len)));
+        } else {
+            runtime_error(vm, "Can only slice arrays and strings.");
+            return INTERPRET_RUNTIME_ERROR;
+        }
+        DISPATCH();
+    }
+    
+    CASE(concat): {
+        Value b = POP();
+        Value a = POP();
+        
+        if (IS_ARRAY(a) && IS_ARRAY(b)) {
+            ObjArray* aa = AS_ARRAY(a);
+            ObjArray* ab = AS_ARRAY(b);
+            ObjArray* result = new_array(vm, aa->count + ab->count);
+            memcpy(result->values, aa->values, aa->count * sizeof(Value));
+            memcpy(result->values + aa->count, ab->values, ab->count * sizeof(Value));
+            result->count = aa->count + ab->count;
+            PUSH(val_obj(result));
+        } else {
+            runtime_error(vm, "Can only concatenate arrays.");
+            return INTERPRET_RUNTIME_ERROR;
+        }
+        DISPATCH();
+    }
+    
     CASE(range): {
         Value end_val = POP();
         Value start_val = POP();
@@ -638,10 +818,6 @@ InterpretResult vm_run(VM* vm) {
             } else {
                 PUSH(val_int(range->current++));
             }
-        } else if (IS_ARRAY(iter_val)) {
-            /* For array iteration, we use a range internally */
-            runtime_error(vm, "Direct array iteration not yet supported.");
-            return INTERPRET_RUNTIME_ERROR;
         } else {
             runtime_error(vm, "Cannot iterate over this type.");
             return INTERPRET_RUNTIME_ERROR;
@@ -649,8 +825,38 @@ InterpretResult vm_run(VM* vm) {
         DISPATCH();
     }
     
+    CASE(iter_array): {
+        /* Array iteration with internal index tracking */
+        uint16_t offset = READ_SHORT();
+        Value arr_val = PEEK(1);  /* Array below index */
+        Value idx_val = PEEK(0);  /* Current index */
+        
+        if (IS_ARRAY(arr_val)) {
+            ObjArray* arr = AS_ARRAY(arr_val);
+            int32_t idx = as_int(idx_val);
+            if ((uint32_t)idx >= arr->count) {
+                vm->sp -= 2;  /* Remove array and index */
+                ip += offset;
+            } else {
+                vm->sp[-1] = val_int(idx + 1);  /* Increment index */
+                PUSH(arr->values[idx]);  /* Push current element */
+            }
+        } else {
+            runtime_error(vm, "Expected array for iteration.");
+            return INTERPRET_RUNTIME_ERROR;
+        }
+        DISPATCH();
+    }
+    
     CASE(print): {
         print_value(POP());
+        printf("\n");
+        DISPATCH();
+    }
+    
+    CASE(println): {
+        print_value(POP());
+        printf("\n");
         DISPATCH();
     }
     
@@ -672,6 +878,126 @@ InterpretResult vm_run(VM* vm) {
         } else {
             PUSH(VAL_NIL);
         }
+        DISPATCH();
+    }
+    
+    CASE(int): {
+        Value v = POP();
+        if (IS_INT(v)) {
+            PUSH(v);
+        } else if (IS_NUM(v)) {
+            PUSH(val_int((int32_t)as_num(v)));
+        } else if (IS_STRING(v)) {
+            PUSH(val_int(atoi(AS_STRING(v)->chars)));
+        } else {
+            PUSH(val_int(0));
+        }
+        DISPATCH();
+    }
+    
+    CASE(float): {
+        Value v = POP();
+        double d = IS_INT(v) ? (double)as_int(v) : 
+                   IS_NUM(v) ? as_num(v) :
+                   IS_STRING(v) ? atof(AS_STRING(v)->chars) : 0.0;
+        PUSH(val_num(d));
+        DISPATCH();
+    }
+    
+    CASE(str): {
+        Value v = POP();
+        char buffer[64];
+        if (IS_INT(v)) {
+            snprintf(buffer, sizeof(buffer), "%d", as_int(v));
+        } else if (IS_NUM(v)) {
+            snprintf(buffer, sizeof(buffer), "%g", as_num(v));
+        } else if (IS_BOOL(v)) {
+            snprintf(buffer, sizeof(buffer), "%s", IS_TRUE(v) ? "true" : "false");
+        } else if (IS_NIL(v)) {
+            snprintf(buffer, sizeof(buffer), "nil");
+        } else if (IS_STRING(v)) {
+            PUSH(v);
+            DISPATCH();
+        } else {
+            snprintf(buffer, sizeof(buffer), "<object>");
+        }
+        PUSH(val_obj(copy_string(vm, buffer, strlen(buffer))));
+        DISPATCH();
+    }
+    
+    CASE(type): {
+        Value v = POP();
+        const char* type_name;
+        if (IS_INT(v) || IS_NUM(v)) type_name = "number";
+        else if (IS_BOOL(v)) type_name = "bool";
+        else if (IS_NIL(v)) type_name = "nil";
+        else if (IS_STRING(v)) type_name = "string";
+        else if (IS_ARRAY(v)) type_name = "array";
+        else if (IS_FUNCTION(v)) type_name = "function";
+        else type_name = "object";
+        PUSH(val_obj(copy_string(vm, type_name, strlen(type_name))));
+        DISPATCH();
+    }
+    
+    CASE(abs): {
+        Value v = POP();
+        if (IS_INT(v)) {
+            int32_t i = as_int(v);
+            PUSH(val_int(i < 0 ? -i : i));
+        } else {
+            PUSH(val_num(fabs(as_num(v))));
+        }
+        DISPATCH();
+    }
+    
+    CASE(min): {
+        Value b = POP();
+        Value a = POP();
+        double da = IS_INT(a) ? as_int(a) : as_num(a);
+        double db = IS_INT(b) ? as_int(b) : as_num(b);
+        PUSH(da < db ? a : b);
+        DISPATCH();
+    }
+    
+    CASE(max): {
+        Value b = POP();
+        Value a = POP();
+        double da = IS_INT(a) ? as_int(a) : as_num(a);
+        double db = IS_INT(b) ? as_int(b) : as_num(b);
+        PUSH(da > db ? a : b);
+        DISPATCH();
+    }
+    
+    CASE(sqrt): {
+        Value v = POP();
+        double d = IS_INT(v) ? as_int(v) : as_num(v);
+        PUSH(val_num(sqrt(d)));
+        DISPATCH();
+    }
+    
+    CASE(floor): {
+        Value v = POP();
+        double d = IS_INT(v) ? as_int(v) : as_num(v);
+        PUSH(val_int((int32_t)floor(d)));
+        DISPATCH();
+    }
+    
+    CASE(ceil): {
+        Value v = POP();
+        double d = IS_INT(v) ? as_int(v) : as_num(v);
+        PUSH(val_int((int32_t)ceil(d)));
+        DISPATCH();
+    }
+    
+    CASE(round): {
+        Value v = POP();
+        double d = IS_INT(v) ? as_int(v) : as_num(v);
+        PUSH(val_int((int32_t)round(d)));
+        DISPATCH();
+    }
+    
+    CASE(rand): {
+        PUSH(val_num((double)rand() / RAND_MAX));
         DISPATCH();
     }
     

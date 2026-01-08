@@ -3,8 +3,8 @@
 
 CC = gcc
 CFLAGS = -O3 -march=native -flto -fomit-frame-pointer -DNDEBUG
-CFLAGS += -Wall -Wextra -Wpedantic
-CFLAGS += -std=c11
+CFLAGS += -Wall -Wextra
+CFLAGS += -std=gnu11  # Use gnu11 to allow computed gotos
 
 # Debug build
 DEBUG_FLAGS = -O0 -g -DDEBUG -fsanitize=address,undefined
