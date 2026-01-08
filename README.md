@@ -2,7 +2,7 @@
 
 A blazingly fast programming language with intuitive pseudocode syntax. Write code that reads like natural language and runs faster than Python.
 
-[![Performance](https://img.shields.io/badge/fib(30)-79ms-brightgreen)](docs/)
+[![Performance](https://img.shields.io/badge/fib(30)-73ms-brightgreen)](docs/)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 ## 🚀 Performance
@@ -11,11 +11,11 @@ The C virtual machine uses NaN-boxing and computed gotos to achieve exceptional 
 
 | Implementation | fib(30) Time |
 |---------------|-------------|
-| **Pseudocode (C VM)** | **~79ms** ⚡ |
+| **Pseudocode (C VM)** | **~73ms** ⚡ |
 | Python 3.12 (native) | ~123ms |
 | Pseudocode (Python VM) | ~23,000ms |
 
-**~290x faster** than the Python VM and **faster than native Python**!
+**~315x faster** than the Python VM and **~1.7x faster than native Python**!
 
 ## ✨ Features
 

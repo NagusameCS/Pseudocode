@@ -354,7 +354,17 @@ static void number(bool can_assign) {
     if (parser.previous.type == TOKEN_INT) {
         int64_t value = strtoll(parser.previous.start, NULL, 10);
         if (value >= INT32_MIN && value <= INT32_MAX) {
-            emit_constant(val_int((int32_t)value));
+            int32_t v = (int32_t)value;
+            /* SUPERINSTRUCTION: Use specialized opcodes for small constants */
+            if (v == 0) {
+                emit_byte(OP_CONST_0);
+            } else if (v == 1) {
+                emit_byte(OP_CONST_1);
+            } else if (v == 2) {
+                emit_byte(OP_CONST_2);
+            } else {
+                emit_constant(val_int(v));
+            }
         } else {
             emit_constant(val_num((double)value));
         }
@@ -390,7 +400,17 @@ static void named_variable(Token name, bool can_assign) {
         expression();
         emit_bytes(set_op, (uint8_t)arg);
     } else {
-        emit_bytes(get_op, (uint8_t)arg);
+        /* SUPERINSTRUCTION: Use specialized opcodes for common local slots */
+        if (get_op == OP_GET_LOCAL && arg <= 3) {
+            switch (arg) {
+                case 0: emit_byte(OP_GET_LOCAL_0); break;
+                case 1: emit_byte(OP_GET_LOCAL_1); break;
+                case 2: emit_byte(OP_GET_LOCAL_2); break;
+                case 3: emit_byte(OP_GET_LOCAL_3); break;
+            }
+        } else {
+            emit_bytes(get_op, (uint8_t)arg);
+        }
     }
 }
 

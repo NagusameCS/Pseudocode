@@ -33,14 +33,17 @@ fast:
 clean:
 	rm -f $(TARGET) $(OBJECTS)
 
-# Profile-guided optimization
-pgo-generate:
-	$(CC) $(CFLAGS) -fprofile-generate -o $(TARGET) $(SOURCES) -lm
-	./$(TARGET) ../examples/fibonacci.pseudo
-	./$(TARGET) ../examples/primes.pseudo
-
-pgo-use:
-	$(CC) $(CFLAGS) -fprofile-use -o $(TARGET) $(SOURCES) -lm
+# Profile-guided optimization (maximum performance)
+pgo: clean
+	@echo "=== Building with Profile-Guided Optimization ==="
+	$(CC) -O3 -march=native -flto -fprofile-generate -std=gnu11 -o $(TARGET) $(SOURCES) -lm
+	@echo "Generating profile data..."
+	@./$(TARGET) ../examples/fibonacci.pseudo > /dev/null
+	@./$(TARGET) ../examples/fizzbuzz.pseudo > /dev/null
+	@./$(TARGET) ../examples/factorial.pseudo > /dev/null
+	$(CC) -O3 -march=native -flto -fprofile-use -fprofile-correction -std=gnu11 -o $(TARGET) $(SOURCES) -lm
+	@rm -f *.gcda
+	@echo "=== PGO build complete ==="
 
 # Run benchmarks
 bench: release

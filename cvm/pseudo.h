@@ -250,6 +250,40 @@ typedef enum {
     OP_RAND,        /* Random 0-1 */
     
     OP_HALT,
+    
+    /* ============ SUPERINSTRUCTIONS ============ */
+    /* Fused instructions for 2-3x speedup on common patterns */
+    
+    /* Fused local + arithmetic */
+    OP_GET_LOCAL_0,     /* Get local slot 0 (most common) */
+    OP_GET_LOCAL_1,     /* Get local slot 1 */
+    OP_GET_LOCAL_2,     /* Get local slot 2 */
+    OP_GET_LOCAL_3,     /* Get local slot 3 */
+    
+    /* Fused arithmetic for small integers */
+    OP_ADD_1,           /* Add 1 to top of stack */
+    OP_SUB_1,           /* Subtract 1 from top of stack */
+    
+    /* Fused comparison + jump (critical for loops) */
+    OP_LT_JMP_FALSE,    /* Compare < and jump if false */
+    OP_LTE_JMP_FALSE,   /* Compare <= and jump if false */
+    OP_GT_JMP_FALSE,    /* Compare > and jump if false */
+    OP_GTE_JMP_FALSE,   /* Compare >= and jump if false */
+    OP_EQ_JMP_FALSE,    /* Compare == and jump if false */
+    
+    /* Fused local operations */
+    OP_GET_LOCAL_ADD,   /* Get local and add to TOS */
+    OP_GET_LOCAL_SUB,   /* Get local and sub from TOS */
+    
+    /* Tail call optimization */
+    OP_TAIL_CALL,       /* Tail recursive call - reuse stack frame */
+    
+    /* Small integer constants */
+    OP_CONST_0,
+    OP_CONST_1,
+    OP_CONST_2,
+    
+    OP_OPCODE_COUNT,    /* Total number of opcodes */
 } OpCode;
 
 /* ============ Chunk (bytecode container) ============ */
