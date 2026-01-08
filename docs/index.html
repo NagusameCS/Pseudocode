@@ -253,11 +253,25 @@
             margin: 0;
         }
 
-        .keyword { color: #c084fc; }
-        .function { color: #60a5fa; }
-        .string { color: #34d399; }
-        .number { color: #fb923c; }
-        .comment { color: #6b7280; }
+        .keyword {
+            color: #c084fc;
+        }
+
+        .function {
+            color: #60a5fa;
+        }
+
+        .string {
+            color: #34d399;
+        }
+
+        .number {
+            color: #fb923c;
+        }
+
+        .comment {
+            color: #6b7280;
+        }
 
         .benchmarks {
             background: var(--bg-secondary);
@@ -321,9 +335,17 @@
             border-radius: 4px;
         }
 
-        .benchmark-fill.fast { background: var(--success); }
-        .benchmark-fill.medium { background: var(--warning); }
-        .benchmark-fill.slow { background: var(--error); }
+        .benchmark-fill.fast {
+            background: var(--success);
+        }
+
+        .benchmark-fill.medium {
+            background: var(--warning);
+        }
+
+        .benchmark-fill.slow {
+            background: var(--error);
+        }
 
         .time-value {
             font-family: 'JetBrains Mono', monospace;
@@ -415,11 +437,25 @@
         }
 
         @media (max-width: 768px) {
-            .hero h1 { font-size: 2rem; }
-            .hero p { font-size: 1rem; }
-            nav ul { display: none; }
-            .code-grid { grid-template-columns: 1fr; }
-            .benchmark-bar { min-width: 100px; }
+            .hero h1 {
+                font-size: 2rem;
+            }
+
+            .hero p {
+                font-size: 1rem;
+            }
+
+            nav ul {
+                display: none;
+            }
+
+            .code-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .benchmark-bar {
+                min-width: 100px;
+            }
         }
     </style>
 </head>
@@ -447,7 +483,8 @@
         <section class="hero container">
             <span class="version-badge">v1.0 - C VM with NaN-boxing</span>
             <h1>Write Code Like You Think</h1>
-            <p>A high-performance programming language with intuitive syntax. Compiles to bytecode and runs on an optimized VM that outperforms Python.</p>
+            <p>A high-performance programming language with intuitive syntax. Compiles to bytecode and runs on an
+                optimized VM that outperforms Python.</p>
             <div class="hero-buttons">
                 <a href="#getting-started" class="btn btn-primary">Get Started</a>
                 <a href="reference.html" class="btn btn-secondary">Documentation</a>
@@ -459,16 +496,19 @@
             <div class="features-grid">
                 <div class="feature-card">
                     <div class="feature-icon">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
                             <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
                         </svg>
                     </div>
                     <h3>High Performance</h3>
-                    <p>The C-based VM uses NaN-boxing, computed gotos, and register-cached stack pointers. Runs 2.5x faster than Python on recursive benchmarks.</p>
+                    <p>The C-based VM uses NaN-boxing, computed gotos, and register-cached stack pointers. Runs 2.5x
+                        faster than Python on recursive benchmarks.</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
                             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                             <polyline points="14 2 14 8 20 8"></polyline>
                             <line x1="16" y1="13" x2="8" y2="13"></line>
@@ -476,49 +516,58 @@
                         </svg>
                     </div>
                     <h3>Readable Syntax</h3>
-                    <p>Natural language-like constructs with clear keywords: fn, if/then/end, for/in, match/case. No cryptic symbols or complex syntax.</p>
+                    <p>Natural language-like constructs with clear keywords: fn, if/then/end, for/in, match/case. No
+                        cryptic symbols or complex syntax.</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
                             <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
                             <line x1="3" y1="9" x2="21" y2="9"></line>
                             <line x1="9" y1="21" x2="9" y2="9"></line>
                         </svg>
                     </div>
                     <h3>Rich Built-ins</h3>
-                    <p>80+ built-in functions including file I/O, HTTP requests, JSON parsing, dictionaries, vector operations, and cryptographic hashing.</p>
+                    <p>80+ built-in functions including file I/O, HTTP requests, JSON parsing, dictionaries, vector
+                        operations, and cryptographic hashing.</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
                             <circle cx="12" cy="12" r="10"></circle>
                             <polyline points="12 6 12 12 16 14"></polyline>
                         </svg>
                     </div>
                     <h3>Fast Compilation</h3>
-                    <p>Single-pass Pratt parser compiles source to bytecode in microseconds. No separate compilation step needed.</p>
+                    <p>Single-pass Pratt parser compiles source to bytecode in microseconds. No separate compilation
+                        step needed.</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
                             <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
                             <polyline points="15 3 21 3 21 9"></polyline>
                             <line x1="10" y1="14" x2="21" y2="3"></line>
                         </svg>
                     </div>
                     <h3>First-Class Functions</h3>
-                    <p>Define and pass functions freely. Full support for recursion, closures, and higher-order programming patterns.</p>
+                    <p>Define and pass functions freely. Full support for recursion, closures, and higher-order
+                        programming patterns.</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
                             <polyline points="16 18 22 12 16 6"></polyline>
                             <polyline points="8 6 2 12 8 18"></polyline>
                         </svg>
                     </div>
                     <h3>Pattern Matching</h3>
-                    <p>Expressive match/case expressions for clean control flow. Works with numbers, strings, and complex patterns.</p>
+                    <p>Expressive match/case expressions for clean control flow. Works with numbers, strings, and
+                        complex patterns.</p>
                 </div>
             </div>
         </section>
@@ -584,7 +633,8 @@
             <div class="benchmarks">
                 <div class="benchmark-header">
                     <h3>Recursive Fibonacci - fib(30)</h3>
-                    <span class="benchmark-info">Lower is better. Measured on AMD Ryzen / Intel i7, PGO-optimized build.</span>
+                    <span class="benchmark-info">Lower is better. Measured on AMD Ryzen / Intel i7, PGO-optimized
+                        build.</span>
                 </div>
                 <table class="benchmark-table">
                     <thead>
@@ -716,7 +766,8 @@
             <div class="footer-links">
                 <a href="https://github.com/NagusameCS/Pseudocode">
                     <svg height="16" width="16" viewBox="0 0 16 16" fill="currentColor">
-                        <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+                        <path
+                            d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
                     </svg>
                     GitHub
                 </a>

@@ -174,22 +174,72 @@ static void emit_short(uint16_t value) {
     emit_byte(value & 0xff);
 }
 
-static int emit_jump(uint8_t instruction) {
+/* Return values from emit_jump encode whether fusion happened */
+/* If return value is negative, fusion happened (negate to get offset) */
+/* If return value is positive, normal jump (offset directly) */
+#define JUMP_WAS_FUSED(offset) ((offset) < 0)
+#define JUMP_OFFSET(offset) ((offset) < 0 ? -(offset) : (offset))
+
+/* Emit a raw jump without fusion - for cases where fusion would change semantics */
+static int emit_jump_no_fuse(uint8_t instruction) {
     emit_byte(instruction);
     emit_byte(0xff);
     emit_byte(0xff);
     return current_chunk()->count - 2;
 }
 
+/* Inline fusion: check if we can fuse comparison with jump */
+static int emit_jump(uint8_t instruction) {
+    Chunk* chunk = current_chunk();
+    
+    /* INLINE FUSION: Fuse comparison + JMP_FALSE into single superinstruction */
+    if (instruction == OP_JMP_FALSE && chunk->count >= 1) {
+        uint8_t last = chunk->code[chunk->count - 1];
+        uint8_t fused = 0;
+        
+        switch (last) {
+            case OP_LT:  fused = OP_LT_JMP_FALSE; break;
+            case OP_LTE: fused = OP_LTE_JMP_FALSE; break;
+            case OP_GT:  fused = OP_GT_JMP_FALSE; break;
+            case OP_GTE: fused = OP_GTE_JMP_FALSE; break;
+            case OP_EQ:  fused = OP_EQ_JMP_FALSE; break;
+            default: break;
+        }
+        
+        if (fused != 0) {
+            /* Replace comparison with fused instruction */
+            chunk->code[chunk->count - 1] = fused;
+            emit_byte(0xff);
+            emit_byte(0xff);
+            /* Return negative offset to signal fusion */
+            return -(int)(chunk->count - 2);
+        }
+    }
+    
+    emit_byte(instruction);
+    emit_byte(0xff);
+    emit_byte(0xff);
+    return current_chunk()->count - 2;
+}
+
+/* Emit POP only if the jump was NOT fused */
+static void emit_pop_for_jump(int jump_offset) {
+    if (!JUMP_WAS_FUSED(jump_offset)) {
+        emit_byte(OP_POP);
+    }
+}
+
 static void patch_jump(int offset) {
-    int jump = current_chunk()->count - offset - 2;
+    /* Handle negative offsets from fused jumps */
+    int actual_offset = JUMP_OFFSET(offset);
+    int jump = current_chunk()->count - actual_offset - 2;
     
     if (jump > 65535) {
         error("Too much code to jump over.");
     }
     
-    current_chunk()->code[offset] = (jump >> 8) & 0xff;
-    current_chunk()->code[offset + 1] = jump & 0xff;
+    current_chunk()->code[actual_offset] = (jump >> 8) & 0xff;
+    current_chunk()->code[actual_offset + 1] = jump & 0xff;
 }
 
 static void emit_loop(int loop_start) {
@@ -1173,9 +1223,25 @@ static void binary(bool can_assign) {
     ParseRule* rule = get_rule(op_type);
     parse_precedence((Precedence)(rule->precedence + 1));
     
+    Chunk* chunk = current_chunk();
+    
     switch (op_type) {
-        case TOKEN_PLUS:    emit_byte(OP_ADD); break;
-        case TOKEN_MINUS:   emit_byte(OP_SUB); break;
+        case TOKEN_PLUS:
+            /* INLINE FUSION: CONST_1 ADD -> ADD_1 */
+            if (chunk->count >= 1 && chunk->code[chunk->count - 1] == OP_CONST_1) {
+                chunk->code[chunk->count - 1] = OP_ADD_1;
+            } else {
+                emit_byte(OP_ADD);
+            }
+            break;
+        case TOKEN_MINUS:
+            /* INLINE FUSION: CONST_1 SUB -> SUB_1 */
+            if (chunk->count >= 1 && chunk->code[chunk->count - 1] == OP_CONST_1) {
+                chunk->code[chunk->count - 1] = OP_SUB_1;
+            } else {
+                emit_byte(OP_SUB);
+            }
+            break;
         case TOKEN_STAR:    emit_byte(OP_MUL); break;
         case TOKEN_SLASH:   emit_byte(OP_DIV); break;
         case TOKEN_PERCENT: emit_byte(OP_MOD); break;
@@ -1370,7 +1436,7 @@ static void if_statement(void) {
     skip_newlines();
     
     int then_jump = emit_jump(OP_JMP_FALSE);
-    emit_byte(OP_POP);
+    emit_pop_for_jump(then_jump);  /* Skip POP if fused comparison+jump */
     
     block();
     
@@ -1380,7 +1446,7 @@ static void if_statement(void) {
     
     end_jumps[end_jump_count++] = emit_jump(OP_JMP);
     patch_jump(then_jump);
-    emit_byte(OP_POP);
+    emit_pop_for_jump(then_jump);  /* Skip POP if fused comparison+jump */
     
     while (match(TOKEN_ELIF)) {
         expression();
@@ -1388,13 +1454,13 @@ static void if_statement(void) {
         skip_newlines();
         
         int elif_jump = emit_jump(OP_JMP_FALSE);
-        emit_byte(OP_POP);
+        emit_pop_for_jump(elif_jump);  /* Skip POP if fused comparison+jump */
         
         block();
         
         end_jumps[end_jump_count++] = emit_jump(OP_JMP);
         patch_jump(elif_jump);
-        emit_byte(OP_POP);
+        emit_pop_for_jump(elif_jump);  /* Skip POP if fused comparison+jump */
     }
     
     if (match(TOKEN_ELSE)) {
@@ -1418,13 +1484,13 @@ static void while_statement(void) {
     skip_newlines();
     
     int exit_jump = emit_jump(OP_JMP_FALSE);
-    emit_byte(OP_POP);
+    emit_pop_for_jump(exit_jump);  /* Skip POP if fused */
     
     block();
     
     emit_loop(loop_start);
     patch_jump(exit_jump);
-    emit_byte(OP_POP);
+    emit_pop_for_jump(exit_jump);  /* Skip POP if fused */
     
     consume(TOKEN_END, "Expect 'end' after while loop.");
 }
@@ -1521,9 +1587,9 @@ static void match_statement(void) {
         consume(TOKEN_THEN, "Expect 'then' after case value.");
         skip_newlines();
         
-        /* Compare */
+        /* Compare - use no_fuse because we have OP_DUP above which changes stack semantics */
         emit_byte(OP_EQ);
-        int next_case = emit_jump(OP_JMP_FALSE);
+        int next_case = emit_jump_no_fuse(OP_JMP_FALSE);
         emit_byte(OP_POP);  /* Pop comparison result */
         
         /* Execute case body */

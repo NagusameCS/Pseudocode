@@ -495,7 +495,8 @@ InterpretResult vm_run(VM* vm) {
     }
     
     CASE(dup): {
-        PUSH(PEEK(0));
+        Value v = PEEK(0);  /* Read BEFORE modifying sp to avoid UB */
+        PUSH(v);
         DISPATCH();
     }
     
@@ -1557,6 +1558,8 @@ InterpretResult vm_run(VM* vm) {
     }
     
     /* Fused comparison + conditional jump - CRITICAL for loops */
+    /* These pop 2 values, compare, and conditionally jump WITHOUT leaving result */
+    /* The compiler skips the subsequent OP_POP when fusion happens */
     CASE(lt_jmp_false): {
         uint16_t offset = READ_SHORT();
         Value b = POP();

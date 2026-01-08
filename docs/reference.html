@@ -249,12 +249,29 @@
             padding: 0;
         }
 
-        .keyword { color: #c084fc; }
-        .function { color: #60a5fa; }
-        .string { color: #34d399; }
-        .number { color: #fb923c; }
-        .comment { color: #6b7280; }
-        .type { color: #f472b6; }
+        .keyword {
+            color: #c084fc;
+        }
+
+        .function {
+            color: #60a5fa;
+        }
+
+        .string {
+            color: #34d399;
+        }
+
+        .number {
+            color: #fb923c;
+        }
+
+        .comment {
+            color: #6b7280;
+        }
+
+        .type {
+            color: #f472b6;
+        }
 
         table {
             width: 100%;
@@ -263,7 +280,8 @@
             font-size: 14px;
         }
 
-        th, td {
+        th,
+        td {
             padding: 12px 16px;
             text-align: left;
             border-bottom: 1px solid var(--border);
@@ -390,11 +408,13 @@
             .sidebar {
                 display: none;
             }
+
             .content {
                 margin-left: 0;
                 max-width: 100%;
                 padding: 32px 24px;
             }
+
             .toc-list {
                 columns: 1;
             }
@@ -475,7 +495,8 @@
                 <!-- SYNTAX -->
                 <h2 id="syntax">Syntax Overview</h2>
                 <p>
-                    Pseudocode uses a clean, readable syntax inspired by natural language. Statements are terminated by newlines,
+                    Pseudocode uses a clean, readable syntax inspired by natural language. Statements are terminated by
+                    newlines,
                     and blocks are delimited by keywords like <code>end</code> rather than braces.
                 </p>
 
@@ -488,11 +509,13 @@
                 <!-- VARIABLES -->
                 <h2 id="variables">Variables</h2>
                 <p>
-                    Variables are declared with <code>let</code>. Pseudocode is dynamically typed, so variables can hold any value.
+                    Variables are declared with <code>let</code>. Pseudocode is dynamically typed, so variables can hold
+                    any value.
                 </p>
 
                 <div class="syntax-box">
-                    <span class="keyword">let</span> <span class="param">name</span> = <span class="type">expression</span>
+                    <span class="keyword">let</span> <span class="param">name</span> = <span
+                        class="type">expression</span>
                 </div>
 
                 <pre><code><span class="keyword">let</span> x = <span class="number">42</span>
@@ -563,56 +586,134 @@ x = x + <span class="number">1</span></code></pre>
                 <h3>Arithmetic</h3>
                 <table>
                     <thead>
-                        <tr><th>Operator</th><th>Description</th><th>Example</th></tr>
+                        <tr>
+                            <th>Operator</th>
+                            <th>Description</th>
+                            <th>Example</th>
+                        </tr>
                     </thead>
                     <tbody>
-                        <tr><td><code>+</code></td><td>Addition</td><td><code>5 + 3</code> = <code>8</code></td></tr>
-                        <tr><td><code>-</code></td><td>Subtraction</td><td><code>5 - 3</code> = <code>2</code></td></tr>
-                        <tr><td><code>*</code></td><td>Multiplication</td><td><code>5 * 3</code> = <code>15</code></td></tr>
-                        <tr><td><code>/</code></td><td>Division</td><td><code>5 / 2</code> = <code>2.5</code></td></tr>
-                        <tr><td><code>%</code></td><td>Modulo</td><td><code>5 % 3</code> = <code>2</code></td></tr>
+                        <tr>
+                            <td><code>+</code></td>
+                            <td>Addition</td>
+                            <td><code>5 + 3</code> = <code>8</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>-</code></td>
+                            <td>Subtraction</td>
+                            <td><code>5 - 3</code> = <code>2</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>*</code></td>
+                            <td>Multiplication</td>
+                            <td><code>5 * 3</code> = <code>15</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>/</code></td>
+                            <td>Division</td>
+                            <td><code>5 / 2</code> = <code>2.5</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>%</code></td>
+                            <td>Modulo</td>
+                            <td><code>5 % 3</code> = <code>2</code></td>
+                        </tr>
                     </tbody>
                 </table>
 
                 <h3>Comparison</h3>
                 <table>
                     <thead>
-                        <tr><th>Operator</th><th>Description</th></tr>
+                        <tr>
+                            <th>Operator</th>
+                            <th>Description</th>
+                        </tr>
                     </thead>
                     <tbody>
-                        <tr><td><code>==</code></td><td>Equal</td></tr>
-                        <tr><td><code>!=</code></td><td>Not equal</td></tr>
-                        <tr><td><code>&lt;</code></td><td>Less than</td></tr>
-                        <tr><td><code>&gt;</code></td><td>Greater than</td></tr>
-                        <tr><td><code>&lt;=</code></td><td>Less than or equal</td></tr>
-                        <tr><td><code>&gt;=</code></td><td>Greater than or equal</td></tr>
+                        <tr>
+                            <td><code>==</code></td>
+                            <td>Equal</td>
+                        </tr>
+                        <tr>
+                            <td><code>!=</code></td>
+                            <td>Not equal</td>
+                        </tr>
+                        <tr>
+                            <td><code>&lt;</code></td>
+                            <td>Less than</td>
+                        </tr>
+                        <tr>
+                            <td><code>&gt;</code></td>
+                            <td>Greater than</td>
+                        </tr>
+                        <tr>
+                            <td><code>&lt;=</code></td>
+                            <td>Less than or equal</td>
+                        </tr>
+                        <tr>
+                            <td><code>&gt;=</code></td>
+                            <td>Greater than or equal</td>
+                        </tr>
                     </tbody>
                 </table>
 
                 <h3>Logical</h3>
                 <table>
                     <thead>
-                        <tr><th>Operator</th><th>Description</th></tr>
+                        <tr>
+                            <th>Operator</th>
+                            <th>Description</th>
+                        </tr>
                     </thead>
                     <tbody>
-                        <tr><td><code>and</code></td><td>Logical AND</td></tr>
-                        <tr><td><code>or</code></td><td>Logical OR</td></tr>
-                        <tr><td><code>not</code></td><td>Logical NOT</td></tr>
+                        <tr>
+                            <td><code>and</code></td>
+                            <td>Logical AND</td>
+                        </tr>
+                        <tr>
+                            <td><code>or</code></td>
+                            <td>Logical OR</td>
+                        </tr>
+                        <tr>
+                            <td><code>not</code></td>
+                            <td>Logical NOT</td>
+                        </tr>
                     </tbody>
                 </table>
 
                 <h3>Bitwise</h3>
                 <table>
                     <thead>
-                        <tr><th>Function</th><th>Description</th></tr>
+                        <tr>
+                            <th>Function</th>
+                            <th>Description</th>
+                        </tr>
                     </thead>
                     <tbody>
-                        <tr><td><code>bit_and(a, b)</code></td><td>Bitwise AND</td></tr>
-                        <tr><td><code>bit_or(a, b)</code></td><td>Bitwise OR</td></tr>
-                        <tr><td><code>bit_xor(a, b)</code></td><td>Bitwise XOR</td></tr>
-                        <tr><td><code>bit_not(n)</code></td><td>Bitwise NOT</td></tr>
-                        <tr><td><code>bit_lshift(n, count)</code></td><td>Left shift</td></tr>
-                        <tr><td><code>bit_rshift(n, count)</code></td><td>Right shift</td></tr>
+                        <tr>
+                            <td><code>bit_and(a, b)</code></td>
+                            <td>Bitwise AND</td>
+                        </tr>
+                        <tr>
+                            <td><code>bit_or(a, b)</code></td>
+                            <td>Bitwise OR</td>
+                        </tr>
+                        <tr>
+                            <td><code>bit_xor(a, b)</code></td>
+                            <td>Bitwise XOR</td>
+                        </tr>
+                        <tr>
+                            <td><code>bit_not(n)</code></td>
+                            <td>Bitwise NOT</td>
+                        </tr>
+                        <tr>
+                            <td><code>bit_lshift(n, count)</code></td>
+                            <td>Left shift</td>
+                        </tr>
+                        <tr>
+                            <td><code>bit_rshift(n, count)</code></td>
+                            <td>Right shift</td>
+                        </tr>
                     </tbody>
                 </table>
 
@@ -645,9 +746,10 @@ x = x + <span class="number">1</span></code></pre>
                 <p>Functions are defined with <code>fn</code> and are first-class values.</p>
 
                 <div class="syntax-box">
-                    <span class="keyword">fn</span> <span class="func-name">name</span>(<span class="param">param1</span>, <span class="param">param2</span>)
-    <span class="type">body</span>
-<span class="keyword">end</span>
+                    <span class="keyword">fn</span> <span class="func-name">name</span>(<span
+                        class="param">param1</span>, <span class="param">param2</span>)
+                    <span class="type">body</span>
+                    <span class="keyword">end</span>
                 </div>
 
                 <pre><code><span class="keyword">fn</span> <span class="function">add</span>(a, b)
@@ -681,7 +783,8 @@ x = x + <span class="number">1</span></code></pre>
                 <h4>print(value)</h4>
                 <p>Outputs a value to standard output with a newline.</p>
                 <div class="func-signature">
-                    <span class="func-name">print</span>(<span class="param">value</span>) -> <span class="return-type">nil</span>
+                    <span class="func-name">print</span>(<span class="param">value</span>) -> <span
+                        class="return-type">nil</span>
                 </div>
                 <pre><code><span class="function">print</span>(<span class="string">"Hello, World!"</span>)
 <span class="function">print</span>(<span class="number">42</span>)</code></pre>
@@ -689,7 +792,8 @@ x = x + <span class="number">1</span></code></pre>
                 <h4>input(prompt)</h4>
                 <p>Reads a line from standard input.</p>
                 <div class="func-signature">
-                    <span class="func-name">input</span>(<span class="param">prompt</span>) -> <span class="return-type">string</span>
+                    <span class="func-name">input</span>(<span class="param">prompt</span>) -> <span
+                        class="return-type">string</span>
                 </div>
                 <pre><code><span class="keyword">let</span> name = <span class="function">input</span>(<span class="string">"Enter name: "</span>)</code></pre>
 
@@ -699,73 +803,87 @@ x = x + <span class="number">1</span></code></pre>
                 <h4>len(string)</h4>
                 <p>Returns the length of a string or array.</p>
                 <div class="func-signature">
-                    <span class="func-name">len</span>(<span class="param">value</span>) -> <span class="return-type">number</span>
+                    <span class="func-name">len</span>(<span class="param">value</span>) -> <span
+                        class="return-type">number</span>
                 </div>
 
                 <h4>upper(string)</h4>
                 <p>Converts string to uppercase.</p>
                 <div class="func-signature">
-                    <span class="func-name">upper</span>(<span class="param">str</span>) -> <span class="return-type">string</span>
+                    <span class="func-name">upper</span>(<span class="param">str</span>) -> <span
+                        class="return-type">string</span>
                 </div>
 
                 <h4>lower(string)</h4>
                 <p>Converts string to lowercase.</p>
                 <div class="func-signature">
-                    <span class="func-name">lower</span>(<span class="param">str</span>) -> <span class="return-type">string</span>
+                    <span class="func-name">lower</span>(<span class="param">str</span>) -> <span
+                        class="return-type">string</span>
                 </div>
 
                 <h4>trim(string)</h4>
                 <p>Removes leading and trailing whitespace.</p>
                 <div class="func-signature">
-                    <span class="func-name">trim</span>(<span class="param">str</span>) -> <span class="return-type">string</span>
+                    <span class="func-name">trim</span>(<span class="param">str</span>) -> <span
+                        class="return-type">string</span>
                 </div>
 
                 <h4>split(string, delimiter)</h4>
                 <p>Splits string into an array by delimiter.</p>
                 <div class="func-signature">
-                    <span class="func-name">split</span>(<span class="param">str</span>, <span class="param">delim</span>) -> <span class="return-type">array</span>
+                    <span class="func-name">split</span>(<span class="param">str</span>, <span
+                        class="param">delim</span>) -> <span class="return-type">array</span>
                 </div>
 
                 <h4>join(array, separator)</h4>
                 <p>Joins array elements into a string.</p>
                 <div class="func-signature">
-                    <span class="func-name">join</span>(<span class="param">arr</span>, <span class="param">sep</span>) -> <span class="return-type">string</span>
+                    <span class="func-name">join</span>(<span class="param">arr</span>, <span class="param">sep</span>)
+                    -> <span class="return-type">string</span>
                 </div>
 
                 <h4>substr(string, start, length)</h4>
                 <p>Extracts a substring.</p>
                 <div class="func-signature">
-                    <span class="func-name">substr</span>(<span class="param">str</span>, <span class="param">start</span>, <span class="param">len</span>) -> <span class="return-type">string</span>
+                    <span class="func-name">substr</span>(<span class="param">str</span>, <span
+                        class="param">start</span>, <span class="param">len</span>) -> <span
+                        class="return-type">string</span>
                 </div>
 
                 <h4>replace(string, old, new)</h4>
                 <p>Replaces all occurrences of old with new.</p>
                 <div class="func-signature">
-                    <span class="func-name">replace</span>(<span class="param">str</span>, <span class="param">old</span>, <span class="param">new</span>) -> <span class="return-type">string</span>
+                    <span class="func-name">replace</span>(<span class="param">str</span>, <span
+                        class="param">old</span>, <span class="param">new</span>) -> <span
+                        class="return-type">string</span>
                 </div>
 
                 <h4>index_of(string, substring)</h4>
                 <p>Returns position of substring, or -1 if not found.</p>
                 <div class="func-signature">
-                    <span class="func-name">index_of</span>(<span class="param">str</span>, <span class="param">substr</span>) -> <span class="return-type">number</span>
+                    <span class="func-name">index_of</span>(<span class="param">str</span>, <span
+                        class="param">substr</span>) -> <span class="return-type">number</span>
                 </div>
 
                 <h4>starts_with(string, prefix) / ends_with(string, suffix)</h4>
                 <p>Tests if string starts/ends with given text.</p>
                 <div class="func-signature">
-                    <span class="func-name">starts_with</span>(<span class="param">str</span>, <span class="param">prefix</span>) -> <span class="return-type">boolean</span>
+                    <span class="func-name">starts_with</span>(<span class="param">str</span>, <span
+                        class="param">prefix</span>) -> <span class="return-type">boolean</span>
                 </div>
 
                 <h4>char_at(string, index)</h4>
                 <p>Returns character at position.</p>
                 <div class="func-signature">
-                    <span class="func-name">char_at</span>(<span class="param">str</span>, <span class="param">index</span>) -> <span class="return-type">string</span>
+                    <span class="func-name">char_at</span>(<span class="param">str</span>, <span
+                        class="param">index</span>) -> <span class="return-type">string</span>
                 </div>
 
                 <h4>char_code(char) / from_char_code(code)</h4>
                 <p>Converts between characters and ASCII codes.</p>
                 <div class="func-signature">
-                    <span class="func-name">char_code</span>(<span class="param">char</span>) -> <span class="return-type">number</span>
+                    <span class="func-name">char_code</span>(<span class="param">char</span>) -> <span
+                        class="return-type">number</span>
                 </div>
 
                 <!-- MATH FUNCTIONS -->
@@ -774,74 +892,176 @@ x = x + <span class="number">1</span></code></pre>
                 <h4>Basic Math</h4>
                 <table>
                     <thead>
-                        <tr><th>Function</th><th>Description</th></tr>
+                        <tr>
+                            <th>Function</th>
+                            <th>Description</th>
+                        </tr>
                     </thead>
                     <tbody>
-                        <tr><td><code>abs(n)</code></td><td>Absolute value</td></tr>
-                        <tr><td><code>floor(n)</code></td><td>Round down</td></tr>
-                        <tr><td><code>ceil(n)</code></td><td>Round up</td></tr>
-                        <tr><td><code>round(n)</code></td><td>Round to nearest integer</td></tr>
-                        <tr><td><code>min(a, b)</code></td><td>Minimum of two values</td></tr>
-                        <tr><td><code>max(a, b)</code></td><td>Maximum of two values</td></tr>
-                        <tr><td><code>clamp(val, min, max)</code></td><td>Constrain to range</td></tr>
+                        <tr>
+                            <td><code>abs(n)</code></td>
+                            <td>Absolute value</td>
+                        </tr>
+                        <tr>
+                            <td><code>floor(n)</code></td>
+                            <td>Round down</td>
+                        </tr>
+                        <tr>
+                            <td><code>ceil(n)</code></td>
+                            <td>Round up</td>
+                        </tr>
+                        <tr>
+                            <td><code>round(n)</code></td>
+                            <td>Round to nearest integer</td>
+                        </tr>
+                        <tr>
+                            <td><code>min(a, b)</code></td>
+                            <td>Minimum of two values</td>
+                        </tr>
+                        <tr>
+                            <td><code>max(a, b)</code></td>
+                            <td>Maximum of two values</td>
+                        </tr>
+                        <tr>
+                            <td><code>clamp(val, min, max)</code></td>
+                            <td>Constrain to range</td>
+                        </tr>
                     </tbody>
                 </table>
 
                 <h4>Advanced Math</h4>
                 <table>
                     <thead>
-                        <tr><th>Function</th><th>Description</th></tr>
+                        <tr>
+                            <th>Function</th>
+                            <th>Description</th>
+                        </tr>
                     </thead>
                     <tbody>
-                        <tr><td><code>sqrt(n)</code></td><td>Square root</td></tr>
-                        <tr><td><code>pow(base, exp)</code></td><td>Exponentiation</td></tr>
-                        <tr><td><code>exp(n)</code></td><td>e^n</td></tr>
-                        <tr><td><code>log(n)</code></td><td>Natural logarithm</td></tr>
-                        <tr><td><code>log10(n)</code></td><td>Base-10 logarithm</td></tr>
-                        <tr><td><code>log2(n)</code></td><td>Base-2 logarithm</td></tr>
+                        <tr>
+                            <td><code>sqrt(n)</code></td>
+                            <td>Square root</td>
+                        </tr>
+                        <tr>
+                            <td><code>pow(base, exp)</code></td>
+                            <td>Exponentiation</td>
+                        </tr>
+                        <tr>
+                            <td><code>exp(n)</code></td>
+                            <td>e^n</td>
+                        </tr>
+                        <tr>
+                            <td><code>log(n)</code></td>
+                            <td>Natural logarithm</td>
+                        </tr>
+                        <tr>
+                            <td><code>log10(n)</code></td>
+                            <td>Base-10 logarithm</td>
+                        </tr>
+                        <tr>
+                            <td><code>log2(n)</code></td>
+                            <td>Base-2 logarithm</td>
+                        </tr>
                     </tbody>
                 </table>
 
                 <h4>Trigonometry</h4>
                 <table>
                     <thead>
-                        <tr><th>Function</th><th>Description</th></tr>
+                        <tr>
+                            <th>Function</th>
+                            <th>Description</th>
+                        </tr>
                     </thead>
                     <tbody>
-                        <tr><td><code>sin(n)</code>, <code>cos(n)</code>, <code>tan(n)</code></td><td>Trigonometric functions (radians)</td></tr>
-                        <tr><td><code>asin(n)</code>, <code>acos(n)</code>, <code>atan(n)</code></td><td>Inverse trig functions</td></tr>
-                        <tr><td><code>atan2(y, x)</code></td><td>Two-argument arctangent</td></tr>
-                        <tr><td><code>sinh(n)</code>, <code>cosh(n)</code>, <code>tanh(n)</code></td><td>Hyperbolic functions</td></tr>
-                        <tr><td><code>degrees(rad)</code></td><td>Radians to degrees</td></tr>
-                        <tr><td><code>radians(deg)</code></td><td>Degrees to radians</td></tr>
+                        <tr>
+                            <td><code>sin(n)</code>, <code>cos(n)</code>, <code>tan(n)</code></td>
+                            <td>Trigonometric functions (radians)</td>
+                        </tr>
+                        <tr>
+                            <td><code>asin(n)</code>, <code>acos(n)</code>, <code>atan(n)</code></td>
+                            <td>Inverse trig functions</td>
+                        </tr>
+                        <tr>
+                            <td><code>atan2(y, x)</code></td>
+                            <td>Two-argument arctangent</td>
+                        </tr>
+                        <tr>
+                            <td><code>sinh(n)</code>, <code>cosh(n)</code>, <code>tanh(n)</code></td>
+                            <td>Hyperbolic functions</td>
+                        </tr>
+                        <tr>
+                            <td><code>degrees(rad)</code></td>
+                            <td>Radians to degrees</td>
+                        </tr>
+                        <tr>
+                            <td><code>radians(deg)</code></td>
+                            <td>Degrees to radians</td>
+                        </tr>
                     </tbody>
                 </table>
 
                 <h4>Special Functions</h4>
                 <table>
                     <thead>
-                        <tr><th>Function</th><th>Description</th></tr>
+                        <tr>
+                            <th>Function</th>
+                            <th>Description</th>
+                        </tr>
                     </thead>
                     <tbody>
-                        <tr><td><code>hypot(a, b)</code></td><td>Hypotenuse: sqrt(a*a + b*b)</td></tr>
-                        <tr><td><code>fmod(a, b)</code></td><td>Floating-point modulo</td></tr>
-                        <tr><td><code>copysign(mag, sign)</code></td><td>Copy sign of number</td></tr>
-                        <tr><td><code>lerp(a, b, t)</code></td><td>Linear interpolation</td></tr>
-                        <tr><td><code>random()</code></td><td>Random number 0-1</td></tr>
-                        <tr><td><code>random_int(min, max)</code></td><td>Random integer in range</td></tr>
+                        <tr>
+                            <td><code>hypot(a, b)</code></td>
+                            <td>Hypotenuse: sqrt(a*a + b*b)</td>
+                        </tr>
+                        <tr>
+                            <td><code>fmod(a, b)</code></td>
+                            <td>Floating-point modulo</td>
+                        </tr>
+                        <tr>
+                            <td><code>copysign(mag, sign)</code></td>
+                            <td>Copy sign of number</td>
+                        </tr>
+                        <tr>
+                            <td><code>lerp(a, b, t)</code></td>
+                            <td>Linear interpolation</td>
+                        </tr>
+                        <tr>
+                            <td><code>random()</code></td>
+                            <td>Random number 0-1</td>
+                        </tr>
+                        <tr>
+                            <td><code>random_int(min, max)</code></td>
+                            <td>Random integer in range</td>
+                        </tr>
                     </tbody>
                 </table>
 
                 <h4>Constants</h4>
                 <table>
                     <thead>
-                        <tr><th>Function</th><th>Returns</th></tr>
+                        <tr>
+                            <th>Function</th>
+                            <th>Returns</th>
+                        </tr>
                     </thead>
                     <tbody>
-                        <tr><td><code>pi()</code></td><td>3.14159...</td></tr>
-                        <tr><td><code>e()</code></td><td>2.71828...</td></tr>
-                        <tr><td><code>infinity()</code></td><td>Positive infinity</td></tr>
-                        <tr><td><code>nan()</code></td><td>Not a number</td></tr>
+                        <tr>
+                            <td><code>pi()</code></td>
+                            <td>3.14159...</td>
+                        </tr>
+                        <tr>
+                            <td><code>e()</code></td>
+                            <td>2.71828...</td>
+                        </tr>
+                        <tr>
+                            <td><code>infinity()</code></td>
+                            <td>Positive infinity</td>
+                        </tr>
+                        <tr>
+                            <td><code>nan()</code></td>
+                            <td>Not a number</td>
+                        </tr>
                     </tbody>
                 </table>
 
@@ -850,20 +1070,56 @@ x = x + <span class="number">1</span></code></pre>
 
                 <table>
                     <thead>
-                        <tr><th>Function</th><th>Description</th></tr>
+                        <tr>
+                            <th>Function</th>
+                            <th>Description</th>
+                        </tr>
                     </thead>
                     <tbody>
-                        <tr><td><code>len(array)</code></td><td>Array length</td></tr>
-                        <tr><td><code>push(array, value)</code></td><td>Add to end</td></tr>
-                        <tr><td><code>pop(array)</code></td><td>Remove and return last</td></tr>
-                        <tr><td><code>shift(array)</code></td><td>Remove and return first</td></tr>
-                        <tr><td><code>unshift(array, value)</code></td><td>Add to beginning</td></tr>
-                        <tr><td><code>slice(array, start, end)</code></td><td>Extract portion</td></tr>
-                        <tr><td><code>concat(arr1, arr2)</code></td><td>Combine arrays</td></tr>
-                        <tr><td><code>reverse(array)</code></td><td>Reverse in place</td></tr>
-                        <tr><td><code>contains(array, value)</code></td><td>Check if value exists</td></tr>
-                        <tr><td><code>index_of(array, value)</code></td><td>Find position</td></tr>
-                        <tr><td><code>range(n)</code> or <code>range(start, end)</code></td><td>Generate number sequence</td></tr>
+                        <tr>
+                            <td><code>len(array)</code></td>
+                            <td>Array length</td>
+                        </tr>
+                        <tr>
+                            <td><code>push(array, value)</code></td>
+                            <td>Add to end</td>
+                        </tr>
+                        <tr>
+                            <td><code>pop(array)</code></td>
+                            <td>Remove and return last</td>
+                        </tr>
+                        <tr>
+                            <td><code>shift(array)</code></td>
+                            <td>Remove and return first</td>
+                        </tr>
+                        <tr>
+                            <td><code>unshift(array, value)</code></td>
+                            <td>Add to beginning</td>
+                        </tr>
+                        <tr>
+                            <td><code>slice(array, start, end)</code></td>
+                            <td>Extract portion</td>
+                        </tr>
+                        <tr>
+                            <td><code>concat(arr1, arr2)</code></td>
+                            <td>Combine arrays</td>
+                        </tr>
+                        <tr>
+                            <td><code>reverse(array)</code></td>
+                            <td>Reverse in place</td>
+                        </tr>
+                        <tr>
+                            <td><code>contains(array, value)</code></td>
+                            <td>Check if value exists</td>
+                        </tr>
+                        <tr>
+                            <td><code>index_of(array, value)</code></td>
+                            <td>Find position</td>
+                        </tr>
+                        <tr>
+                            <td><code>range(n)</code> or <code>range(start, end)</code></td>
+                            <td>Generate number sequence</td>
+                        </tr>
                     </tbody>
                 </table>
 
@@ -872,17 +1128,44 @@ x = x + <span class="number">1</span></code></pre>
 
                 <table>
                     <thead>
-                        <tr><th>Function</th><th>Description</th></tr>
+                        <tr>
+                            <th>Function</th>
+                            <th>Description</th>
+                        </tr>
                     </thead>
                     <tbody>
-                        <tr><td><code>dict_new()</code></td><td>Create empty dictionary</td></tr>
-                        <tr><td><code>dict_set(dict, key, value)</code></td><td>Set key-value pair</td></tr>
-                        <tr><td><code>dict_get(dict, key)</code></td><td>Get value by key</td></tr>
-                        <tr><td><code>dict_has(dict, key)</code></td><td>Check if key exists</td></tr>
-                        <tr><td><code>dict_delete(dict, key)</code></td><td>Remove key</td></tr>
-                        <tr><td><code>dict_keys(dict)</code></td><td>Get all keys as array</td></tr>
-                        <tr><td><code>dict_values(dict)</code></td><td>Get all values as array</td></tr>
-                        <tr><td><code>dict_size(dict)</code></td><td>Number of entries</td></tr>
+                        <tr>
+                            <td><code>dict_new()</code></td>
+                            <td>Create empty dictionary</td>
+                        </tr>
+                        <tr>
+                            <td><code>dict_set(dict, key, value)</code></td>
+                            <td>Set key-value pair</td>
+                        </tr>
+                        <tr>
+                            <td><code>dict_get(dict, key)</code></td>
+                            <td>Get value by key</td>
+                        </tr>
+                        <tr>
+                            <td><code>dict_has(dict, key)</code></td>
+                            <td>Check if key exists</td>
+                        </tr>
+                        <tr>
+                            <td><code>dict_delete(dict, key)</code></td>
+                            <td>Remove key</td>
+                        </tr>
+                        <tr>
+                            <td><code>dict_keys(dict)</code></td>
+                            <td>Get all keys as array</td>
+                        </tr>
+                        <tr>
+                            <td><code>dict_values(dict)</code></td>
+                            <td>Get all values as array</td>
+                        </tr>
+                        <tr>
+                            <td><code>dict_size(dict)</code></td>
+                            <td>Number of entries</td>
+                        </tr>
                     </tbody>
                 </table>
 
@@ -896,19 +1179,52 @@ x = x + <span class="number">1</span></code></pre>
 
                 <table>
                     <thead>
-                        <tr><th>Function</th><th>Description</th></tr>
+                        <tr>
+                            <th>Function</th>
+                            <th>Description</th>
+                        </tr>
                     </thead>
                     <tbody>
-                        <tr><td><code>read_file(path)</code></td><td>Read file contents as string</td></tr>
-                        <tr><td><code>write_file(path, content)</code></td><td>Write string to file</td></tr>
-                        <tr><td><code>append_file(path, content)</code></td><td>Append to file</td></tr>
-                        <tr><td><code>file_exists(path)</code></td><td>Check if file exists</td></tr>
-                        <tr><td><code>delete_file(path)</code></td><td>Delete a file</td></tr>
-                        <tr><td><code>file_size(path)</code></td><td>Get file size in bytes</td></tr>
-                        <tr><td><code>list_dir(path)</code></td><td>List directory contents</td></tr>
-                        <tr><td><code>mkdir(path)</code></td><td>Create directory</td></tr>
-                        <tr><td><code>getcwd()</code></td><td>Get current working directory</td></tr>
-                        <tr><td><code>chdir(path)</code></td><td>Change working directory</td></tr>
+                        <tr>
+                            <td><code>read_file(path)</code></td>
+                            <td>Read file contents as string</td>
+                        </tr>
+                        <tr>
+                            <td><code>write_file(path, content)</code></td>
+                            <td>Write string to file</td>
+                        </tr>
+                        <tr>
+                            <td><code>append_file(path, content)</code></td>
+                            <td>Append to file</td>
+                        </tr>
+                        <tr>
+                            <td><code>file_exists(path)</code></td>
+                            <td>Check if file exists</td>
+                        </tr>
+                        <tr>
+                            <td><code>delete_file(path)</code></td>
+                            <td>Delete a file</td>
+                        </tr>
+                        <tr>
+                            <td><code>file_size(path)</code></td>
+                            <td>Get file size in bytes</td>
+                        </tr>
+                        <tr>
+                            <td><code>list_dir(path)</code></td>
+                            <td>List directory contents</td>
+                        </tr>
+                        <tr>
+                            <td><code>mkdir(path)</code></td>
+                            <td>Create directory</td>
+                        </tr>
+                        <tr>
+                            <td><code>getcwd()</code></td>
+                            <td>Get current working directory</td>
+                        </tr>
+                        <tr>
+                            <td><code>chdir(path)</code></td>
+                            <td>Change working directory</td>
+                        </tr>
                     </tbody>
                 </table>
 
@@ -917,11 +1233,20 @@ x = x + <span class="number">1</span></code></pre>
 
                 <table>
                     <thead>
-                        <tr><th>Function</th><th>Description</th></tr>
+                        <tr>
+                            <th>Function</th>
+                            <th>Description</th>
+                        </tr>
                     </thead>
                     <tbody>
-                        <tr><td><code>http_get(url)</code></td><td>Perform GET request</td></tr>
-                        <tr><td><code>http_post(url, body)</code></td><td>Perform POST request</td></tr>
+                        <tr>
+                            <td><code>http_get(url)</code></td>
+                            <td>Perform GET request</td>
+                        </tr>
+                        <tr>
+                            <td><code>http_post(url, body)</code></td>
+                            <td>Perform POST request</td>
+                        </tr>
                     </tbody>
                 </table>
 
@@ -933,11 +1258,20 @@ x = x + <span class="number">1</span></code></pre>
 
                 <table>
                     <thead>
-                        <tr><th>Function</th><th>Description</th></tr>
+                        <tr>
+                            <th>Function</th>
+                            <th>Description</th>
+                        </tr>
                     </thead>
                     <tbody>
-                        <tr><td><code>json_parse(string)</code></td><td>Parse JSON to value</td></tr>
-                        <tr><td><code>json_stringify(value)</code></td><td>Convert value to JSON string</td></tr>
+                        <tr>
+                            <td><code>json_parse(string)</code></td>
+                            <td>Parse JSON to value</td>
+                        </tr>
+                        <tr>
+                            <td><code>json_stringify(value)</code></td>
+                            <td>Convert value to JSON string</td>
+                        </tr>
                     </tbody>
                 </table>
 
@@ -948,19 +1282,52 @@ x = x + <span class="number">1</span></code></pre>
 
                 <table>
                     <thead>
-                        <tr><th>Function</th><th>Description</th></tr>
+                        <tr>
+                            <th>Function</th>
+                            <th>Description</th>
+                        </tr>
                     </thead>
                     <tbody>
-                        <tr><td><code>vec_add(a, b)</code></td><td>Element-wise addition</td></tr>
-                        <tr><td><code>vec_sub(a, b)</code></td><td>Element-wise subtraction</td></tr>
-                        <tr><td><code>vec_mul(a, b)</code></td><td>Element-wise multiplication</td></tr>
-                        <tr><td><code>vec_div(a, b)</code></td><td>Element-wise division</td></tr>
-                        <tr><td><code>vec_dot(a, b)</code></td><td>Dot product</td></tr>
-                        <tr><td><code>vec_sum(array)</code></td><td>Sum all elements</td></tr>
-                        <tr><td><code>vec_mean(array)</code></td><td>Average value</td></tr>
-                        <tr><td><code>vec_min(array)</code></td><td>Minimum value</td></tr>
-                        <tr><td><code>vec_max(array)</code></td><td>Maximum value</td></tr>
-                        <tr><td><code>vec_sort(array)</code></td><td>Sort ascending</td></tr>
+                        <tr>
+                            <td><code>vec_add(a, b)</code></td>
+                            <td>Element-wise addition</td>
+                        </tr>
+                        <tr>
+                            <td><code>vec_sub(a, b)</code></td>
+                            <td>Element-wise subtraction</td>
+                        </tr>
+                        <tr>
+                            <td><code>vec_mul(a, b)</code></td>
+                            <td>Element-wise multiplication</td>
+                        </tr>
+                        <tr>
+                            <td><code>vec_div(a, b)</code></td>
+                            <td>Element-wise division</td>
+                        </tr>
+                        <tr>
+                            <td><code>vec_dot(a, b)</code></td>
+                            <td>Dot product</td>
+                        </tr>
+                        <tr>
+                            <td><code>vec_sum(array)</code></td>
+                            <td>Sum all elements</td>
+                        </tr>
+                        <tr>
+                            <td><code>vec_mean(array)</code></td>
+                            <td>Average value</td>
+                        </tr>
+                        <tr>
+                            <td><code>vec_min(array)</code></td>
+                            <td>Minimum value</td>
+                        </tr>
+                        <tr>
+                            <td><code>vec_max(array)</code></td>
+                            <td>Maximum value</td>
+                        </tr>
+                        <tr>
+                            <td><code>vec_sort(array)</code></td>
+                            <td>Sort ascending</td>
+                        </tr>
                     </tbody>
                 </table>
 
@@ -974,17 +1341,44 @@ x = x + <span class="number">1</span></code></pre>
 
                 <table>
                     <thead>
-                        <tr><th>Function</th><th>Description</th></tr>
+                        <tr>
+                            <th>Function</th>
+                            <th>Description</th>
+                        </tr>
                     </thead>
                     <tbody>
-                        <tr><td><code>bytes_new(size)</code></td><td>Create byte array</td></tr>
-                        <tr><td><code>bytes_get(bytes, index)</code></td><td>Get byte at index</td></tr>
-                        <tr><td><code>bytes_set(bytes, index, value)</code></td><td>Set byte at index</td></tr>
-                        <tr><td><code>bytes_length(bytes)</code></td><td>Length of byte array</td></tr>
-                        <tr><td><code>bytes_to_string(bytes)</code></td><td>Convert to UTF-8 string</td></tr>
-                        <tr><td><code>string_to_bytes(string)</code></td><td>Convert string to bytes</td></tr>
-                        <tr><td><code>base64_encode(bytes)</code></td><td>Encode to base64</td></tr>
-                        <tr><td><code>base64_decode(string)</code></td><td>Decode from base64</td></tr>
+                        <tr>
+                            <td><code>bytes_new(size)</code></td>
+                            <td>Create byte array</td>
+                        </tr>
+                        <tr>
+                            <td><code>bytes_get(bytes, index)</code></td>
+                            <td>Get byte at index</td>
+                        </tr>
+                        <tr>
+                            <td><code>bytes_set(bytes, index, value)</code></td>
+                            <td>Set byte at index</td>
+                        </tr>
+                        <tr>
+                            <td><code>bytes_length(bytes)</code></td>
+                            <td>Length of byte array</td>
+                        </tr>
+                        <tr>
+                            <td><code>bytes_to_string(bytes)</code></td>
+                            <td>Convert to UTF-8 string</td>
+                        </tr>
+                        <tr>
+                            <td><code>string_to_bytes(string)</code></td>
+                            <td>Convert string to bytes</td>
+                        </tr>
+                        <tr>
+                            <td><code>base64_encode(bytes)</code></td>
+                            <td>Encode to base64</td>
+                        </tr>
+                        <tr>
+                            <td><code>base64_decode(string)</code></td>
+                            <td>Decode from base64</td>
+                        </tr>
                     </tbody>
                 </table>
 
@@ -993,11 +1387,20 @@ x = x + <span class="number">1</span></code></pre>
 
                 <table>
                     <thead>
-                        <tr><th>Function</th><th>Description</th></tr>
+                        <tr>
+                            <th>Function</th>
+                            <th>Description</th>
+                        </tr>
                     </thead>
                     <tbody>
-                        <tr><td><code>hash_sha256(data)</code></td><td>SHA-256 hash (hex string)</td></tr>
-                        <tr><td><code>hash_md5(data)</code></td><td>MD5 hash (hex string)</td></tr>
+                        <tr>
+                            <td><code>hash_sha256(data)</code></td>
+                            <td>SHA-256 hash (hex string)</td>
+                        </tr>
+                        <tr>
+                            <td><code>hash_md5(data)</code></td>
+                            <td>MD5 hash (hex string)</td>
+                        </tr>
                     </tbody>
                 </table>
 
@@ -1009,13 +1412,28 @@ x = x + <span class="number">1</span></code></pre>
 
                 <table>
                     <thead>
-                        <tr><th>Function</th><th>Description</th></tr>
+                        <tr>
+                            <th>Function</th>
+                            <th>Description</th>
+                        </tr>
                     </thead>
                     <tbody>
-                        <tr><td><code>clock()</code></td><td>CPU time in seconds</td></tr>
-                        <tr><td><code>time()</code></td><td>Unix timestamp</td></tr>
-                        <tr><td><code>time_ns()</code></td><td>Nanosecond precision timestamp</td></tr>
-                        <tr><td><code>sleep(seconds)</code></td><td>Pause execution</td></tr>
+                        <tr>
+                            <td><code>clock()</code></td>
+                            <td>CPU time in seconds</td>
+                        </tr>
+                        <tr>
+                            <td><code>time()</code></td>
+                            <td>Unix timestamp</td>
+                        </tr>
+                        <tr>
+                            <td><code>time_ns()</code></td>
+                            <td>Nanosecond precision timestamp</td>
+                        </tr>
+                        <tr>
+                            <td><code>sleep(seconds)</code></td>
+                            <td>Pause execution</td>
+                        </tr>
                     </tbody>
                 </table>
 
@@ -1029,14 +1447,32 @@ x = x + <span class="number">1</span></code></pre>
 
                 <table>
                     <thead>
-                        <tr><th>Function</th><th>Description</th></tr>
+                        <tr>
+                            <th>Function</th>
+                            <th>Description</th>
+                        </tr>
                     </thead>
                     <tbody>
-                        <tr><td><code>type(value)</code></td><td>Get type name as string</td></tr>
-                        <tr><td><code>str(value)</code></td><td>Convert to string</td></tr>
-                        <tr><td><code>num(value)</code></td><td>Convert to number</td></tr>
-                        <tr><td><code>is_nan(n)</code></td><td>Check if NaN</td></tr>
-                        <tr><td><code>is_finite(n)</code></td><td>Check if finite</td></tr>
+                        <tr>
+                            <td><code>type(value)</code></td>
+                            <td>Get type name as string</td>
+                        </tr>
+                        <tr>
+                            <td><code>str(value)</code></td>
+                            <td>Convert to string</td>
+                        </tr>
+                        <tr>
+                            <td><code>num(value)</code></td>
+                            <td>Convert to number</td>
+                        </tr>
+                        <tr>
+                            <td><code>is_nan(n)</code></td>
+                            <td>Check if NaN</td>
+                        </tr>
+                        <tr>
+                            <td><code>is_finite(n)</code></td>
+                            <td>Check if finite</td>
+                        </tr>
                     </tbody>
                 </table>
 
@@ -1045,13 +1481,28 @@ x = x + <span class="number">1</span></code></pre>
 
                 <table>
                     <thead>
-                        <tr><th>Function</th><th>Description</th></tr>
+                        <tr>
+                            <th>Function</th>
+                            <th>Description</th>
+                        </tr>
                     </thead>
                     <tbody>
-                        <tr><td><code>exit(code)</code></td><td>Exit with status code</td></tr>
-                        <tr><td><code>getenv(name)</code></td><td>Get environment variable</td></tr>
-                        <tr><td><code>setenv(name, value)</code></td><td>Set environment variable</td></tr>
-                        <tr><td><code>assert(condition, msg)</code></td><td>Assert condition is true</td></tr>
+                        <tr>
+                            <td><code>exit(code)</code></td>
+                            <td>Exit with status code</td>
+                        </tr>
+                        <tr>
+                            <td><code>getenv(name)</code></td>
+                            <td>Get environment variable</td>
+                        </tr>
+                        <tr>
+                            <td><code>setenv(name, value)</code></td>
+                            <td>Set environment variable</td>
+                        </tr>
+                        <tr>
+                            <td><code>assert(condition, msg)</code></td>
+                            <td>Assert condition is true</td>
+                        </tr>
                     </tbody>
                 </table>
 
