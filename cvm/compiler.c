@@ -1598,10 +1598,16 @@ static void for_statement(void) {
         consume(TOKEN_DO, "Expect 'do' after iterable.");
         skip_newlines();
         
-        /* Create iterator local */
+        /* Create iterator local (holds the array/range) */
         add_local((Token){.start = "__iter", .length = 6, .line = 0});
         mark_initialized();
         int iter_slot = current->local_count - 1;
+        
+        /* Create index local (for array iteration) */
+        emit_byte(OP_CONST_0);  /* Start at index 0 */
+        add_local((Token){.start = "__idx", .length = 5, .line = 0});
+        mark_initialized();
+        int idx_slot = current->local_count - 1;
         
         /* Create loop variable local */
         add_local(var_name);
@@ -1611,9 +1617,10 @@ static void for_statement(void) {
         
         int loop_start = current_chunk()->count;
         
-        /* Use OP_FOR_LOOP for Range objects (backwards compat) */
+        /* Use OP_FOR_LOOP with 3 slots: iter, idx, var */
         emit_byte(OP_FOR_LOOP);
         emit_byte(iter_slot);
+        emit_byte(idx_slot);
         emit_byte(var_slot);
         emit_byte(0xff);
         emit_byte(0xff);

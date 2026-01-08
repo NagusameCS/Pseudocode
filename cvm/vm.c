@@ -1692,15 +1692,18 @@ InterpretResult vm_run(VM* vm) {
         DISPATCH();
     }
     
-    /* Ultra-fast counted loop: uses immediate limit */
-    /* Format: OP_FOR_LOOP, counter_slot, var_slot, offset[2] */
+    /* Generic for loop: handles Range and Array */
+    /* Format: OP_FOR_LOOP, iter_slot, idx_slot, var_slot, offset[2] */
+    /* For arrays: iter_slot has array, idx_slot has current index, var_slot gets element */
+    /* For ranges: iter_slot has range (with internal counter), idx_slot unused */
     CASE(for_loop): {
-        uint8_t counter_slot = READ_BYTE();
+        uint8_t iter_slot = READ_BYTE();
+        uint8_t idx_slot = READ_BYTE();
         uint8_t var_slot = READ_BYTE();
         uint16_t offset = READ_SHORT();
         
         /* Use cached bp - no branch! */
-        Value iter = bp[counter_slot];
+        Value iter = bp[iter_slot];
         if (IS_RANGE(iter)) {
             ObjRange* range = AS_RANGE(iter);
             if (range->current >= range->end) {
@@ -1708,6 +1711,34 @@ InterpretResult vm_run(VM* vm) {
             } else {
                 bp[var_slot] = val_int(range->current++);
             }
+        } else if (IS_ARRAY(iter)) {
+            /* Array iteration: iter_slot has array, idx_slot has index */
+            ObjArray* arr = AS_ARRAY(iter);
+            int32_t idx = as_int(bp[idx_slot]);
+            
+            if ((uint32_t)idx >= arr->count) {
+                ip += offset;  /* Exit loop */
+            } else {
+                bp[var_slot] = arr->values[idx];
+                bp[idx_slot] = val_int(idx + 1);  /* Increment index */
+            }
+        } else if (IS_STRING(iter)) {
+            /* String iteration: iterate over characters */
+            ObjString* str = AS_STRING(iter);
+            int32_t idx = as_int(bp[idx_slot]);
+            
+            if ((uint32_t)idx >= str->length) {
+                ip += offset;  /* Exit loop */
+            } else {
+                /* Create single-character string */
+                ObjString* ch = copy_string(vm, &str->chars[idx], 1);
+                bp[var_slot] = val_obj(ch);
+                bp[idx_slot] = val_int(idx + 1);  /* Increment index */
+            }
+        } else {
+            vm->sp = sp;
+            runtime_error(vm, "Expected iterable (range, array, or string).");
+            return INTERPRET_RUNTIME_ERROR;
         }
         DISPATCH();
     }
