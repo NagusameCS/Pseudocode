@@ -1,0 +1,174 @@
+{
+    "Function Definition": {
+        "prefix": "fn",
+        "body": [
+            "fn ${1:name}(${2:params}) {",
+            "\t${0}",
+            "}"
+        ],
+        "description": "Define a function"
+    },
+    "If Statement": {
+        "prefix": "if",
+        "body": [
+            "if ${1:condition} {",
+            "\t${0}",
+            "}"
+        ],
+        "description": "If statement"
+    },
+    "If-Else Statement": {
+        "prefix": "ife",
+        "body": [
+            "if ${1:condition} {",
+            "\t${2}",
+            "} else {",
+            "\t${0}",
+            "}"
+        ],
+        "description": "If-else statement"
+    },
+    "While Loop": {
+        "prefix": "while",
+        "body": [
+            "while ${1:condition} {",
+            "\t${0}",
+            "}"
+        ],
+        "description": "While loop"
+    },
+    "For Loop": {
+        "prefix": "for",
+        "body": [
+            "for ${1:item} in ${2:iterable} {",
+            "\t${0}",
+            "}"
+        ],
+        "description": "For-in loop"
+    },
+    "For Range": {
+        "prefix": "forr",
+        "body": [
+            "for ${1:i} in range(${2:start}, ${3:end}) {",
+            "\t${0}",
+            "}"
+        ],
+        "description": "For loop with range"
+    },
+    "Let Variable": {
+        "prefix": "let",
+        "body": [
+            "let ${1:name} = ${0}"
+        ],
+        "description": "Declare a variable"
+    },
+    "Print": {
+        "prefix": "print",
+        "body": [
+            "print(${0})"
+        ],
+        "description": "Print to console"
+    },
+    "Println": {
+        "prefix": "println",
+        "body": [
+            "println(${0})"
+        ],
+        "description": "Print with newline"
+    },
+    "Match Expression": {
+        "prefix": "match",
+        "body": [
+            "match ${1:value} {",
+            "\tcase ${2:pattern} => ${3:result}",
+            "\tcase _ => ${0:default}",
+            "}"
+        ],
+        "description": "Pattern matching"
+    },
+    "Read File": {
+        "prefix": "readfile",
+        "body": [
+            "let ${1:content} = read_file(\"${2:path}\")"
+        ],
+        "description": "Read file contents"
+    },
+    "Write File": {
+        "prefix": "writefile",
+        "body": [
+            "write_file(\"${1:path}\", ${2:content})"
+        ],
+        "description": "Write to file"
+    },
+    "HTTP GET": {
+        "prefix": "httpget",
+        "body": [
+            "let ${1:response} = http_get(\"${2:url}\")"
+        ],
+        "description": "HTTP GET request"
+    },
+    "HTTP POST": {
+        "prefix": "httppost",
+        "body": [
+            "let ${1:response} = http_post(\"${2:url}\", ${3:body})"
+        ],
+        "description": "HTTP POST request"
+    },
+    "Dictionary": {
+        "prefix": "dict",
+        "body": [
+            "let ${1:d} = dict()",
+            "dict_set(${1:d}, \"${2:key}\", ${3:value})"
+        ],
+        "description": "Create and populate a dictionary"
+    },
+    "JSON Parse": {
+        "prefix": "jsonparse",
+        "body": [
+            "let ${1:data} = json_parse(${2:json_string})"
+        ],
+        "description": "Parse JSON string"
+    },
+    "JSON Stringify": {
+        "prefix": "jsonstringify",
+        "body": [
+            "let ${1:json} = json_stringify(${2:value})"
+        ],
+        "description": "Convert value to JSON string"
+    },
+    "Recursive Fibonacci": {
+        "prefix": "fib",
+        "body": [
+            "fn fib(n) {",
+            "\tif n < 2 { return n }",
+            "\treturn fib(n - 1) + fib(n - 2)",
+            "}",
+            "",
+            "println(fib(${1:30}))"
+        ],
+        "description": "Recursive Fibonacci function"
+    },
+    "Vector Operations": {
+        "prefix": "vecops",
+        "body": [
+            "let ${1:v} = [${2:1, 2, 3, 4, 5}]",
+            "println(\"Sum: \" + str(vec_sum(${1:v})))",
+            "println(\"Mean: \" + str(vec_mean(${1:v})))",
+            "println(\"Sorted: \" + str(vec_sort(${1:v})))"
+        ],
+        "description": "Common vector operations"
+    },
+    "Main Template": {
+        "prefix": "main",
+        "body": [
+            "// ${1:Description}",
+            "",
+            "fn main() {",
+            "\t${0}",
+            "}",
+            "",
+            "main()"
+        ],
+        "description": "Main function template"
+    }
+}

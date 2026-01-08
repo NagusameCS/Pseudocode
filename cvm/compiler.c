@@ -687,6 +687,459 @@ static void variable(bool can_assign) {
             emit_byte(OP_ORD);
             return;
         }
+        
+        /* ============ FILE I/O ============ */
+        if (name.length == 9 && memcmp(name.start, "read_file", 9) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after read_file argument.");
+            emit_byte(OP_READ_FILE);
+            return;
+        }
+        if (name.length == 10 && memcmp(name.start, "write_file", 10) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_COMMA, "Expect ',' after path.");
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after write_file arguments.");
+            emit_byte(OP_WRITE_FILE);
+            return;
+        }
+        if (name.length == 11 && memcmp(name.start, "append_file", 11) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_COMMA, "Expect ',' after path.");
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after append_file arguments.");
+            emit_byte(OP_APPEND_FILE);
+            return;
+        }
+        if (name.length == 11 && memcmp(name.start, "file_exists", 11) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after file_exists argument.");
+            emit_byte(OP_FILE_EXISTS);
+            return;
+        }
+        if (name.length == 8 && memcmp(name.start, "list_dir", 8) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after list_dir argument.");
+            emit_byte(OP_LIST_DIR);
+            return;
+        }
+        if (name.length == 11 && memcmp(name.start, "delete_file", 11) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after delete_file argument.");
+            emit_byte(OP_DELETE_FILE);
+            return;
+        }
+        if (name.length == 5 && memcmp(name.start, "mkdir", 5) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after mkdir argument.");
+            emit_byte(OP_MKDIR);
+            return;
+        }
+        
+        /* ============ HTTP ============ */
+        if (name.length == 8 && memcmp(name.start, "http_get", 8) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after http_get argument.");
+            emit_byte(OP_HTTP_GET);
+            return;
+        }
+        if (name.length == 9 && memcmp(name.start, "http_post", 9) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_COMMA, "Expect ',' after URL.");
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after http_post arguments.");
+            emit_byte(OP_HTTP_POST);
+            return;
+        }
+        
+        /* ============ JSON ============ */
+        if (name.length == 10 && memcmp(name.start, "json_parse", 10) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after json_parse argument.");
+            emit_byte(OP_JSON_PARSE);
+            return;
+        }
+        if (name.length == 14 && memcmp(name.start, "json_stringify", 14) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after json_stringify argument.");
+            emit_byte(OP_JSON_STRINGIFY);
+            return;
+        }
+        
+        /* ============ PROCESS/SYSTEM ============ */
+        if (name.length == 4 && memcmp(name.start, "exec", 4) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after exec argument.");
+            emit_byte(OP_EXEC);
+            return;
+        }
+        if (name.length == 3 && memcmp(name.start, "env", 3) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after env argument.");
+            emit_byte(OP_ENV);
+            return;
+        }
+        if (name.length == 7 && memcmp(name.start, "set_env", 7) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_COMMA, "Expect ',' after name.");
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after set_env arguments.");
+            emit_byte(OP_SET_ENV);
+            return;
+        }
+        if (name.length == 4 && memcmp(name.start, "args", 4) == 0) {
+            advance();
+            consume(TOKEN_RPAREN, "Expect ')' after args.");
+            emit_byte(OP_ARGS);
+            return;
+        }
+        if (name.length == 4 && memcmp(name.start, "exit", 4) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after exit argument.");
+            emit_byte(OP_EXIT);
+            return;
+        }
+        if (name.length == 5 && memcmp(name.start, "sleep", 5) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after sleep argument.");
+            emit_byte(OP_SLEEP);
+            return;
+        }
+        
+        /* ============ DICTIONARY ============ */
+        if (name.length == 4 && memcmp(name.start, "dict", 4) == 0) {
+            advance();
+            consume(TOKEN_RPAREN, "Expect ')' after dict.");
+            emit_byte(OP_DICT);
+            return;
+        }
+        if (name.length == 8 && memcmp(name.start, "dict_get", 8) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_COMMA, "Expect ',' after dict.");
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after dict_get arguments.");
+            emit_byte(OP_DICT_GET);
+            return;
+        }
+        if (name.length == 8 && memcmp(name.start, "dict_set", 8) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_COMMA, "Expect ',' after dict.");
+            expression();
+            consume(TOKEN_COMMA, "Expect ',' after key.");
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after dict_set arguments.");
+            emit_byte(OP_DICT_SET);
+            return;
+        }
+        if (name.length == 8 && memcmp(name.start, "dict_has", 8) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_COMMA, "Expect ',' after dict.");
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after dict_has arguments.");
+            emit_byte(OP_DICT_HAS);
+            return;
+        }
+        if (name.length == 9 && memcmp(name.start, "dict_keys", 9) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after dict_keys argument.");
+            emit_byte(OP_DICT_KEYS);
+            return;
+        }
+        if (name.length == 11 && memcmp(name.start, "dict_values", 11) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after dict_values argument.");
+            emit_byte(OP_DICT_VALUES);
+            return;
+        }
+        if (name.length == 11 && memcmp(name.start, "dict_delete", 11) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_COMMA, "Expect ',' after dict.");
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after dict_delete arguments.");
+            emit_byte(OP_DICT_DELETE);
+            return;
+        }
+        
+        /* ============ ADVANCED MATH ============ */
+        if (name.length == 3 && memcmp(name.start, "sin", 3) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after sin argument.");
+            emit_byte(OP_SIN);
+            return;
+        }
+        if (name.length == 3 && memcmp(name.start, "cos", 3) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after cos argument.");
+            emit_byte(OP_COS);
+            return;
+        }
+        if (name.length == 3 && memcmp(name.start, "tan", 3) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after tan argument.");
+            emit_byte(OP_TAN);
+            return;
+        }
+        if (name.length == 4 && memcmp(name.start, "asin", 4) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after asin argument.");
+            emit_byte(OP_ASIN);
+            return;
+        }
+        if (name.length == 4 && memcmp(name.start, "acos", 4) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after acos argument.");
+            emit_byte(OP_ACOS);
+            return;
+        }
+        if (name.length == 4 && memcmp(name.start, "atan", 4) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after atan argument.");
+            emit_byte(OP_ATAN);
+            return;
+        }
+        if (name.length == 5 && memcmp(name.start, "atan2", 5) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_COMMA, "Expect ',' after y.");
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after atan2 arguments.");
+            emit_byte(OP_ATAN2);
+            return;
+        }
+        if (name.length == 3 && memcmp(name.start, "log", 3) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after log argument.");
+            emit_byte(OP_LOG);
+            return;
+        }
+        if (name.length == 5 && memcmp(name.start, "log10", 5) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after log10 argument.");
+            emit_byte(OP_LOG10);
+            return;
+        }
+        if (name.length == 4 && memcmp(name.start, "log2", 4) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after log2 argument.");
+            emit_byte(OP_LOG2);
+            return;
+        }
+        if (name.length == 3 && memcmp(name.start, "exp", 3) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after exp argument.");
+            emit_byte(OP_EXP);
+            return;
+        }
+        if (name.length == 5 && memcmp(name.start, "hypot", 5) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_COMMA, "Expect ',' after x.");
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after hypot arguments.");
+            emit_byte(OP_HYPOT);
+            return;
+        }
+        
+        /* ============ VECTOR OPERATIONS ============ */
+        if (name.length == 7 && memcmp(name.start, "vec_add", 7) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_COMMA, "Expect ',' after first array.");
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after vec_add arguments.");
+            emit_byte(OP_VEC_ADD);
+            return;
+        }
+        if (name.length == 7 && memcmp(name.start, "vec_sub", 7) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_COMMA, "Expect ',' after first array.");
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after vec_sub arguments.");
+            emit_byte(OP_VEC_SUB);
+            return;
+        }
+        if (name.length == 7 && memcmp(name.start, "vec_mul", 7) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_COMMA, "Expect ',' after first array.");
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after vec_mul arguments.");
+            emit_byte(OP_VEC_MUL);
+            return;
+        }
+        if (name.length == 7 && memcmp(name.start, "vec_div", 7) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_COMMA, "Expect ',' after first array.");
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after vec_div arguments.");
+            emit_byte(OP_VEC_DIV);
+            return;
+        }
+        if (name.length == 7 && memcmp(name.start, "vec_dot", 7) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_COMMA, "Expect ',' after first array.");
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after vec_dot arguments.");
+            emit_byte(OP_VEC_DOT);
+            return;
+        }
+        if (name.length == 7 && memcmp(name.start, "vec_sum", 7) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after vec_sum argument.");
+            emit_byte(OP_VEC_SUM);
+            return;
+        }
+        if (name.length == 8 && memcmp(name.start, "vec_prod", 8) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after vec_prod argument.");
+            emit_byte(OP_VEC_PROD);
+            return;
+        }
+        if (name.length == 7 && memcmp(name.start, "vec_min", 7) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after vec_min argument.");
+            emit_byte(OP_VEC_MIN);
+            return;
+        }
+        if (name.length == 7 && memcmp(name.start, "vec_max", 7) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after vec_max argument.");
+            emit_byte(OP_VEC_MAX);
+            return;
+        }
+        if (name.length == 8 && memcmp(name.start, "vec_mean", 8) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after vec_mean argument.");
+            emit_byte(OP_VEC_MEAN);
+            return;
+        }
+        if (name.length == 8 && memcmp(name.start, "vec_sort", 8) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after vec_sort argument.");
+            emit_byte(OP_VEC_SORT);
+            return;
+        }
+        if (name.length == 11 && memcmp(name.start, "vec_reverse", 11) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after vec_reverse argument.");
+            emit_byte(OP_VEC_REVERSE);
+            return;
+        }
+        if (name.length == 10 && memcmp(name.start, "vec_unique", 10) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after vec_unique argument.");
+            emit_byte(OP_VEC_UNIQUE);
+            return;
+        }
+        if (name.length == 7 && memcmp(name.start, "vec_zip", 7) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_COMMA, "Expect ',' after first array.");
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after vec_zip arguments.");
+            emit_byte(OP_VEC_ZIP);
+            return;
+        }
+        if (name.length == 9 && memcmp(name.start, "vec_range", 9) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_COMMA, "Expect ',' after start.");
+            expression();
+            consume(TOKEN_COMMA, "Expect ',' after end.");
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after vec_range arguments.");
+            emit_byte(OP_VEC_RANGE);
+            return;
+        }
+        
+        /* ============ BINARY ============ */
+        if (name.length == 5 && memcmp(name.start, "bytes", 5) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after bytes argument.");
+            emit_byte(OP_BYTES);
+            return;
+        }
+        if (name.length == 11 && memcmp(name.start, "encode_utf8", 11) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after encode_utf8 argument.");
+            emit_byte(OP_ENCODE_UTF8);
+            return;
+        }
+        if (name.length == 11 && memcmp(name.start, "decode_utf8", 11) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after decode_utf8 argument.");
+            emit_byte(OP_DECODE_UTF8);
+            return;
+        }
+        if (name.length == 13 && memcmp(name.start, "encode_base64", 13) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after encode_base64 argument.");
+            emit_byte(OP_ENCODE_BASE64);
+            return;
+        }
+        if (name.length == 13 && memcmp(name.start, "decode_base64", 13) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after decode_base64 argument.");
+            emit_byte(OP_DECODE_BASE64);
+            return;
+        }
+        
+        /* ============ HASHING ============ */
+        if (name.length == 4 && memcmp(name.start, "hash", 4) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after hash argument.");
+            emit_byte(OP_HASH);
+            return;
+        }
     }
     
     named_variable(name, can_assign);

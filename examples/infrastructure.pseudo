@@ -1,0 +1,90 @@
+// Infrastructure Demo - Testing new built-ins
+
+// Test file I/O
+print("=== File I/O ===")
+let test_content = "Hello from Pseudocode!"
+let success = write_file("test_output.txt", test_content)
+print("Write success:")
+print(success)
+
+let content = read_file("test_output.txt")
+print("Read content:")
+print(content)
+
+print("File exists:")
+print(file_exists("test_output.txt"))
+
+// Test exec
+print("\n=== Shell Execution ===")
+let output = exec("echo 'Hello from shell!'")
+print(output)
+
+// Test environment
+print("=== Environment ===")
+let path = env("PATH")
+print("PATH length:")
+print(len(path))
+
+// Test dictionary
+print("\n=== Dictionary ===")
+let d = dict()
+d = dict_set(d, "name", "Pseudocode")
+d = dict_set(d, "version", "1.0")
+d = dict_set(d, "fast", true)
+
+print("Name:")
+print(dict_get(d, "name"))
+print("Has version:")
+print(dict_has(d, "version"))
+print("Keys:")
+print(dict_keys(d))
+
+// Test advanced math
+print("\n=== Advanced Math ===")
+print("sin(0):")
+print(sin(0))
+print("cos(0):")
+print(cos(0))
+print("log(2.718281828):")
+print(log(2.718281828))
+print("exp(1):")
+print(exp(1))
+
+// Test vector operations
+print("\n=== Vector Operations ===")
+let a = [1, 2, 3, 4, 5]
+let b = [5, 4, 3, 2, 1]
+
+print("vec_add:")
+print(vec_add(a, b))
+
+print("vec_dot:")
+print(vec_dot(a, b))
+
+print("vec_sum:")
+print(vec_sum(a))
+
+print("vec_mean:")
+print(vec_mean(a))
+
+print("vec_sort:")
+let unsorted = [5, 2, 8, 1, 9]
+print(vec_sort(unsorted))
+
+print("vec_range(0, 10, 2):")
+print(vec_range(0, 10, 2))
+
+// Test base64
+print("\n=== Base64 ===")
+let encoded = encode_base64("Hello, World!")
+print("Encoded:")
+print(encoded)
+
+// Test hash
+print("\n=== Hash ===")
+print("hash('test'):")
+print(hash("test"))
+
+// Cleanup
+delete_file("test_output.txt")
+print("\nDone!")

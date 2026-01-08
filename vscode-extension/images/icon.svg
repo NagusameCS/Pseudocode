@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#27272a"/>
+      <stop offset="100%" style="stop-color:#18181b"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Background rounded square -->
+  <rect x="4" y="4" width="120" height="120" rx="24" ry="24" fill="url(#bg)"/>
+  
+  <!-- Outer glow/border -->
+  <rect x="4" y="4" width="120" height="120" rx="24" ry="24" 
+        fill="none" stroke="#3f3f46" stroke-width="1"/>
+  
+  <!-- Lambda/Code symbol stylized as 'P' for Pseudo -->
+  <!-- Main vertical stroke of P -->
+  <path d="M 40 32 L 40 96" 
+        stroke="#e4e4e7" stroke-width="8" stroke-linecap="round" fill="none"/>
+  
+  <!-- Curved part of P (bowl) -->
+  <path d="M 40 32 
+           Q 40 32 52 32
+           Q 88 32 88 52
+           Q 88 72 52 72
+           L 40 72" 
+        stroke="#e4e4e7" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  
+  <!-- Speed lines (representing fast execution) -->
+  <line x1="72" y1="84" x2="92" y2="84" stroke="#71717a" stroke-width="3" stroke-linecap="round"/>
+  <line x1="68" y1="92" x2="96" y2="92" stroke="#52525b" stroke-width="3" stroke-linecap="round"/>
+  
+  <!-- Small accent dot -->
+  <circle cx="88" cy="52" r="4" fill="#a1a1aa"/>
+</svg>

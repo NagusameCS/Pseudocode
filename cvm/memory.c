@@ -90,6 +90,77 @@ ObjFunction* new_function(VM* vm) {
     return function;
 }
 
+ObjDict* new_dict(VM* vm, uint32_t capacity) {
+    ObjDict* dict = (ObjDict*)allocate_object(vm, sizeof(ObjDict), OBJ_DICT);
+    dict->count = 0;
+    dict->capacity = capacity < 8 ? 8 : capacity;
+    dict->keys = (ObjString**)calloc(dict->capacity, sizeof(ObjString*));
+    dict->values = (Value*)malloc(dict->capacity * sizeof(Value));
+    return dict;
+}
+
+ObjBytes* new_bytes(VM* vm, uint32_t capacity) {
+    ObjBytes* bytes = (ObjBytes*)allocate_object(vm, sizeof(ObjBytes), OBJ_BYTES);
+    bytes->length = 0;
+    bytes->capacity = capacity;
+    bytes->data = capacity > 0 ? (uint8_t*)malloc(capacity) : NULL;
+    return bytes;
+}
+
+/* ============ Arena Allocator ============ */
+/* Ultra-fast bump allocator for temporary allocations */
+
+Arena* arena_create(size_t size) {
+    Arena* arena = (Arena*)malloc(sizeof(Arena));
+    arena->size = size;
+    arena->used = 0;
+    arena->data = (uint8_t*)malloc(size);
+    arena->next = NULL;
+    return arena;
+}
+
+void* arena_alloc(Arena* arena, size_t size) {
+    /* Align to 8 bytes */
+    size = (size + 7) & ~7;
+    
+    if (arena->used + size > arena->size) {
+        /* Allocate new block */
+        size_t new_size = arena->size * 2;
+        if (new_size < size) new_size = size * 2;
+        
+        Arena* new_arena = arena_create(new_size);
+        new_arena->next = arena->next;
+        arena->next = new_arena;
+        
+        void* ptr = new_arena->data;
+        new_arena->used = size;
+        return ptr;
+    }
+    
+    void* ptr = arena->data + arena->used;
+    arena->used += size;
+    return ptr;
+}
+
+void arena_reset(Arena* arena) {
+    arena->used = 0;
+    Arena* next = arena->next;
+    while (next) {
+        next->used = 0;
+        next = next->next;
+    }
+}
+
+void arena_destroy(Arena* arena) {
+    Arena* current = arena;
+    while (current) {
+        Arena* next = current->next;
+        free(current->data);
+        free(current);
+        current = next;
+    }
+}
+
 void free_object(VM* vm, Obj* object) {
     switch (object->type) {
         case OBJ_STRING: {
@@ -112,6 +183,19 @@ void free_object(VM* vm, Obj* object) {
         case OBJ_CLOSURE:
             FREE(vm, Obj, object);
             break;
+        case OBJ_DICT: {
+            ObjDict* dict = (ObjDict*)object;
+            free(dict->keys);
+            free(dict->values);
+            FREE(vm, ObjDict, object);
+            break;
+        }
+        case OBJ_BYTES: {
+            ObjBytes* bytes = (ObjBytes*)object;
+            free(bytes->data);
+            FREE(vm, ObjBytes, object);
+            break;
+        }
     }
 }
 

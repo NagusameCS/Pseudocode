@@ -1,0 +1,139 @@
+{
+    "name": "pseudocode-lang",
+    "displayName": "Pseudocode Language",
+    "description": "Language support for Pseudocode - a blazingly fast programming language with intuitive syntax",
+    "version": "1.0.0",
+    "publisher": "NagusameCS",
+    "author": {
+        "name": "NagusameCS"
+    },
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/NagusameCS/Pseudocode"
+    },
+    "engines": {
+        "vscode": "^1.74.0"
+    },
+    "categories": [
+        "Programming Languages",
+        "Snippets"
+    ],
+    "keywords": [
+        "pseudocode",
+        "pseudo",
+        "fast",
+        "scripting",
+        "programming language"
+    ],
+    "icon": "images/icon.png",
+    "galleryBanner": {
+        "color": "#18181b",
+        "theme": "dark"
+    },
+    "main": "./out/extension.js",
+    "activationEvents": [
+        "onLanguage:pseudocode"
+    ],
+    "contributes": {
+        "languages": [
+            {
+                "id": "pseudocode",
+                "aliases": ["Pseudocode", "pseudo"],
+                "extensions": [".pseudo", ".psc"],
+                "configuration": "./language-configuration.json",
+                "icon": {
+                    "light": "./images/icon.png",
+                    "dark": "./images/icon.png"
+                }
+            }
+        ],
+        "grammars": [
+            {
+                "language": "pseudocode",
+                "scopeName": "source.pseudocode",
+                "path": "./syntaxes/pseudocode.tmLanguage.json"
+            }
+        ],
+        "snippets": [
+            {
+                "language": "pseudocode",
+                "path": "./snippets/pseudocode.json"
+            }
+        ],
+        "commands": [
+            {
+                "command": "pseudocode.run",
+                "title": "Run Pseudocode File",
+                "category": "Pseudocode",
+                "icon": "$(play)"
+            },
+            {
+                "command": "pseudocode.build",
+                "title": "Build Pseudocode VM",
+                "category": "Pseudocode"
+            }
+        ],
+        "menus": {
+            "editor/title/run": [
+                {
+                    "command": "pseudocode.run",
+                    "when": "resourceLangId == pseudocode",
+                    "group": "navigation"
+                }
+            ]
+        },
+        "keybindings": [
+            {
+                "command": "pseudocode.run",
+                "key": "ctrl+shift+r",
+                "mac": "cmd+shift+r",
+                "when": "resourceLangId == pseudocode"
+            }
+        ],
+        "configuration": {
+            "title": "Pseudocode",
+            "properties": {
+                "pseudocode.vmPath": {
+                    "type": "string",
+                    "default": "",
+                    "description": "Path to the Pseudocode VM executable (pseudo). If empty, assumes 'pseudo' is in PATH or looks in the workspace."
+                },
+                "pseudocode.showExecutionTime": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Show execution time after running a file."
+                }
+            }
+        },
+        "taskDefinitions": [
+            {
+                "type": "pseudocode",
+                "required": ["task"],
+                "properties": {
+                    "task": {
+                        "type": "string",
+                        "description": "The Pseudocode task: 'run' or 'build'"
+                    },
+                    "file": {
+                        "type": "string",
+                        "description": "The file to run"
+                    }
+                }
+            }
+        ]
+    },
+    "scripts": {
+        "vscode:prepublish": "npm run compile",
+        "compile": "tsc -p ./",
+        "watch": "tsc -watch -p ./",
+        "package": "vsce package",
+        "publish": "vsce publish"
+    },
+    "devDependencies": {
+        "@types/node": "^18.0.0",
+        "@types/vscode": "^1.74.0",
+        "typescript": "^5.0.0",
+        "@vscode/vsce": "^2.22.0"
+    }
+}
