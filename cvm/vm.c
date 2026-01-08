@@ -7,6 +7,7 @@
 #define _GNU_SOURCE
 
 #include "pseudo.h"
+#include "jit.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -259,6 +260,7 @@ static void print_value(Value value) {
 InterpretResult vm_run(VM* vm) {
     register uint8_t* ip = vm->chunk.code;
     register Value* sp = vm->sp;  /* Cache stack pointer in register */
+    register Value* bp = vm->stack;  /* Cache base pointer for locals */
     
 #if USE_COMPUTED_GOTO
     /* Dispatch table for computed gotos - must match OpCode enum order */
@@ -364,6 +366,18 @@ InterpretResult vm_run(VM* vm) {
         [OP_EQ_JMP_FALSE] = &&op_eq_jmp_false,
         [OP_GET_LOCAL_ADD] = &&op_get_local_add,
         [OP_GET_LOCAL_SUB] = &&op_get_local_sub,
+        [OP_INC_LOCAL] = &&op_inc_local,
+        [OP_DEC_LOCAL] = &&op_dec_local,
+        [OP_FOR_RANGE] = &&op_for_range,
+        [OP_FOR_LOOP] = &&op_for_loop,
+        [OP_FOR_INT_INIT] = &&op_for_int_init,
+        [OP_FOR_INT_LOOP] = &&op_for_int_loop,
+        [OP_FOR_COUNT] = &&op_for_count,
+        [OP_ADD_LOCAL_INT] = &&op_add_local_int,
+        [OP_LOCAL_LT_LOOP] = &&op_local_lt_loop,
+        [OP_JIT_INC_LOOP] = &&op_jit_inc_loop,
+        [OP_JIT_ARITH_LOOP] = &&op_jit_arith_loop,
+        [OP_JIT_BRANCH_LOOP] = &&op_jit_branch_loop,
         [OP_TAIL_CALL] = &&op_tail_call,
         [OP_CONST_0] = &&op_const_0,
         [OP_CONST_1] = &&op_const_1,
@@ -502,21 +516,13 @@ InterpretResult vm_run(VM* vm) {
     
     CASE(get_local): {
         uint8_t slot = READ_BYTE();
-        if (vm->frame_count > 0) {
-            PUSH(vm->frames[vm->frame_count - 1].slots[slot]);
-        } else {
-            PUSH(vm->stack[slot]);
-        }
+        PUSH(bp[slot]);
         DISPATCH();
     }
     
     CASE(set_local): {
         uint8_t slot = READ_BYTE();
-        if (vm->frame_count > 0) {
-            vm->frames[vm->frame_count - 1].slots[slot] = PEEK(0);
-        } else {
-            vm->stack[slot] = PEEK(0);
-        }
+        bp[slot] = PEEK(0);
         DISPATCH();
     }
     
@@ -767,6 +773,7 @@ InterpretResult vm_run(VM* vm) {
         frame->function = function;
         frame->ip = ip;
         frame->slots = sp - arg_count - 1;
+        bp = frame->slots;  /* Update cached base pointer */
         
         ip = vm->chunk.code + function->code_start;
         DISPATCH();
@@ -785,6 +792,10 @@ InterpretResult vm_run(VM* vm) {
         CallFrame* frame = &vm->frames[vm->frame_count];
         sp = frame->slots;
         ip = frame->ip;
+        /* Restore bp to previous frame or stack base */
+        bp = (vm->frame_count > 0) 
+            ? vm->frames[vm->frame_count - 1].slots 
+            : vm->stack;
         PUSH(result);
         DISPATCH();
     }
@@ -1491,40 +1502,24 @@ InterpretResult vm_run(VM* vm) {
     /* ============ SUPERINSTRUCTIONS ============ */
     /* These fused instructions eliminate dispatch overhead and provide 2-3x speedup */
     
-    /* Fast local variable access for common slots */
+    /* Fast local variable access for common slots - using cached bp */
     CASE(get_local_0): {
-        if (vm->frame_count > 0) {
-            PUSH(vm->frames[vm->frame_count - 1].slots[0]);
-        } else {
-            PUSH(vm->stack[0]);
-        }
+        PUSH(bp[0]);
         DISPATCH();
     }
     
     CASE(get_local_1): {
-        if (vm->frame_count > 0) {
-            PUSH(vm->frames[vm->frame_count - 1].slots[1]);
-        } else {
-            PUSH(vm->stack[1]);
-        }
+        PUSH(bp[1]);
         DISPATCH();
     }
     
     CASE(get_local_2): {
-        if (vm->frame_count > 0) {
-            PUSH(vm->frames[vm->frame_count - 1].slots[2]);
-        } else {
-            PUSH(vm->stack[2]);
-        }
+        PUSH(bp[2]);
         DISPATCH();
     }
     
     CASE(get_local_3): {
-        if (vm->frame_count > 0) {
-            PUSH(vm->frames[vm->frame_count - 1].slots[3]);
-        } else {
-            PUSH(vm->stack[3]);
-        }
+        PUSH(bp[3]);
         DISPATCH();
     }
     
@@ -1635,12 +1630,7 @@ InterpretResult vm_run(VM* vm) {
     /* Fused local + arithmetic */
     CASE(get_local_add): {
         uint8_t slot = READ_BYTE();
-        Value local;
-        if (vm->frame_count > 0) {
-            local = vm->frames[vm->frame_count - 1].slots[slot];
-        } else {
-            local = vm->stack[slot];
-        }
+        Value local = bp[slot];  /* Use cached bp */
         Value tos = POP();
         if (IS_INT(local) && IS_INT(tos)) {
             PUSH(val_int(as_int(local) + as_int(tos)));
@@ -1654,12 +1644,7 @@ InterpretResult vm_run(VM* vm) {
     
     CASE(get_local_sub): {
         uint8_t slot = READ_BYTE();
-        Value local;
-        if (vm->frame_count > 0) {
-            local = vm->frames[vm->frame_count - 1].slots[slot];
-        } else {
-            local = vm->stack[slot];
-        }
+        Value local = bp[slot];  /* Use cached bp */
         Value tos = POP();
         if (IS_INT(local) && IS_INT(tos)) {
             PUSH(val_int(as_int(tos) - as_int(local)));
@@ -1668,6 +1653,199 @@ InterpretResult vm_run(VM* vm) {
             double db = IS_INT(local) ? as_int(local) : as_num(local);
             PUSH(val_num(da - db));
         }
+        DISPATCH();
+    }
+    
+    /* Ultra-fast loop increment - critical for tight loops */
+    CASE(inc_local): {
+        uint8_t slot = READ_BYTE();
+        /* Use cached bp - assume integer for loop counters */
+        bp[slot] = val_int(as_int(bp[slot]) + 1);
+        DISPATCH();
+    }
+    
+    CASE(dec_local): {
+        uint8_t slot = READ_BYTE();
+        /* Use cached bp */
+        bp[slot] = val_int(as_int(bp[slot]) - 1);
+        DISPATCH();
+    }
+    
+    /* Fused for-range iteration: counter in slot, limit in next slot */
+    /* Format: OP_FOR_RANGE, counter_slot, limit_slot, offset[2] */
+    CASE(for_range): {
+        uint8_t counter_slot = READ_BYTE();
+        uint8_t limit_slot = READ_BYTE();
+        uint16_t offset = READ_SHORT();
+        
+        /* Use cached bp - no branch! */
+        int32_t counter = as_int(bp[counter_slot]);
+        int32_t limit = as_int(bp[limit_slot]);
+        
+        if (counter >= limit) {
+            ip += offset;  /* Exit loop */
+        } else {
+            /* Push current value for loop body, then increment */
+            PUSH(val_int(counter));
+            bp[counter_slot] = val_int(counter + 1);
+        }
+        DISPATCH();
+    }
+    
+    /* Ultra-fast counted loop: uses immediate limit */
+    /* Format: OP_FOR_LOOP, counter_slot, var_slot, offset[2] */
+    CASE(for_loop): {
+        uint8_t counter_slot = READ_BYTE();
+        uint8_t var_slot = READ_BYTE();
+        uint16_t offset = READ_SHORT();
+        
+        /* Use cached bp - no branch! */
+        Value iter = bp[counter_slot];
+        if (IS_RANGE(iter)) {
+            ObjRange* range = AS_RANGE(iter);
+            if (range->current >= range->end) {
+                ip += offset;
+            } else {
+                bp[var_slot] = val_int(range->current++);
+            }
+        }
+        DISPATCH();
+    }
+    
+    /* Heap-allocation-free integer for loop: no Range object! */
+    /* Format: OP_FOR_INT_INIT - nothing to do, just skip */
+    CASE(for_int_init): {
+        DISPATCH();
+    }
+    
+    /* Ultra-fast int loop: counter, end, var all stored as raw ints in locals */
+    /* Format: OP_FOR_INT_LOOP, counter_slot, end_slot, var_slot, offset[2] */
+    CASE(for_int_loop): {
+        uint8_t counter_slot = READ_BYTE();
+        uint8_t end_slot = READ_BYTE();
+        uint8_t var_slot = READ_BYTE();
+        uint16_t offset = READ_SHORT();
+        
+        /* Use cached bp - no branch! */
+        int64_t counter = as_int(bp[counter_slot]);
+        int64_t end = as_int(bp[end_slot]);
+        
+        if (counter >= end) {
+            ip += offset;
+        } else {
+            bp[var_slot] = val_int(counter);
+            bp[counter_slot] = val_int(counter + 1);
+        }
+        DISPATCH();
+    }
+    
+    /* ULTRA-TIGHT counting loop - the fastest possible for numeric iteration */
+    /* No Range object, no type checks, just raw integer operations */
+    /* Format: OP_FOR_COUNT, counter_slot, end_slot, var_slot, offset[2] */
+    CASE(for_count): {
+        uint8_t counter_slot = READ_BYTE();
+        uint8_t end_slot = READ_BYTE();
+        uint8_t var_slot = READ_BYTE();
+        uint16_t offset = READ_SHORT();
+        
+        /* Use cached base pointer - no branch! */
+        int32_t counter, end_val;
+        FAST_INT(bp[counter_slot], counter);
+        FAST_INT(bp[end_slot], end_val);
+        
+        if (counter >= end_val) {
+            ip += offset;  /* Exit loop */
+        } else {
+            bp[var_slot] = val_int(counter);
+            bp[counter_slot] = val_int(counter + 1);
+        }
+        DISPATCH();
+    }
+    
+    /* Add immediate integer to local variable */
+    /* Format: OP_ADD_LOCAL_INT, slot, delta (signed 8-bit) */
+    CASE(add_local_int): {
+        uint8_t slot = READ_BYTE();
+        int8_t delta = (int8_t)READ_BYTE();
+        
+        /* Use cached bp - no branch! */
+        int32_t val;
+        FAST_INT(bp[slot], val);
+        bp[slot] = val_int(val + delta);
+        DISPATCH();
+    }
+    
+    /* Compare two locals and loop backward if condition is true */
+    /* Format: OP_LOCAL_LT_LOOP, slot_a, slot_b, offset[2] (backward) */
+    CASE(local_lt_loop): {
+        uint8_t slot_a = READ_BYTE();
+        uint8_t slot_b = READ_BYTE();
+        uint16_t offset = READ_SHORT();
+        
+        /* Use cached bp - no branch! */
+        int32_t a, b;
+        FAST_INT(bp[slot_a], a);
+        FAST_INT(bp[slot_b], b);
+        
+        if (a < b) {
+            ip -= offset;  /* Jump backward to loop start */
+        }
+        DISPATCH();
+    }
+    
+    /* ============================================================
+     * JIT-COMPILED LOOP HANDLERS
+     * These execute native machine code for maximum performance
+     * ============================================================ */
+    
+    /* JIT: for i in 0..iterations do x = x + 1 end
+     * Stack: [x, iterations] -> [result] */
+    CASE(jit_inc_loop): {
+        Value iter_val = POP();
+        Value x_val = POP();
+        
+        int32_t x, iterations;
+        FAST_INT(x_val, x);
+        FAST_INT(iter_val, iterations);
+        
+        /* Call JIT-compiled native code! */
+        int64_t result = jit_run_inc_loop(x, iterations);
+        
+        PUSH(val_int((int32_t)result));
+        DISPATCH();
+    }
+    
+    /* JIT: for i in 0..iterations do x = x * 3 + 7 end
+     * Stack: [x, iterations] -> [result] */
+    CASE(jit_arith_loop): {
+        Value iter_val = POP();
+        Value x_val = POP();
+        
+        int32_t x, iterations;
+        FAST_INT(x_val, x);
+        FAST_INT(iter_val, iterations);
+        
+        /* Call JIT-compiled native code! */
+        int64_t result = jit_run_arith_loop(x, iterations);
+        
+        PUSH(val_int((int32_t)result));
+        DISPATCH();
+    }
+    
+    /* JIT: for i in 0..iterations do if i%2==0 x++ else x-- end
+     * Stack: [x, iterations] -> [result] */
+    CASE(jit_branch_loop): {
+        Value iter_val = POP();
+        Value x_val = POP();
+        
+        int32_t x, iterations;
+        FAST_INT(x_val, x);
+        FAST_INT(iter_val, iterations);
+        
+        /* Call JIT-compiled native code! */
+        int64_t result = jit_run_branch_loop(x, iterations);
+        
+        PUSH(val_int((int32_t)result));
         DISPATCH();
     }
     

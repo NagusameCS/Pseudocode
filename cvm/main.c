@@ -3,6 +3,7 @@
  */
 
 #include "pseudo.h"
+#include "jit.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -74,14 +75,21 @@ static void repl(void) {
 }
 
 int main(int argc, char* argv[]) {
+    /* Initialize JIT compiler */
+    jit_init();
+    
     if (argc == 1) {
         repl();
     } else if (argc == 2) {
         run_file(argv[1]);
     } else {
         fprintf(stderr, "Usage: pseudo [script]\n");
+        jit_cleanup();
         exit(64);
     }
+    
+    /* Cleanup JIT */
+    jit_cleanup();
     
     return 0;
 }

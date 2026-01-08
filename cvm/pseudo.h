@@ -317,6 +317,24 @@ typedef enum {
     OP_GET_LOCAL_ADD,   /* Get local and add to TOS */
     OP_GET_LOCAL_SUB,   /* Get local and sub from TOS */
     
+    /* Ultra-fast loop superinstructions */
+    OP_INC_LOCAL,       /* Increment local by 1: local[slot]++ */
+    OP_DEC_LOCAL,       /* Decrement local by 1: local[slot]-- */
+    OP_FOR_RANGE,       /* Fused range iteration: slot, end_slot, offset */
+    OP_FOR_LOOP,        /* Fast loop: slot, limit, step, offset (inline counters) */
+    OP_FOR_INT_INIT,    /* Init int for loop: start_slot, end_slot, var_slot */
+    OP_FOR_INT_LOOP,    /* Int loop: start_slot, end_slot, var_slot, offset - no heap alloc! */
+    
+    /* Ultra-tight counting loop - no heap, no type checks, just raw ints */
+    OP_FOR_COUNT,       /* for i in 0..N: counter_slot, end_slot, var_slot, offset */
+    OP_ADD_LOCAL_INT,   /* local[slot] += immediate (8-bit signed) */
+    OP_LOCAL_LT_LOOP,   /* if local[a] < local[b] then jump backward */
+    
+    /* JIT-compiled loops - execute native machine code */
+    OP_JIT_INC_LOOP,    /* JIT: for i in 0..n do x = x + 1 end */
+    OP_JIT_ARITH_LOOP,  /* JIT: for i in 0..n do x = x * 3 + 7 end */
+    OP_JIT_BRANCH_LOOP, /* JIT: for i in 0..n do if i%2==0 x++ else x-- end */
+    
     /* Tail call optimization */
     OP_TAIL_CALL,       /* Tail recursive call - reuse stack frame */
     

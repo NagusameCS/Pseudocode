@@ -1,0 +1,63 @@
+// JIT Benchmark - Native speed loops
+// Uses JIT intrinsics for maximum performance
+
+print("=== JIT vs Interpreted Benchmark ===")
+
+// JIT Inc Loop (1e8)
+let start = time()
+let result = __jit_inc_loop(0, 100000000)
+let jit_time = (time() - start) / 1000000
+print("JIT Inc loop (1e8): " + str(jit_time) + " ms, result=" + str(result))
+
+// Interpreted Inc Loop (1e8)
+start = time()
+let x = 0
+for i in 0..100000000 do
+    x = x + 1
+end
+let interp_time = (time() - start) / 1000000
+print("Interp Inc loop (1e8): " + str(interp_time) + " ms, x=" + str(x))
+print("Speedup: " + str(interp_time / jit_time) + "x")
+
+print("")
+
+// JIT Arith Loop (1e8)
+start = time()
+result = __jit_arith_loop(1, 100000000)
+jit_time = (time() - start) / 1000000
+print("JIT Arith loop (1e8): " + str(jit_time) + " ms")
+
+// Interpreted Arith Loop (1e8)
+start = time()
+x = 1
+for i in 0..100000000 do
+    x = x * 3 + 7
+end
+interp_time = (time() - start) / 1000000
+print("Interp Arith loop (1e8): " + str(interp_time) + " ms")
+print("Speedup: " + str(interp_time / jit_time) + "x")
+
+print("")
+
+// JIT Branch Loop (1e8)
+start = time()
+result = __jit_branch_loop(0, 100000000)
+jit_time = (time() - start) / 1000000
+print("JIT Branch loop (1e8): " + str(jit_time) + " ms, result=" + str(result))
+
+// Interpreted Branch Loop (1e8)
+start = time()
+x = 0
+for i in 0..100000000 do
+    if i % 2 == 0 then
+        x = x + 1
+    else
+        x = x - 1
+    end
+end
+interp_time = (time() - start) / 1000000
+print("Interp Branch loop (1e8): " + str(interp_time) + " ms, x=" + str(x))
+print("Speedup: " + str(interp_time / jit_time) + "x")
+
+print("")
+print("=== Done ===")

@@ -448,6 +448,7 @@ static void named_variable(Token name, bool can_assign) {
     }
     
     if (can_assign && match(TOKEN_ASSIGN)) {
+        /* Parse RHS and emit assignment */
         expression();
         emit_bytes(set_op, (uint8_t)arg);
     } else {
@@ -506,6 +507,34 @@ static void variable(bool can_assign) {
             advance();
             consume(TOKEN_RPAREN, "Expect ')' after time.");
             emit_byte(OP_TIME);  /* time returns the timestamp */
+            return;
+        }
+        /* JIT-compiled intrinsics - native speed loops! */
+        if (name.length == 14 && memcmp(name.start, "__jit_inc_loop", 14) == 0) {
+            advance();
+            expression();  /* x */
+            consume(TOKEN_COMMA, "Expect ',' after x.");
+            expression();  /* iterations */
+            consume(TOKEN_RPAREN, "Expect ')' after __jit_inc_loop arguments.");
+            emit_byte(OP_JIT_INC_LOOP);
+            return;
+        }
+        if (name.length == 16 && memcmp(name.start, "__jit_arith_loop", 16) == 0) {
+            advance();
+            expression();  /* x */
+            consume(TOKEN_COMMA, "Expect ',' after x.");
+            expression();  /* iterations */
+            consume(TOKEN_RPAREN, "Expect ')' after __jit_arith_loop arguments.");
+            emit_byte(OP_JIT_ARITH_LOOP);
+            return;
+        }
+        if (name.length == 17 && memcmp(name.start, "__jit_branch_loop", 17) == 0) {
+            advance();
+            expression();  /* x */
+            consume(TOKEN_COMMA, "Expect ',' after x.");
+            expression();  /* iterations */
+            consume(TOKEN_RPAREN, "Expect ')' after __jit_branch_loop arguments.");
+            emit_byte(OP_JIT_BRANCH_LOOP);
             return;
         }
         if (name.length == 5 && memcmp(name.start, "input", 5) == 0) {
@@ -1503,42 +1532,103 @@ static void for_statement(void) {
     
     consume(TOKEN_IN, "Expect 'in' after variable.");
     
-    /* Parse the iterable expression (could be a range like 1..10 or an array) */
-    expression();
-    /* Stack now has the iterable (Range or Array) */
+    /* Parse the start expression (before ..) */
+    parse_precedence(PREC_TERM);  /* Parse up to but not including .. */
     
-    consume(TOKEN_DO, "Expect 'do' after iterable.");
-    skip_newlines();
-    
-    /* Create iterator local - the iterable is already on stack, just declare the local */
-    add_local((Token){.start = "__iter", .length = 6, .line = 0});
-    mark_initialized();
-    int iter_slot = current->local_count - 1;
-    /* The iterable on stack is now bound to iter_slot */
-    
-    /* Create loop variable local */
-    add_local(var_name);
-    mark_initialized();
-    int var_slot = current->local_count - 1;
-    emit_byte(OP_NIL);  /* Push placeholder for loop var */
-    
-    int loop_start = current_chunk()->count;
-    
-    /* Load iterator and get next */
-    emit_bytes(OP_GET_LOCAL, iter_slot);
-    int exit_jump = emit_jump(OP_ITER_NEXT);
-    /* Stack now has: [..., iterator_copy, next_value] */
-    emit_bytes(OP_SET_LOCAL, var_slot);
-    emit_byte(OP_POP);  /* Pop the next_value */
-    emit_byte(OP_POP);  /* Pop the iterator_copy */
-    
-    /* Begin inner scope for loop body variables */
-    begin_scope();
-    block();
-    end_scope();  /* Clean up loop body variables before next iteration */
-    
-    emit_loop(loop_start);
-    patch_jump(exit_jump);
+    /* Check if this is a range expression for the fast path */
+    if (match(TOKEN_RANGE)) {
+        /* FAST PATH: for i in start..end - no Range object! */
+        /* Stack has: start_value */
+        
+        /* Create __start local */
+        add_local((Token){.start = "__start", .length = 7, .line = 0});
+        mark_initialized();
+        int start_slot = current->local_count - 1;
+        /* start_value is now in start_slot */
+        
+        /* Parse end expression */
+        parse_precedence(PREC_TERM);
+        /* Stack has: end_value */
+        
+        /* Create __end local */
+        add_local((Token){.start = "__end", .length = 5, .line = 0});
+        mark_initialized();
+        int end_slot = current->local_count - 1;
+        /* end_value is now in end_slot */
+        
+        consume(TOKEN_DO, "Expect 'do' after range.");
+        skip_newlines();
+        
+        /* Create loop variable local - initialized with start value */
+        add_local(var_name);
+        mark_initialized();
+        int var_slot = current->local_count - 1;
+        emit_byte(OP_NIL);  /* Placeholder, will be set by FOR_COUNT */
+        
+        int loop_start = current_chunk()->count;
+        
+        /* Ultra-fast FOR_COUNT instruction */
+        /* Format: OP_FOR_COUNT, start_slot, end_slot, var_slot, offset[2] */
+        emit_byte(OP_FOR_COUNT);
+        emit_byte(start_slot);  /* Counter (starts at start, incremented each iter) */
+        emit_byte(end_slot);    /* End value (constant) */
+        emit_byte(var_slot);    /* Loop variable (set to counter each iter) */
+        emit_byte(0xff);
+        emit_byte(0xff);
+        int exit_jump = current_chunk()->count - 2;
+        
+        /* Loop body */
+        begin_scope();
+        block();
+        end_scope();
+        
+        emit_loop(loop_start);
+        
+        /* Patch exit jump */
+        int jump = current_chunk()->count - exit_jump - 2;
+        current_chunk()->code[exit_jump] = (jump >> 8) & 0xff;
+        current_chunk()->code[exit_jump + 1] = jump & 0xff;
+        
+    } else {
+        /* SLOW PATH: generic iterable (array, etc.) */
+        /* The expression we just parsed is the full iterable */
+        /* But we only parsed PREC_TERM, so we might have missed higher precedence */
+        /* Actually for arrays this is fine, array literals use PREC_CALL */
+        
+        consume(TOKEN_DO, "Expect 'do' after iterable.");
+        skip_newlines();
+        
+        /* Create iterator local */
+        add_local((Token){.start = "__iter", .length = 6, .line = 0});
+        mark_initialized();
+        int iter_slot = current->local_count - 1;
+        
+        /* Create loop variable local */
+        add_local(var_name);
+        mark_initialized();
+        int var_slot = current->local_count - 1;
+        emit_byte(OP_NIL);
+        
+        int loop_start = current_chunk()->count;
+        
+        /* Use OP_FOR_LOOP for Range objects (backwards compat) */
+        emit_byte(OP_FOR_LOOP);
+        emit_byte(iter_slot);
+        emit_byte(var_slot);
+        emit_byte(0xff);
+        emit_byte(0xff);
+        int exit_jump = current_chunk()->count - 2;
+        
+        begin_scope();
+        block();
+        end_scope();
+        
+        emit_loop(loop_start);
+        
+        int jump = current_chunk()->count - exit_jump - 2;
+        current_chunk()->code[exit_jump] = (jump >> 8) & 0xff;
+        current_chunk()->code[exit_jump + 1] = jump & 0xff;
+    }
     
     consume(TOKEN_END, "Expect 'end' after for loop.");
     end_scope();

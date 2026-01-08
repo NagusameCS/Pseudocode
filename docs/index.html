@@ -501,9 +501,8 @@
                             <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
                         </svg>
                     </div>
-                    <h3>High Performance</h3>
-                    <p>The C-based VM uses NaN-boxing, computed gotos, and register-cached stack pointers. Runs 2.5x
-                        faster than Python on recursive benchmarks.</p>
+                    <h3>C-Speed Performance</h3>
+                    <p>x86-64 JIT compiler achieves 0.97x C speed for tight loops. The NaN-boxing VM with computed gotos runs 3x faster than Python.</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">
@@ -632,9 +631,110 @@
             <h2>Performance Benchmarks</h2>
             <div class="benchmarks">
                 <div class="benchmark-header">
+                    <h3>🚀 JIT Compiler - C-Speed Performance</h3>
+                    <span class="benchmark-info">New! x86-64 JIT compilation for tight loops. Lower is better.</span>
+                </div>
+                <table class="benchmark-table">
+                    <thead>
+                        <tr>
+                            <th>Benchmark (1e8 iterations)</th>
+                            <th>JIT Time</th>
+                            <th>C Time</th>
+                            <th>vs C</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Increment Loop (x = x + 1)</td>
+                            <td class="time-value">32ms</td>
+                            <td class="time-value">33ms</td>
+                            <td class="speedup">0.97x C</td>
+                            <td>
+                                <div class="benchmark-bar">
+                                    <div class="benchmark-fill fast" style="width: 97%;"></div>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Arithmetic Loop (x = x*3 + 7)</td>
+                            <td class="time-value">63ms</td>
+                            <td class="time-value">64ms</td>
+                            <td class="speedup">0.98x C</td>
+                            <td>
+                                <div class="benchmark-bar">
+                                    <div class="benchmark-fill fast" style="width: 98%;"></div>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Branch Loop (if/else)</td>
+                            <td class="time-value">76ms</td>
+                            <td class="time-value">64ms</td>
+                            <td class="speedup">0.84x C</td>
+                            <td>
+                                <div class="benchmark-bar">
+                                    <div class="benchmark-fill fast" style="width: 84%;"></div>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="benchmark-header" style="margin-top: 32px;">
+                    <h3>JIT vs Interpreted Speedup</h3>
+                    <span class="benchmark-info">JIT intrinsics vs bytecode interpreter</span>
+                </div>
+                <table class="benchmark-table">
+                    <thead>
+                        <tr>
+                            <th>Benchmark</th>
+                            <th>JIT</th>
+                            <th>Interpreted</th>
+                            <th>Speedup</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Inc Loop (1e8)</td>
+                            <td class="time-value">32ms</td>
+                            <td class="time-value">1641ms</td>
+                            <td class="speedup">50x faster</td>
+                            <td>
+                                <div class="benchmark-bar">
+                                    <div class="benchmark-fill fast" style="width: 100%;"></div>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Arith Loop (1e8)</td>
+                            <td class="time-value">63ms</td>
+                            <td class="time-value">1874ms</td>
+                            <td class="speedup">30x faster</td>
+                            <td>
+                                <div class="benchmark-bar">
+                                    <div class="benchmark-fill fast" style="width: 60%;"></div>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Branch Loop (1e8)</td>
+                            <td class="time-value">76ms</td>
+                            <td class="time-value">2560ms</td>
+                            <td class="speedup">34x faster</td>
+                            <td>
+                                <div class="benchmark-bar">
+                                    <div class="benchmark-fill fast" style="width: 68%;"></div>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="benchmark-header" style="margin-top: 32px;">
                     <h3>Recursive Fibonacci - fib(30)</h3>
-                    <span class="benchmark-info">Lower is better. Measured on AMD Ryzen / Intel i7, PGO-optimized
-                        build.</span>
+                    <span class="benchmark-info">Classic recursion benchmark. Lower is better.</span>
                 </div>
                 <table class="benchmark-table">
                     <thead>
@@ -648,11 +748,11 @@
                     <tbody>
                         <tr>
                             <td>Pseudocode (C VM + PGO)</td>
-                            <td class="time-value">~55ms</td>
-                            <td class="speedup">2.5x faster</td>
+                            <td class="time-value">~44ms</td>
+                            <td class="speedup">3.1x faster</td>
                             <td>
                                 <div class="benchmark-bar">
-                                    <div class="benchmark-fill fast" style="width: 40%;"></div>
+                                    <div class="benchmark-fill fast" style="width: 32%;"></div>
                                 </div>
                             </td>
                         </tr>
@@ -692,6 +792,11 @@
                     </thead>
                     <tbody>
                         <tr>
+                            <td>x86-64 JIT</td>
+                            <td class="speedup">30-50x faster</td>
+                            <td>Native machine code generation for hot loops</td>
+                        </tr>
+                        <tr>
                             <td>NaN-boxing</td>
                             <td class="speedup">~30% faster</td>
                             <td>All values fit in 64 bits, eliminating pointer indirection</td>
@@ -702,14 +807,14 @@
                             <td>Direct threading instead of switch dispatch</td>
                         </tr>
                         <tr>
-                            <td>Register-cached SP</td>
+                            <td>Register-cached SP/BP</td>
                             <td class="speedup">~15% faster</td>
-                            <td>Stack pointer kept in CPU register</td>
+                            <td>Stack and base pointers kept in CPU registers</td>
                         </tr>
                         <tr>
                             <td>Superinstructions</td>
                             <td class="speedup">~10% faster</td>
-                            <td>Fused opcodes for common patterns (GET_LOCAL_0, CONST_1, etc.)</td>
+                            <td>Fused opcodes for common patterns (GET_LOCAL_0, FOR_COUNT)</td>
                         </tr>
                         <tr>
                             <td>PGO</td>

@@ -1,0 +1,45 @@
+// JIT Benchmark - Direct native code execution
+// This tests the JIT compiler for maximum speed
+
+// Use special JIT-accelerated loop functions
+
+fn bench_jit_inc_loop()
+    let start = time()
+    let x = 0
+    // This should be JIT-compiled to native code
+    for i in 0..100000000 do
+        x = x + 1
+    end
+    let elapsed = time() - start
+    print("JIT Inc loop (1e8): " + str(elapsed / 1000000) + " ms, x=" + str(x))
+end
+
+fn bench_jit_arith_loop()
+    let start = time()
+    let x = 1
+    for i in 0..100000000 do
+        x = x * 3 + 7
+    end
+    let elapsed = time() - start
+    print("JIT Arith loop (1e8): " + str(elapsed / 1000000) + " ms")
+end
+
+fn bench_jit_branch_loop()
+    let start = time()
+    let x = 0
+    for i in 0..100000000 do
+        if i % 2 == 0 then
+            x = x + 1
+        else
+            x = x - 1
+        end
+    end
+    let elapsed = time() - start
+    print("JIT Branch loop (1e8): " + str(elapsed / 1000000) + " ms, x=" + str(x))
+end
+
+print("=== JIT Benchmark Suite ===")
+bench_jit_inc_loop()
+bench_jit_arith_loop()
+bench_jit_branch_loop()
+print("=== Done ===")

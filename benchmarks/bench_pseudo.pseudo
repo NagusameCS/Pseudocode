@@ -1,0 +1,87 @@
+// Pseudocode Benchmark Suite - Simplified
+
+// 1. Empty loop (1e8 iterations)
+fn bench_empty_loop()
+    let start = time()
+    let x = 0
+    for i in 0..100000000 do
+        x = x + 1
+    end
+    let elapsed = time() - start
+    print("1. Empty loop (1e8):")
+    print(elapsed / 1000000)
+end
+
+// 2. Function call cost
+fn add_one(x: int) -> int
+    return x + 1
+end
+
+fn bench_function_call()
+    let start = time()
+    let x = 0
+    for i in 0..10000000 do
+        x = add_one(x)
+    end
+    let elapsed = time() - start
+    print("2. Function call (1e7):")
+    print(elapsed / 1000000)
+end
+
+// 3. Integer arithmetic
+fn bench_int_arith()
+    let start = time()
+    let x = 1
+    for i in 0..100000000 do
+        x = x * 3 + 7
+    end
+    let elapsed = time() - start
+    print("3. Int arithmetic (1e8):")
+    print(elapsed / 1000000)
+end
+
+// 7. Branch-heavy code
+fn bench_branching()
+    let start = time()
+    let x = 0
+    for i in 0..100000000 do
+        if i % 2 == 0 then
+            x = x + 1
+        else
+            x = x - 1
+        end
+    end
+    let elapsed = time() - start
+    print("7. Branching (1e8):")
+    print(elapsed / 1000000)
+end
+
+// 11. Recursion (smaller depth to avoid stack overflow)
+fn recurse(n: int) -> int
+    if n == 0 then
+        return 0
+    end
+    return recurse(n - 1) + 1
+end
+
+fn bench_recursion()
+    let start = time()
+    let result = 0
+    for i in 0..1000 do
+        result = result + recurse(500)
+    end
+    let elapsed = time() - start
+    print("11. Recursion (1k*500):")
+    print(elapsed / 1000000)
+end
+
+// Run benchmarks
+print("=== Pseudocode Benchmark Suite ===")
+
+bench_empty_loop()
+bench_function_call()
+bench_int_arith()
+bench_branching()
+bench_recursion()
+
+print("=== Done (times in ms) ===")
