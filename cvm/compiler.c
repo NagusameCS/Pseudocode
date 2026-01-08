@@ -428,9 +428,34 @@ static void number(bool can_assign) {
 static void string(bool can_assign) {
     (void)can_assign;
     /* Skip opening and closing quotes */
-    ObjString* str = copy_string(compiling_vm, 
-        parser.previous.start + 1, 
-        parser.previous.length - 2);
+    const char* src = parser.previous.start + 1;
+    int src_len = parser.previous.length - 2;
+    
+    /* Process escape sequences */
+    char* buffer = malloc(src_len + 1);
+    int dst_len = 0;
+    
+    for (int i = 0; i < src_len; i++) {
+        if (src[i] == '\\' && i + 1 < src_len) {
+            i++;
+            switch (src[i]) {
+                case 'n': buffer[dst_len++] = '\n'; break;
+                case 't': buffer[dst_len++] = '\t'; break;
+                case 'r': buffer[dst_len++] = '\r'; break;
+                case '\\': buffer[dst_len++] = '\\'; break;
+                case '"': buffer[dst_len++] = '"'; break;
+                case '\'': buffer[dst_len++] = '\''; break;
+                case '0': buffer[dst_len++] = '\0'; break;
+                default: buffer[dst_len++] = src[i]; break;
+            }
+        } else {
+            buffer[dst_len++] = src[i];
+        }
+    }
+    buffer[dst_len] = '\0';
+    
+    ObjString* str = copy_string(compiling_vm, buffer, dst_len);
+    free(buffer);
     emit_constant(val_obj(str));
 }
 

@@ -1,0 +1,109 @@
+// Dynamic Programming Examples
+
+// 1. Fibonacci with memoization (top-down DP)
+let memo = dict()
+
+fn fib_memo(n)
+    if n < 2 then
+        return n
+    end
+    
+    let key = str(n)
+    if dict_has(memo, key) then
+        return dict_get(memo, key)
+    end
+    
+    let result = fib_memo(n - 1) + fib_memo(n - 2)
+    dict_set(memo, key, result)
+    return result
+end
+
+print("=== Fibonacci with Memoization ===")
+let start = time()
+let fib40 = fib_memo(40)
+let elapsed = (time() - start) / 1000000
+print("fib(40) = ")
+print(fib40)
+print("Time (ms): ")
+print(elapsed)
+
+// 2. Bottom-up DP - Fibonacci  
+fn fib_dp(n)
+    if n < 2 then
+        return n
+    end
+    
+    let prev2 = 0
+    let prev1 = 1
+    let current = 0
+    
+    for i in 2..(n+1) do
+        current = prev1 + prev2
+        prev2 = prev1
+        prev1 = current
+    end
+    
+    return current
+end
+
+print("\n=== Bottom-up DP Fibonacci ===")
+let start2 = time()
+let fib50 = fib_dp(50)
+let elapsed2 = (time() - start2) / 1000000
+print("fib(50) = ")
+print(fib50)
+print("Time (ms): ")
+print(elapsed2)
+
+// 3. Factorial with memoization
+fn factorial_memo(n)
+    if n <= 1 then
+        return 1
+    end
+    let key = "f" + str(n)
+    if dict_has(memo, key) then
+        return dict_get(memo, key)
+    end
+    let result = n * factorial_memo(n - 1)
+    dict_set(memo, key, result)
+    return result
+end
+
+print("\n=== Factorial with Memoization ===")
+print("10! = ")
+print(factorial_memo(10))
+print("15! = ")
+print(factorial_memo(15))
+
+// 4. Sum of squares (simple DP pattern)
+fn sum_of_squares(n)
+    let total = 0
+    for i in 1..(n+1) do
+        total = total + i * i
+    end
+    return total
+end
+
+print("\n=== Sum of Squares ===")
+print("Sum 1^2 + 2^2 + ... + 10^2 = ")
+print(sum_of_squares(10))
+
+// 5. Climbing Stairs (classic DP)
+fn climb_stairs(n)
+    if n <= 2 then
+        return n
+    end
+    let key = "c" + str(n)
+    if dict_has(memo, key) then
+        return dict_get(memo, key)
+    end
+    let result = climb_stairs(n-1) + climb_stairs(n-2)
+    dict_set(memo, key, result)
+    return result
+end
+
+print("\n=== Climbing Stairs DP ===")
+print("Ways to climb 20 stairs: ")
+print(climb_stairs(20))
+
+print("\n=== Dynamic Programming Works! ===")
