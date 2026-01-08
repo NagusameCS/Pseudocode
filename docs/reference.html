@@ -4,19 +4,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Language Reference - Pseudocode</title>
+    <title>Reference - Pseudocode</title>
     <style>
         :root {
-            --primary: #a1a1aa;
-            --primary-dark: #71717a;
-            --bg: #09090b;
-            --bg-light: #18181b;
-            --text: #fafafa;
-            --text-muted: #a1a1aa;
-            --accent: #e4e4e7;
-            --code-bg: #18181b;
-            --success: #a1a1aa;
-            --sidebar-width: 280px;
+            --bg-primary: #1b1b1f;
+            --bg-secondary: #232327;
+            --bg-tertiary: #2a2a2e;
+            --text-primary: #f5f5f7;
+            --text-secondary: #b3b3b6;
+            --text-tertiary: #8e8e93;
+            --accent: #a78bfa;
+            --accent-dim: #7c5cbf;
+            --border: #3a3a3e;
+            --code-bg: #161618;
+            --success: #34d399;
+            --warning: #fbbf24;
+            --link: #93c5fd;
+            --sidebar-width: 260px;
         }
 
         * {
@@ -26,791 +30,1034 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            line-height: 1.7;
+            font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            font-size: 16px;
         }
 
-        /* Sidebar */
-        .sidebar {
+        a {
+            color: var(--link);
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
             position: fixed;
             top: 0;
             left: 0;
-            width: var(--sidebar-width);
-            height: 100vh;
-            background: var(--bg-light);
-            padding: 2rem;
-            overflow-y: auto;
-            border-right: 1px solid #334155;
+            right: 0;
+            z-index: 100;
         }
 
-        .sidebar-logo {
-            font-size: 1.25rem;
+        .header-inner {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 56px;
+            padding: 0 24px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .logo {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .logo-icon {
+            width: 24px;
+            height: 24px;
+            background: var(--accent);
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             font-weight: 700;
-            color: var(--accent);
-            text-decoration: none;
-            display: block;
-            margin-bottom: 2rem;
+            font-size: 12px;
+            color: #fff;
         }
 
-        .sidebar-section {
-            margin-bottom: 1.5rem;
-        }
-
-        .sidebar-section h3 {
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            color: var(--text-muted);
-            margin-bottom: 0.5rem;
-        }
-
-        .sidebar-section ul {
+        nav ul {
+            display: flex;
+            gap: 24px;
             list-style: none;
         }
 
-        .sidebar-section a {
-            display: block;
-            padding: 0.25rem 0;
-            color: var(--text);
+        nav a {
+            color: var(--text-secondary);
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        nav a:hover {
+            color: var(--text-primary);
             text-decoration: none;
-            font-size: 0.9rem;
-            transition: color 0.2s;
         }
 
-        .sidebar-section a:hover {
+        .layout {
+            display: flex;
+            margin-top: 56px;
+        }
+
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            position: fixed;
+            top: 56px;
+            bottom: 0;
+            overflow-y: auto;
+            padding: 24px 0;
+        }
+
+        .sidebar-section {
+            margin-bottom: 24px;
+        }
+
+        .sidebar-title {
+            padding: 0 20px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-tertiary);
+            margin-bottom: 8px;
+        }
+
+        .sidebar-link {
+            display: block;
+            padding: 6px 20px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            border-left: 2px solid transparent;
+        }
+
+        .sidebar-link:hover {
+            color: var(--text-primary);
+            background: var(--bg-tertiary);
+            text-decoration: none;
+        }
+
+        .sidebar-link.active {
             color: var(--accent);
+            border-left-color: var(--accent);
+            background: rgba(167, 139, 250, 0.1);
         }
 
-        /* Main content */
-        .main {
+        .content {
+            flex: 1;
             margin-left: var(--sidebar-width);
-            padding: 3rem 4rem;
+            padding: 40px 48px;
             max-width: calc(100% - var(--sidebar-width));
         }
 
+        .content-inner {
+            max-width: 860px;
+        }
+
         h1 {
-            font-size: 2.5rem;
-            margin-bottom: 1rem;
-            background: linear-gradient(135deg, var(--accent), var(--primary));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+            letter-spacing: -0.01em;
+        }
+
+        .page-intro {
+            font-size: 1.125rem;
+            color: var(--text-secondary);
+            margin-bottom: 40px;
+            line-height: 1.7;
         }
 
         h2 {
-            font-size: 1.75rem;
-            margin: 3rem 0 1rem;
-            padding-top: 1rem;
-            border-top: 1px solid var(--bg-light);
-            color: var(--accent);
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin: 48px 0 20px;
+            padding-top: 24px;
+            border-top: 1px solid var(--border);
+        }
+
+        h2:first-of-type {
+            margin-top: 0;
+            padding-top: 0;
+            border-top: none;
         }
 
         h3 {
-            font-size: 1.25rem;
-            margin: 2rem 0 0.75rem;
-            color: var(--text);
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin: 32px 0 12px;
+            color: var(--text-primary);
+        }
+
+        h4 {
+            font-size: 0.9375rem;
+            font-weight: 600;
+            margin: 24px 0 8px;
+            color: var(--text-secondary);
         }
 
         p {
-            margin-bottom: 1rem;
-            color: var(--text-muted);
+            margin-bottom: 16px;
+            color: var(--text-secondary);
         }
 
-        p code,
-        li code {
+        .syntax-box {
             background: var(--code-bg);
-            padding: 0.15rem 0.4rem;
-            border-radius: 0.25rem;
-            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin: 16px 0;
+            font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+            font-size: 13px;
+            overflow-x: auto;
+        }
+
+        code {
+            font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+            background: var(--bg-tertiary);
+            padding: 2px 6px;
+            border-radius: 4px;
             font-size: 0.875em;
-            color: var(--accent);
         }
 
         pre {
             background: var(--code-bg);
-            padding: 1.25rem;
-            border-radius: 0.5rem;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin: 16px 0;
             overflow-x: auto;
-            margin: 1rem 0;
-            font-family: 'JetBrains Mono', 'Fira Code', monospace;
-            font-size: 0.9rem;
+            font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+            font-size: 13px;
             line-height: 1.6;
-            border: 1px solid #334155;
         }
 
-        .keyword {
-            color: #c084fc;
+        pre code {
+            background: none;
+            padding: 0;
         }
 
-        .function {
-            color: #60a5fa;
-        }
-
-        .string {
-            color: #4ade80;
-        }
-
-        .number {
-            color: #f97316;
-        }
-
-        .comment {
-            color: #64748b;
-        }
-
-        .operator {
-            color: #f472b6;
-        }
+        .keyword { color: #c084fc; }
+        .function { color: #60a5fa; }
+        .string { color: #34d399; }
+        .number { color: #fb923c; }
+        .comment { color: #6b7280; }
+        .type { color: #f472b6; }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            margin: 1rem 0;
+            margin: 16px 0;
+            font-size: 14px;
         }
 
-        th,
-        td {
-            padding: 0.75rem 1rem;
+        th, td {
+            padding: 12px 16px;
             text-align: left;
-            border: 1px solid #334155;
+            border-bottom: 1px solid var(--border);
         }
 
         th {
-            background: var(--bg-light);
-            color: var(--accent);
+            color: var(--text-tertiary);
+            font-weight: 500;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            background: var(--bg-secondary);
         }
 
         td {
-            color: var(--text-muted);
+            color: var(--text-secondary);
         }
 
         td code {
-            background: var(--bg);
-            padding: 0.1rem 0.3rem;
-            border-radius: 0.25rem;
-            color: var(--text);
+            color: var(--text-primary);
         }
 
-        ul,
-        ol {
-            margin: 1rem 0 1rem 1.5rem;
-            color: var(--text-muted);
+        .func-signature {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin: 16px 0;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
         }
 
-        li {
-            margin-bottom: 0.5rem;
-        }
-
-        .tip {
-            background: rgba(34, 197, 94, 0.1);
-            border-left: 4px solid var(--success);
-            padding: 1rem 1.25rem;
-            margin: 1rem 0;
-            border-radius: 0 0.5rem 0.5rem 0;
-        }
-
-        .tip-title {
+        .func-name {
+            color: var(--accent);
             font-weight: 600;
-            color: var(--success);
-            margin-bottom: 0.5rem;
         }
 
-        @media (max-width: 900px) {
+        .param {
+            color: var(--warning);
+        }
+
+        .return-type {
+            color: var(--success);
+        }
+
+        .tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-left: 8px;
+        }
+
+        .tag-new {
+            background: rgba(52, 211, 153, 0.2);
+            color: var(--success);
+        }
+
+        .tag-io {
+            background: rgba(96, 165, 250, 0.2);
+            color: var(--link);
+        }
+
+        .note {
+            background: rgba(167, 139, 250, 0.1);
+            border-left: 3px solid var(--accent);
+            padding: 16px 20px;
+            margin: 16px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .note p {
+            margin: 0;
+            color: var(--text-primary);
+        }
+
+        .warning {
+            background: rgba(251, 191, 36, 0.1);
+            border-left: 3px solid var(--warning);
+            padding: 16px 20px;
+            margin: 16px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .warning p {
+            margin: 0;
+            color: var(--text-primary);
+        }
+
+        .toc {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px 24px;
+            margin-bottom: 32px;
+        }
+
+        .toc-title {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-tertiary);
+            margin-bottom: 12px;
+        }
+
+        .toc-list {
+            columns: 2;
+            column-gap: 32px;
+            list-style: none;
+        }
+
+        .toc-list li {
+            margin-bottom: 4px;
+        }
+
+        .toc-list a {
+            font-size: 13px;
+        }
+
+        @media (max-width: 1024px) {
             .sidebar {
                 display: none;
             }
-
-            .main {
+            .content {
                 margin-left: 0;
-                padding: 2rem;
                 max-width: 100%;
+                padding: 32px 24px;
+            }
+            .toc-list {
+                columns: 1;
             }
         }
     </style>
 </head>
 
 <body>
-    <nav class="sidebar">
-        <a href="index.html" class="sidebar-logo">⚡ Pseudocode</a>
-
-        <div class="sidebar-section">
-            <h3>Getting Started</h3>
-            <ul>
-                <li><a href="#introduction">Introduction</a></li>
-                <li><a href="#installation">Installation</a></li>
-                <li><a href="#hello-world">Hello World</a></li>
-            </ul>
+    <header>
+        <div class="header-inner">
+            <a href="index.html" class="logo">
+                <span class="logo-icon">P</span>
+                Pseudocode
+            </a>
+            <nav>
+                <ul>
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="#syntax">Syntax</a></li>
+                    <li><a href="#types">Types</a></li>
+                    <li><a href="#builtins">Built-ins</a></li>
+                    <li><a href="https://github.com/NagusameCS/Pseudocode">GitHub</a></li>
+                </ul>
+            </nav>
         </div>
+    </header>
 
-        <div class="sidebar-section">
-            <h3>Language Basics</h3>
-            <ul>
-                <li><a href="#variables">Variables</a></li>
-                <li><a href="#data-types">Data Types</a></li>
-                <li><a href="#operators">Operators</a></li>
-                <li><a href="#comments">Comments</a></li>
-            </ul>
-        </div>
+    <div class="layout">
+        <aside class="sidebar">
+            <div class="sidebar-section">
+                <div class="sidebar-title">Language</div>
+                <a href="#syntax" class="sidebar-link">Syntax</a>
+                <a href="#variables" class="sidebar-link">Variables</a>
+                <a href="#types" class="sidebar-link">Types</a>
+                <a href="#operators" class="sidebar-link">Operators</a>
+                <a href="#control-flow" class="sidebar-link">Control Flow</a>
+                <a href="#functions" class="sidebar-link">Functions</a>
+                <a href="#pattern-matching" class="sidebar-link">Pattern Matching</a>
+            </div>
+            <div class="sidebar-section">
+                <div class="sidebar-title">Built-in Functions</div>
+                <a href="#io" class="sidebar-link">I/O</a>
+                <a href="#string-funcs" class="sidebar-link">Strings</a>
+                <a href="#math-funcs" class="sidebar-link">Math</a>
+                <a href="#array-funcs" class="sidebar-link">Arrays</a>
+                <a href="#dict-funcs" class="sidebar-link">Dictionaries</a>
+                <a href="#file-funcs" class="sidebar-link">File System</a>
+                <a href="#http-funcs" class="sidebar-link">HTTP</a>
+                <a href="#json-funcs" class="sidebar-link">JSON</a>
+                <a href="#vector-funcs" class="sidebar-link">Vectors</a>
+                <a href="#binary-funcs" class="sidebar-link">Binary</a>
+                <a href="#hash-funcs" class="sidebar-link">Hashing</a>
+                <a href="#time-funcs" class="sidebar-link">Time</a>
+            </div>
+        </aside>
 
-        <div class="sidebar-section">
-            <h3>Control Flow</h3>
-            <ul>
-                <li><a href="#if-statements">If Statements</a></li>
-                <li><a href="#match-expressions">Match Expressions</a></li>
-                <li><a href="#while-loops">While Loops</a></li>
-                <li><a href="#for-loops">For Loops</a></li>
-            </ul>
-        </div>
+        <main class="content">
+            <div class="content-inner">
+                <h1>Pseudocode Reference</h1>
+                <p class="page-intro">
+                    Complete language reference for Pseudocode, a high-performance language with intuitive syntax.
+                    This document covers all language constructs and the 80+ built-in functions available.
+                </p>
 
-        <div class="sidebar-section">
-            <h3>Functions</h3>
-            <ul>
-                <li><a href="#defining-functions">Defining Functions</a></li>
-                <li><a href="#recursion">Recursion</a></li>
-            </ul>
-        </div>
+                <nav class="toc">
+                    <div class="toc-title">On This Page</div>
+                    <ul class="toc-list">
+                        <li><a href="#syntax">Syntax Overview</a></li>
+                        <li><a href="#variables">Variables</a></li>
+                        <li><a href="#types">Data Types</a></li>
+                        <li><a href="#operators">Operators</a></li>
+                        <li><a href="#control-flow">Control Flow</a></li>
+                        <li><a href="#functions">Functions</a></li>
+                        <li><a href="#pattern-matching">Pattern Matching</a></li>
+                        <li><a href="#builtins">Built-in Functions</a></li>
+                    </ul>
+                </nav>
 
-        <div class="sidebar-section">
-            <h3>Data Structures</h3>
-            <ul>
-                <li><a href="#arrays">Arrays</a></li>
-                <li><a href="#strings">Strings</a></li>
-            </ul>
-        </div>
+                <!-- SYNTAX -->
+                <h2 id="syntax">Syntax Overview</h2>
+                <p>
+                    Pseudocode uses a clean, readable syntax inspired by natural language. Statements are terminated by newlines,
+                    and blocks are delimited by keywords like <code>end</code> rather than braces.
+                </p>
 
-        <div class="sidebar-section">
-            <h3>Built-in Functions</h3>
-            <ul>
-                <li><a href="#io-functions">I/O Functions</a></li>
-                <li><a href="#math-functions">Math Functions</a></li>
-                <li><a href="#bit-functions">Bit Intrinsics</a></li>
-                <li><a href="#string-functions">String Functions</a></li>
-                <li><a href="#type-functions">Type Functions</a></li>
-                <li><a href="#array-functions">Array Functions</a></li>
-            </ul>
-        </div>
-    </nav>
+                <h3>Comments</h3>
+                <pre><code><span class="comment">// Single-line comment</span>
 
-    <main class="main">
-        <h1>Language Reference</h1>
-        <p>Complete documentation for the Pseudocode programming language.</p>
+<span class="comment">/* Multi-line
+   comment */</span></code></pre>
 
-        <h2 id="introduction">Introduction</h2>
-        <p>Pseudocode is a simple, fast programming language designed to be as readable as possible. It compiles to
-            bytecode and runs on a high-performance virtual machine written in C.</p>
+                <!-- VARIABLES -->
+                <h2 id="variables">Variables</h2>
+                <p>
+                    Variables are declared with <code>let</code>. Pseudocode is dynamically typed, so variables can hold any value.
+                </p>
 
-        <p>Key features:</p>
-        <ul>
-            <li><strong>Intuitive syntax</strong> — reads like natural language</li>
-            <li><strong>Blazing fast</strong> — faster than native Python</li>
-            <li><strong>Dynamic typing</strong> — no type annotations needed</li>
-            <li><strong>First-class functions</strong> — supports recursion and closures</li>
-            <li><strong>Built-in arrays</strong> — with push, pop, and slicing</li>
-        </ul>
+                <div class="syntax-box">
+                    <span class="keyword">let</span> <span class="param">name</span> = <span class="type">expression</span>
+                </div>
 
-        <h2 id="installation">Installation</h2>
-        <p>Build the C VM from source:</p>
-        <pre><span class="comment"># Clone the repository</span>
-git clone https://github.com/yourusername/Pseudocode.git
-cd Pseudocode/cvm
+                <pre><code><span class="keyword">let</span> x = <span class="number">42</span>
+<span class="keyword">let</span> name = <span class="string">"Alice"</span>
+<span class="keyword">let</span> items = [<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]
 
-<span class="comment"># Build (requires GCC or Clang)</span>
-make
+<span class="comment">// Reassignment</span>
+x = x + <span class="number">1</span></code></pre>
 
-<span class="comment"># Run a program</span>
-./pseudo ../examples/hello.pseudo</pre>
+                <!-- TYPES -->
+                <h2 id="types">Data Types</h2>
 
-        <h2 id="hello-world">Hello World</h2>
-        <p>Create a file called <code>hello.pseudo</code>:</p>
-        <pre><span class="function">print</span>(<span class="string">"Hello, World!"</span>)</pre>
-        <p>Run it:</p>
-        <pre>./pseudo hello.pseudo</pre>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>Description</th>
+                            <th>Example</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>number</code></td>
+                            <td>64-bit floating point</td>
+                            <td><code>42</code>, <code>3.14</code>, <code>-17</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>string</code></td>
+                            <td>UTF-8 text</td>
+                            <td><code>"hello"</code>, <code>'world'</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>boolean</code></td>
+                            <td>True or false</td>
+                            <td><code>true</code>, <code>false</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>nil</code></td>
+                            <td>Absence of value</td>
+                            <td><code>nil</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>array</code></td>
+                            <td>Ordered collection</td>
+                            <td><code>[1, 2, 3]</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>dict</code></td>
+                            <td>Key-value mapping</td>
+                            <td><code>dict_new()</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>function</code></td>
+                            <td>First-class function</td>
+                            <td><code>fn foo() ... end</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>bytes</code></td>
+                            <td>Binary data</td>
+                            <td><code>bytes_new(16)</code></td>
+                        </tr>
+                    </tbody>
+                </table>
 
-        <h2 id="variables">Variables</h2>
-        <p>Declare variables using the <code>let</code> keyword:</p>
-        <pre><span class="keyword">let</span> name = <span class="string">"Alice"</span>
-<span class="keyword">let</span> age = <span class="number">25</span>
-<span class="keyword">let</span> pi = <span class="number">3.14159</span>
-<span class="keyword">let</span> active = <span class="keyword">true</span></pre>
+                <!-- OPERATORS -->
+                <h2 id="operators">Operators</h2>
 
-        <p>Variables are dynamically typed and can be reassigned:</p>
-        <pre><span class="keyword">let</span> x = <span class="number">10</span>
-x = <span class="string">"now a string"</span>  <span class="comment">// Valid!</span></pre>
+                <h3>Arithmetic</h3>
+                <table>
+                    <thead>
+                        <tr><th>Operator</th><th>Description</th><th>Example</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><code>+</code></td><td>Addition</td><td><code>5 + 3</code> = <code>8</code></td></tr>
+                        <tr><td><code>-</code></td><td>Subtraction</td><td><code>5 - 3</code> = <code>2</code></td></tr>
+                        <tr><td><code>*</code></td><td>Multiplication</td><td><code>5 * 3</code> = <code>15</code></td></tr>
+                        <tr><td><code>/</code></td><td>Division</td><td><code>5 / 2</code> = <code>2.5</code></td></tr>
+                        <tr><td><code>%</code></td><td>Modulo</td><td><code>5 % 3</code> = <code>2</code></td></tr>
+                    </tbody>
+                </table>
 
-        <h2 id="data-types">Data Types</h2>
-        <table>
-            <tr>
-                <th>Type</th>
-                <th>Examples</th>
-                <th>Description</th>
-            </tr>
-            <tr>
-                <td>Number</td>
-                <td><code>42</code>, <code>3.14</code>, <code>-7</code></td>
-                <td>Integers and floating-point</td>
-            </tr>
-            <tr>
-                <td>String</td>
-                <td><code>"hello"</code>, <code>"world"</code></td>
-                <td>Text in double quotes</td>
-            </tr>
-            <tr>
-                <td>Boolean</td>
-                <td><code>true</code>, <code>false</code></td>
-                <td>Logical values</td>
-            </tr>
-            <tr>
-                <td>Nil</td>
-                <td><code>nil</code></td>
-                <td>Absence of value</td>
-            </tr>
-            <tr>
-                <td>Array</td>
-                <td><code>[1, 2, 3]</code></td>
-                <td>Ordered collection</td>
-            </tr>
-            <tr>
-                <td>Function</td>
-                <td><code>fn name() ... end</code></td>
-                <td>Callable code block</td>
-            </tr>
-        </table>
+                <h3>Comparison</h3>
+                <table>
+                    <thead>
+                        <tr><th>Operator</th><th>Description</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><code>==</code></td><td>Equal</td></tr>
+                        <tr><td><code>!=</code></td><td>Not equal</td></tr>
+                        <tr><td><code>&lt;</code></td><td>Less than</td></tr>
+                        <tr><td><code>&gt;</code></td><td>Greater than</td></tr>
+                        <tr><td><code>&lt;=</code></td><td>Less than or equal</td></tr>
+                        <tr><td><code>&gt;=</code></td><td>Greater than or equal</td></tr>
+                    </tbody>
+                </table>
 
-        <h2 id="operators">Operators</h2>
-        <h3>Arithmetic</h3>
-        <table>
-            <tr>
-                <th>Operator</th>
-                <th>Description</th>
-                <th>Example</th>
-            </tr>
-            <tr>
-                <td><code>+</code></td>
-                <td>Addition / String concat</td>
-                <td><code>5 + 3</code> → <code>8</code></td>
-            </tr>
-            <tr>
-                <td><code>-</code></td>
-                <td>Subtraction</td>
-                <td><code>5 - 3</code> → <code>2</code></td>
-            </tr>
-            <tr>
-                <td><code>*</code></td>
-                <td>Multiplication</td>
-                <td><code>5 * 3</code> → <code>15</code></td>
-            </tr>
-            <tr>
-                <td><code>/</code></td>
-                <td>Division</td>
-                <td><code>7 / 2</code> → <code>3.5</code></td>
-            </tr>
-            <tr>
-                <td><code>%</code></td>
-                <td>Modulo</td>
-                <td><code>7 % 3</code> → <code>1</code></td>
-            </tr>
-        </table>
+                <h3>Logical</h3>
+                <table>
+                    <thead>
+                        <tr><th>Operator</th><th>Description</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><code>and</code></td><td>Logical AND</td></tr>
+                        <tr><td><code>or</code></td><td>Logical OR</td></tr>
+                        <tr><td><code>not</code></td><td>Logical NOT</td></tr>
+                    </tbody>
+                </table>
 
-        <h3>Comparison</h3>
-        <table>
-            <tr>
-                <th>Operator</th>
-                <th>Description</th>
-            </tr>
-            <tr>
-                <td><code>==</code></td>
-                <td>Equal to</td>
-            </tr>
-            <tr>
-                <td><code>!=</code></td>
-                <td>Not equal to</td>
-            </tr>
-            <tr>
-                <td><code>&lt;</code></td>
-                <td>Less than</td>
-            </tr>
-            <tr>
-                <td><code>&gt;</code></td>
-                <td>Greater than</td>
-            </tr>
-            <tr>
-                <td><code>&lt;=</code></td>
-                <td>Less than or equal</td>
-            </tr>
-            <tr>
-                <td><code>&gt;=</code></td>
-                <td>Greater than or equal</td>
-            </tr>
-        </table>
+                <h3>Bitwise</h3>
+                <table>
+                    <thead>
+                        <tr><th>Function</th><th>Description</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><code>bit_and(a, b)</code></td><td>Bitwise AND</td></tr>
+                        <tr><td><code>bit_or(a, b)</code></td><td>Bitwise OR</td></tr>
+                        <tr><td><code>bit_xor(a, b)</code></td><td>Bitwise XOR</td></tr>
+                        <tr><td><code>bit_not(n)</code></td><td>Bitwise NOT</td></tr>
+                        <tr><td><code>bit_lshift(n, count)</code></td><td>Left shift</td></tr>
+                        <tr><td><code>bit_rshift(n, count)</code></td><td>Right shift</td></tr>
+                    </tbody>
+                </table>
 
-        <h3>Logical</h3>
-        <table>
-            <tr>
-                <th>Operator</th>
-                <th>Description</th>
-            </tr>
-            <tr>
-                <td><code>and</code></td>
-                <td>Logical AND (short-circuit)</td>
-            </tr>
-            <tr>
-                <td><code>or</code></td>
-                <td>Logical OR (short-circuit)</td>
-            </tr>
-            <tr>
-                <td><code>not</code></td>
-                <td>Logical NOT</td>
-            </tr>
-        </table>
+                <!-- CONTROL FLOW -->
+                <h2 id="control-flow">Control Flow</h2>
 
-        <h2 id="comments">Comments</h2>
-        <p>Single-line comments start with <code>//</code>:</p>
-        <pre><span class="comment">// This is a comment</span>
-<span class="keyword">let</span> x = <span class="number">5</span>  <span class="comment">// Inline comment</span></pre>
-
-        <h2 id="if-statements">If Statements</h2>
-        <p>Conditional execution with <code>if</code>, <code>elif</code>, and <code>else</code>:</p>
-        <pre><span class="keyword">if</span> score >= <span class="number">90</span> <span class="keyword">then</span>
-    <span class="function">print</span>(<span class="string">"A"</span>)
-<span class="keyword">elif</span> score >= <span class="number">80</span> <span class="keyword">then</span>
-    <span class="function">print</span>(<span class="string">"B"</span>)
-<span class="keyword">elif</span> score >= <span class="number">70</span> <span class="keyword">then</span>
-    <span class="function">print</span>(<span class="string">"C"</span>)
+                <h3>If / Then / Else</h3>
+                <pre><code><span class="keyword">if</span> condition <span class="keyword">then</span>
+    <span class="comment">// true branch</span>
 <span class="keyword">else</span>
-    <span class="function">print</span>(<span class="string">"F"</span>)
-<span class="keyword">end</span></pre>
+    <span class="comment">// false branch</span>
+<span class="keyword">end</span></code></pre>
 
-        <h2 id="match-expressions">Match Expressions (Pattern Matching)</h2>
-        <p>Pattern matching with <code>match</code>, <code>case</code>, and <code>else</code>:</p>
-        <pre><span class="keyword">fn</span> <span class="function">day_name</span>(day)
-    <span class="keyword">match</span> day
-        <span class="keyword">case</span> <span class="number">1</span> <span class="keyword">then</span>
-            <span class="function">print</span>(<span class="string">"Monday"</span>)
-        <span class="keyword">case</span> <span class="number">2</span> <span class="keyword">then</span>
-            <span class="function">print</span>(<span class="string">"Tuesday"</span>)
-        <span class="keyword">case</span> <span class="number">3</span> <span class="keyword">then</span>
-            <span class="function">print</span>(<span class="string">"Wednesday"</span>)
-        <span class="keyword">else</span>
-            <span class="function">print</span>(<span class="string">"Other day"</span>)
-    <span class="keyword">end</span>
-<span class="keyword">end</span></pre>
+                <h3>While Loop</h3>
+                <pre><code><span class="keyword">while</span> condition <span class="keyword">do</span>
+    <span class="comment">// loop body</span>
+<span class="keyword">end</span></code></pre>
 
-        <p>Match works with strings too:</p>
-        <pre><span class="keyword">fn</span> <span class="function">handle_cmd</span>(cmd)
-    <span class="keyword">match</span> cmd
-        <span class="keyword">case</span> <span class="string">"start"</span> <span class="keyword">then</span>
-            <span class="function">print</span>(<span class="string">"Starting..."</span>)
-        <span class="keyword">case</span> <span class="string">"stop"</span> <span class="keyword">then</span>
-            <span class="function">print</span>(<span class="string">"Stopping..."</span>)
-        <span class="keyword">else</span>
-            <span class="function">print</span>(<span class="string">"Unknown command"</span>)
-    <span class="keyword">end</span>
-<span class="keyword">end</span></pre>
-
-        <h2 id="while-loops">While Loops</h2>
-        <p>Loop while a condition is true:</p>
-        <pre><span class="keyword">let</span> i = <span class="number">0</span>
-<span class="keyword">while</span> i < <span class="number">5</span> <span class="keyword">do</span>
+                <h3>For Loop</h3>
+                <pre><code><span class="keyword">for</span> i <span class="keyword">in</span> <span class="function">range</span>(<span class="number">10</span>) <span class="keyword">do</span>
     <span class="function">print</span>(i)
-    i = i + <span class="number">1</span>
-<span class="keyword">end</span></pre>
-
-        <h2 id="for-loops">For Loops</h2>
-        <p>Iterate over a range of numbers:</p>
-        <pre><span class="comment">// Prints 0 to 9</span>
-<span class="keyword">for</span> i <span class="keyword">in</span> <span class="number">0</span>..<span class="number">10</span> <span class="keyword">do</span>
-    <span class="function">print</span>(i)
-<span class="keyword">end</span></pre>
-
-        <div class="tip">
-            <div class="tip-title">💡 Tip</div>
-            <p>Ranges are exclusive of the end value. <code>0..5</code> iterates 0, 1, 2, 3, 4.</p>
-        </div>
-
-        <h2 id="defining-functions">Defining Functions</h2>
-        <p>Use <code>fn</code> and <code>end</code> to define functions:</p>
-        <pre><span class="keyword">fn</span> <span class="function">greet</span>(name)
-    <span class="function">print</span>(<span class="string">"Hello, "</span> + name + <span class="string">"!"</span>)
 <span class="keyword">end</span>
 
-<span class="function">greet</span>(<span class="string">"Alice"</span>)  <span class="comment">// Hello, Alice!</span></pre>
+<span class="keyword">for</span> item <span class="keyword">in</span> array <span class="keyword">do</span>
+    <span class="function">print</span>(item)
+<span class="keyword">end</span></code></pre>
 
-        <p>Functions can return values:</p>
-        <pre><span class="keyword">fn</span> <span class="function">square</span>(x)
-    <span class="keyword">return</span> x * x
+                <!-- FUNCTIONS -->
+                <h2 id="functions">Functions</h2>
+                <p>Functions are defined with <code>fn</code> and are first-class values.</p>
+
+                <div class="syntax-box">
+                    <span class="keyword">fn</span> <span class="func-name">name</span>(<span class="param">param1</span>, <span class="param">param2</span>)
+    <span class="type">body</span>
+<span class="keyword">end</span>
+                </div>
+
+                <pre><code><span class="keyword">fn</span> <span class="function">add</span>(a, b)
+    <span class="keyword">return</span> a + b
 <span class="keyword">end</span>
 
-<span class="function">print</span>(<span class="function">square</span>(<span class="number">5</span>))  <span class="comment">// 25</span></pre>
-
-        <h2 id="recursion">Recursion</h2>
-        <p>Functions can call themselves:</p>
-        <pre><span class="keyword">fn</span> <span class="function">factorial</span>(n)
-    <span class="keyword">if</span> n <= <span class="number">1</span> <span class="keyword">then</span>
+<span class="keyword">fn</span> <span class="function">factorial</span>(n)
+    <span class="keyword">if</span> n &lt;= <span class="number">1</span> <span class="keyword">then</span>
         <span class="keyword">return</span> <span class="number">1</span>
     <span class="keyword">end</span>
     <span class="keyword">return</span> n * <span class="function">factorial</span>(n - <span class="number">1</span>)
-<span class="keyword">end</span>
+<span class="keyword">end</span></code></pre>
 
-<span class="function">print</span>(<span class="function">factorial</span>(<span class="number">10</span>))  <span class="comment">// 3628800</span></pre>
+                <!-- PATTERN MATCHING -->
+                <h2 id="pattern-matching">Pattern Matching</h2>
+                <p>Use <code>match</code> for expressive control flow based on values.</p>
 
-        <h2 id="arrays">Arrays</h2>
-        <p>Create arrays with square brackets:</p>
-        <pre><span class="keyword">let</span> numbers = [<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>]
-<span class="keyword">let</span> mixed = [<span class="number">1</span>, <span class="string">"two"</span>, <span class="keyword">true</span>, <span class="keyword">nil</span>]
-<span class="keyword">let</span> empty = []</pre>
+                <pre><code><span class="keyword">match</span> value
+    <span class="keyword">case</span> <span class="number">1</span> -> <span class="function">print</span>(<span class="string">"one"</span>)
+    <span class="keyword">case</span> <span class="number">2</span> -> <span class="function">print</span>(<span class="string">"two"</span>)
+    <span class="keyword">case</span> <span class="string">"hello"</span> -> <span class="function">print</span>(<span class="string">"greeting"</span>)
+    <span class="keyword">case</span> _ -> <span class="function">print</span>(<span class="string">"default"</span>)
+<span class="keyword">end</span></code></pre>
 
-        <p>Access elements by index (0-based):</p>
-        <pre><span class="function">print</span>(numbers[<span class="number">0</span>])   <span class="comment">// 1</span>
-<span class="function">print</span>(numbers[<span class="number">-1</span>])  <span class="comment">// 5 (last element)</span>
+                <!-- BUILT-IN FUNCTIONS -->
+                <h2 id="builtins">Built-in Functions</h2>
 
-numbers[<span class="number">0</span>] = <span class="number">10</span>     <span class="comment">// Modify element</span></pre>
+                <!-- I/O -->
+                <h3 id="io">Input / Output</h3>
 
-        <h2 id="strings">Strings</h2>
-        <p>Strings are immutable sequences of characters:</p>
-        <pre><span class="keyword">let</span> greeting = <span class="string">"Hello"</span>
-<span class="keyword">let</span> name = <span class="string">"World"</span>
+                <h4>print(value)</h4>
+                <p>Outputs a value to standard output with a newline.</p>
+                <div class="func-signature">
+                    <span class="func-name">print</span>(<span class="param">value</span>) -> <span class="return-type">nil</span>
+                </div>
+                <pre><code><span class="function">print</span>(<span class="string">"Hello, World!"</span>)
+<span class="function">print</span>(<span class="number">42</span>)</code></pre>
 
-<span class="comment">// Concatenation</span>
-<span class="function">print</span>(greeting + <span class="string">", "</span> + name)  <span class="comment">// Hello, World</span>
+                <h4>input(prompt)</h4>
+                <p>Reads a line from standard input.</p>
+                <div class="func-signature">
+                    <span class="func-name">input</span>(<span class="param">prompt</span>) -> <span class="return-type">string</span>
+                </div>
+                <pre><code><span class="keyword">let</span> name = <span class="function">input</span>(<span class="string">"Enter name: "</span>)</code></pre>
 
-<span class="comment">// Length</span>
-<span class="function">print</span>(<span class="function">len</span>(greeting))  <span class="comment">// 5</span>
+                <!-- STRING FUNCTIONS -->
+                <h3 id="string-funcs">String Functions</h3>
 
-<span class="comment">// Indexing</span>
-<span class="function">print</span>(greeting[<span class="number">0</span>])    <span class="comment">// H</span></pre>
+                <h4>len(string)</h4>
+                <p>Returns the length of a string or array.</p>
+                <div class="func-signature">
+                    <span class="func-name">len</span>(<span class="param">value</span>) -> <span class="return-type">number</span>
+                </div>
 
-        <h2 id="io-functions">I/O Functions</h2>
-        <table>
-            <tr>
-                <th>Function</th>
-                <th>Description</th>
-            </tr>
-            <tr>
-                <td><code>print(value)</code></td>
-                <td>Print value with newline</td>
-            </tr>
-            <tr>
-                <td><code>input()</code></td>
-                <td>Read line from stdin</td>
-            </tr>
-            <tr>
-                <td><code>time()</code></td>
-                <td>Get current time in nanoseconds</td>
-            </tr>
-        </table>
+                <h4>upper(string)</h4>
+                <p>Converts string to uppercase.</p>
+                <div class="func-signature">
+                    <span class="func-name">upper</span>(<span class="param">str</span>) -> <span class="return-type">string</span>
+                </div>
 
-        <h2 id="math-functions">Math Functions</h2>
-        <table>
-            <tr>
-                <th>Function</th>
-                <th>Description</th>
-                <th>Example</th>
-            </tr>
-            <tr>
-                <td><code>abs(x)</code></td>
-                <td>Absolute value</td>
-                <td><code>abs(-5)</code> → <code>5</code></td>
-            </tr>
-            <tr>
-                <td><code>sqrt(x)</code></td>
-                <td>Square root</td>
-                <td><code>sqrt(16)</code> → <code>4</code></td>
-            </tr>
-            <tr>
-                <td><code>pow(x, y)</code></td>
-                <td>Power (x^y)</td>
-                <td><code>pow(2, 8)</code> → <code>256</code></td>
-            </tr>
-            <tr>
-                <td><code>min(a, b)</code></td>
-                <td>Minimum value</td>
-                <td><code>min(3, 7)</code> → <code>3</code></td>
-            </tr>
-            <tr>
-                <td><code>max(a, b)</code></td>
-                <td>Maximum value</td>
-                <td><code>max(3, 7)</code> → <code>7</code></td>
-            </tr>
-            <tr>
-                <td><code>floor(x)</code></td>
-                <td>Round down</td>
-                <td><code>floor(3.7)</code> → <code>3</code></td>
-            </tr>
-            <tr>
-                <td><code>ceil(x)</code></td>
-                <td>Round up</td>
-                <td><code>ceil(3.2)</code> → <code>4</code></td>
-            </tr>
-            <tr>
-                <td><code>round(x)</code></td>
-                <td>Round to nearest</td>
-                <td><code>round(3.5)</code> → <code>4</code></td>
-            </tr>
-            <tr>
-                <td><code>rand()</code></td>
-                <td>Random 0.0 to 1.0</td>
-                <td><code>rand()</code> → <code>0.547...</code></td>
-            </tr>
-        </table>
+                <h4>lower(string)</h4>
+                <p>Converts string to lowercase.</p>
+                <div class="func-signature">
+                    <span class="func-name">lower</span>(<span class="param">str</span>) -> <span class="return-type">string</span>
+                </div>
 
-        <h2 id="bit-functions">Bit Manipulation Intrinsics</h2>
-        <p>Low-level bit manipulation functions that map directly to CPU instructions for maximum performance.</p>
-        <table>
-            <tr>
-                <th>Function</th>
-                <th>Description</th>
-                <th>Example</th>
-            </tr>
-            <tr>
-                <td><code>popcount(x)</code></td>
-                <td>Count set bits (1s)</td>
-                <td><code>popcount(11)</code> → <code>3</code></td>
-            </tr>
-            <tr>
-                <td><code>clz(x)</code></td>
-                <td>Count leading zeros</td>
-                <td><code>clz(16)</code> → <code>27</code></td>
-            </tr>
-            <tr>
-                <td><code>ctz(x)</code></td>
-                <td>Count trailing zeros</td>
-                <td><code>ctz(8)</code> → <code>3</code></td>
-            </tr>
-            <tr>
-                <td><code>rotl(x, n)</code></td>
-                <td>Rotate bits left by n</td>
-                <td><code>rotl(1, 4)</code> → <code>16</code></td>
-            </tr>
-            <tr>
-                <td><code>rotr(x, n)</code></td>
-                <td>Rotate bits right by n</td>
-                <td><code>rotr(16, 4)</code> → <code>1</code></td>
-            </tr>
-        </table>
+                <h4>trim(string)</h4>
+                <p>Removes leading and trailing whitespace.</p>
+                <div class="func-signature">
+                    <span class="func-name">trim</span>(<span class="param">str</span>) -> <span class="return-type">string</span>
+                </div>
 
-        <h2 id="string-functions">String Functions</h2>
-        <p>Comprehensive string manipulation functions.</p>
-        <table>
-            <tr>
-                <th>Function</th>
-                <th>Description</th>
-                <th>Example</th>
-            </tr>
-            <tr>
-                <td><code>upper(s)</code></td>
-                <td>Convert to uppercase</td>
-                <td><code>upper("hello")</code> → <code>"HELLO"</code></td>
-            </tr>
-            <tr>
-                <td><code>lower(s)</code></td>
-                <td>Convert to lowercase</td>
-                <td><code>lower("HELLO")</code> → <code>"hello"</code></td>
-            </tr>
-            <tr>
-                <td><code>substr(s, start, len)</code></td>
-                <td>Extract substring</td>
-                <td><code>substr("hello", 0, 2)</code> → <code>"he"</code></td>
-            </tr>
-            <tr>
-                <td><code>find(s, needle)</code></td>
-                <td>Find substring index (-1 if not found)</td>
-                <td><code>find("hello", "ll")</code> → <code>2</code></td>
-            </tr>
-            <tr>
-                <td><code>replace(s, from, to)</code></td>
-                <td>Replace all occurrences</td>
-                <td><code>replace("aaa", "a", "b")</code> → <code>"bbb"</code></td>
-            </tr>
-            <tr>
-                <td><code>split(s, delim)</code></td>
-                <td>Split into array</td>
-                <td><code>split("a,b,c", ",")</code> → <code>["a","b","c"]</code></td>
-            </tr>
-            <tr>
-                <td><code>join(arr, delim)</code></td>
-                <td>Join array into string</td>
-                <td><code>join(["a","b"], "-")</code> → <code>"a-b"</code></td>
-            </tr>
-            <tr>
-                <td><code>trim(s)</code></td>
-                <td>Remove leading/trailing whitespace</td>
-                <td><code>trim("  hi  ")</code> → <code>"hi"</code></td>
-            </tr>
-            <tr>
-                <td><code>char(n)</code></td>
-                <td>ASCII code to character</td>
-                <td><code>char(65)</code> → <code>"A"</code></td>
-            </tr>
-            <tr>
-                <td><code>ord(s)</code></td>
-                <td>First character to ASCII code</td>
-                <td><code>ord("A")</code> → <code>65</code></td>
-            </tr>
-        </table>
+                <h4>split(string, delimiter)</h4>
+                <p>Splits string into an array by delimiter.</p>
+                <div class="func-signature">
+                    <span class="func-name">split</span>(<span class="param">str</span>, <span class="param">delim</span>) -> <span class="return-type">array</span>
+                </div>
 
-        <h2 id="type-functions">Type Functions</h2>
-        <table>
-            <tr>
-                <th>Function</th>
-                <th>Description</th>
-                <th>Example</th>
-            </tr>
-            <tr>
-                <td><code>type(x)</code></td>
-                <td>Get type name as string</td>
-                <td><code>type([])</code> → <code>"array"</code></td>
-            </tr>
-            <tr>
-                <td><code>int(x)</code></td>
-                <td>Convert to integer</td>
-                <td><code>int("123")</code> → <code>123</code></td>
-            </tr>
-            <tr>
-                <td><code>float(x)</code></td>
-                <td>Convert to float</td>
-                <td><code>float("3.14")</code> → <code>3.14</code></td>
-            </tr>
-            <tr>
-                <td><code>str(x)</code></td>
-                <td>Convert to string</td>
-                <td><code>str(42)</code> → <code>"42"</code></td>
-            </tr>
-        </table>
+                <h4>join(array, separator)</h4>
+                <p>Joins array elements into a string.</p>
+                <div class="func-signature">
+                    <span class="func-name">join</span>(<span class="param">arr</span>, <span class="param">sep</span>) -> <span class="return-type">string</span>
+                </div>
 
-        <h2 id="array-functions">Array Functions</h2>
-        <table>
-            <tr>
-                <th>Function</th>
-                <th>Description</th>
-            </tr>
-            <tr>
-                <td><code>len(arr)</code></td>
-                <td>Get array length</td>
-            </tr>
-            <tr>
-                <td><code>push(arr, val)</code></td>
-                <td>Add element to end</td>
-            </tr>
-            <tr>
-                <td><code>pop(arr)</code></td>
-                <td>Remove and return last element</td>
-            </tr>
-        </table>
+                <h4>substr(string, start, length)</h4>
+                <p>Extracts a substring.</p>
+                <div class="func-signature">
+                    <span class="func-name">substr</span>(<span class="param">str</span>, <span class="param">start</span>, <span class="param">len</span>) -> <span class="return-type">string</span>
+                </div>
 
-        <pre><span class="keyword">let</span> arr = [<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]
+                <h4>replace(string, old, new)</h4>
+                <p>Replaces all occurrences of old with new.</p>
+                <div class="func-signature">
+                    <span class="func-name">replace</span>(<span class="param">str</span>, <span class="param">old</span>, <span class="param">new</span>) -> <span class="return-type">string</span>
+                </div>
 
-<span class="function">print</span>(<span class="function">len</span>(arr))     <span class="comment">// 3</span>
+                <h4>index_of(string, substring)</h4>
+                <p>Returns position of substring, or -1 if not found.</p>
+                <div class="func-signature">
+                    <span class="func-name">index_of</span>(<span class="param">str</span>, <span class="param">substr</span>) -> <span class="return-type">number</span>
+                </div>
 
-<span class="function">push</span>(arr, <span class="number">4</span>)
-<span class="function">print</span>(arr)          <span class="comment">// [1, 2, 3, 4]</span>
+                <h4>starts_with(string, prefix) / ends_with(string, suffix)</h4>
+                <p>Tests if string starts/ends with given text.</p>
+                <div class="func-signature">
+                    <span class="func-name">starts_with</span>(<span class="param">str</span>, <span class="param">prefix</span>) -> <span class="return-type">boolean</span>
+                </div>
 
-<span class="keyword">let</span> last = <span class="function">pop</span>(arr)
-<span class="function">print</span>(last)         <span class="comment">// 4</span>
-<span class="function">print</span>(arr)          <span class="comment">// [1, 2, 3]</span></pre>
+                <h4>char_at(string, index)</h4>
+                <p>Returns character at position.</p>
+                <div class="func-signature">
+                    <span class="func-name">char_at</span>(<span class="param">str</span>, <span class="param">index</span>) -> <span class="return-type">string</span>
+                </div>
 
-    </main>
+                <h4>char_code(char) / from_char_code(code)</h4>
+                <p>Converts between characters and ASCII codes.</p>
+                <div class="func-signature">
+                    <span class="func-name">char_code</span>(<span class="param">char</span>) -> <span class="return-type">number</span>
+                </div>
+
+                <!-- MATH FUNCTIONS -->
+                <h3 id="math-funcs">Math Functions</h3>
+
+                <h4>Basic Math</h4>
+                <table>
+                    <thead>
+                        <tr><th>Function</th><th>Description</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><code>abs(n)</code></td><td>Absolute value</td></tr>
+                        <tr><td><code>floor(n)</code></td><td>Round down</td></tr>
+                        <tr><td><code>ceil(n)</code></td><td>Round up</td></tr>
+                        <tr><td><code>round(n)</code></td><td>Round to nearest integer</td></tr>
+                        <tr><td><code>min(a, b)</code></td><td>Minimum of two values</td></tr>
+                        <tr><td><code>max(a, b)</code></td><td>Maximum of two values</td></tr>
+                        <tr><td><code>clamp(val, min, max)</code></td><td>Constrain to range</td></tr>
+                    </tbody>
+                </table>
+
+                <h4>Advanced Math</h4>
+                <table>
+                    <thead>
+                        <tr><th>Function</th><th>Description</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><code>sqrt(n)</code></td><td>Square root</td></tr>
+                        <tr><td><code>pow(base, exp)</code></td><td>Exponentiation</td></tr>
+                        <tr><td><code>exp(n)</code></td><td>e^n</td></tr>
+                        <tr><td><code>log(n)</code></td><td>Natural logarithm</td></tr>
+                        <tr><td><code>log10(n)</code></td><td>Base-10 logarithm</td></tr>
+                        <tr><td><code>log2(n)</code></td><td>Base-2 logarithm</td></tr>
+                    </tbody>
+                </table>
+
+                <h4>Trigonometry</h4>
+                <table>
+                    <thead>
+                        <tr><th>Function</th><th>Description</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><code>sin(n)</code>, <code>cos(n)</code>, <code>tan(n)</code></td><td>Trigonometric functions (radians)</td></tr>
+                        <tr><td><code>asin(n)</code>, <code>acos(n)</code>, <code>atan(n)</code></td><td>Inverse trig functions</td></tr>
+                        <tr><td><code>atan2(y, x)</code></td><td>Two-argument arctangent</td></tr>
+                        <tr><td><code>sinh(n)</code>, <code>cosh(n)</code>, <code>tanh(n)</code></td><td>Hyperbolic functions</td></tr>
+                        <tr><td><code>degrees(rad)</code></td><td>Radians to degrees</td></tr>
+                        <tr><td><code>radians(deg)</code></td><td>Degrees to radians</td></tr>
+                    </tbody>
+                </table>
+
+                <h4>Special Functions</h4>
+                <table>
+                    <thead>
+                        <tr><th>Function</th><th>Description</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><code>hypot(a, b)</code></td><td>Hypotenuse: sqrt(a*a + b*b)</td></tr>
+                        <tr><td><code>fmod(a, b)</code></td><td>Floating-point modulo</td></tr>
+                        <tr><td><code>copysign(mag, sign)</code></td><td>Copy sign of number</td></tr>
+                        <tr><td><code>lerp(a, b, t)</code></td><td>Linear interpolation</td></tr>
+                        <tr><td><code>random()</code></td><td>Random number 0-1</td></tr>
+                        <tr><td><code>random_int(min, max)</code></td><td>Random integer in range</td></tr>
+                    </tbody>
+                </table>
+
+                <h4>Constants</h4>
+                <table>
+                    <thead>
+                        <tr><th>Function</th><th>Returns</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><code>pi()</code></td><td>3.14159...</td></tr>
+                        <tr><td><code>e()</code></td><td>2.71828...</td></tr>
+                        <tr><td><code>infinity()</code></td><td>Positive infinity</td></tr>
+                        <tr><td><code>nan()</code></td><td>Not a number</td></tr>
+                    </tbody>
+                </table>
+
+                <!-- ARRAY FUNCTIONS -->
+                <h3 id="array-funcs">Array Functions</h3>
+
+                <table>
+                    <thead>
+                        <tr><th>Function</th><th>Description</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><code>len(array)</code></td><td>Array length</td></tr>
+                        <tr><td><code>push(array, value)</code></td><td>Add to end</td></tr>
+                        <tr><td><code>pop(array)</code></td><td>Remove and return last</td></tr>
+                        <tr><td><code>shift(array)</code></td><td>Remove and return first</td></tr>
+                        <tr><td><code>unshift(array, value)</code></td><td>Add to beginning</td></tr>
+                        <tr><td><code>slice(array, start, end)</code></td><td>Extract portion</td></tr>
+                        <tr><td><code>concat(arr1, arr2)</code></td><td>Combine arrays</td></tr>
+                        <tr><td><code>reverse(array)</code></td><td>Reverse in place</td></tr>
+                        <tr><td><code>contains(array, value)</code></td><td>Check if value exists</td></tr>
+                        <tr><td><code>index_of(array, value)</code></td><td>Find position</td></tr>
+                        <tr><td><code>range(n)</code> or <code>range(start, end)</code></td><td>Generate number sequence</td></tr>
+                    </tbody>
+                </table>
+
+                <!-- DICTIONARY FUNCTIONS -->
+                <h3 id="dict-funcs">Dictionary Functions</h3>
+
+                <table>
+                    <thead>
+                        <tr><th>Function</th><th>Description</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><code>dict_new()</code></td><td>Create empty dictionary</td></tr>
+                        <tr><td><code>dict_set(dict, key, value)</code></td><td>Set key-value pair</td></tr>
+                        <tr><td><code>dict_get(dict, key)</code></td><td>Get value by key</td></tr>
+                        <tr><td><code>dict_has(dict, key)</code></td><td>Check if key exists</td></tr>
+                        <tr><td><code>dict_delete(dict, key)</code></td><td>Remove key</td></tr>
+                        <tr><td><code>dict_keys(dict)</code></td><td>Get all keys as array</td></tr>
+                        <tr><td><code>dict_values(dict)</code></td><td>Get all values as array</td></tr>
+                        <tr><td><code>dict_size(dict)</code></td><td>Number of entries</td></tr>
+                    </tbody>
+                </table>
+
+                <pre><code><span class="keyword">let</span> user = <span class="function">dict_new</span>()
+<span class="function">dict_set</span>(user, <span class="string">"name"</span>, <span class="string">"Alice"</span>)
+<span class="function">dict_set</span>(user, <span class="string">"age"</span>, <span class="number">30</span>)
+<span class="function">print</span>(<span class="function">dict_get</span>(user, <span class="string">"name"</span>))  <span class="comment">// Alice</span></code></pre>
+
+                <!-- FILE FUNCTIONS -->
+                <h3 id="file-funcs">File System <span class="tag tag-io">I/O</span></h3>
+
+                <table>
+                    <thead>
+                        <tr><th>Function</th><th>Description</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><code>read_file(path)</code></td><td>Read file contents as string</td></tr>
+                        <tr><td><code>write_file(path, content)</code></td><td>Write string to file</td></tr>
+                        <tr><td><code>append_file(path, content)</code></td><td>Append to file</td></tr>
+                        <tr><td><code>file_exists(path)</code></td><td>Check if file exists</td></tr>
+                        <tr><td><code>delete_file(path)</code></td><td>Delete a file</td></tr>
+                        <tr><td><code>file_size(path)</code></td><td>Get file size in bytes</td></tr>
+                        <tr><td><code>list_dir(path)</code></td><td>List directory contents</td></tr>
+                        <tr><td><code>mkdir(path)</code></td><td>Create directory</td></tr>
+                        <tr><td><code>getcwd()</code></td><td>Get current working directory</td></tr>
+                        <tr><td><code>chdir(path)</code></td><td>Change working directory</td></tr>
+                    </tbody>
+                </table>
+
+                <!-- HTTP FUNCTIONS -->
+                <h3 id="http-funcs">HTTP <span class="tag tag-io">I/O</span></h3>
+
+                <table>
+                    <thead>
+                        <tr><th>Function</th><th>Description</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><code>http_get(url)</code></td><td>Perform GET request</td></tr>
+                        <tr><td><code>http_post(url, body)</code></td><td>Perform POST request</td></tr>
+                    </tbody>
+                </table>
+
+                <pre><code><span class="keyword">let</span> response = <span class="function">http_get</span>(<span class="string">"https://api.example.com/data"</span>)
+<span class="keyword">let</span> data = <span class="function">json_parse</span>(response)</code></pre>
+
+                <!-- JSON FUNCTIONS -->
+                <h3 id="json-funcs">JSON</h3>
+
+                <table>
+                    <thead>
+                        <tr><th>Function</th><th>Description</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><code>json_parse(string)</code></td><td>Parse JSON to value</td></tr>
+                        <tr><td><code>json_stringify(value)</code></td><td>Convert value to JSON string</td></tr>
+                    </tbody>
+                </table>
+
+                <!-- VECTOR FUNCTIONS -->
+                <h3 id="vector-funcs">Vector Operations <span class="tag tag-new">New</span></h3>
+
+                <p>SIMD-optimized operations on numeric arrays.</p>
+
+                <table>
+                    <thead>
+                        <tr><th>Function</th><th>Description</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><code>vec_add(a, b)</code></td><td>Element-wise addition</td></tr>
+                        <tr><td><code>vec_sub(a, b)</code></td><td>Element-wise subtraction</td></tr>
+                        <tr><td><code>vec_mul(a, b)</code></td><td>Element-wise multiplication</td></tr>
+                        <tr><td><code>vec_div(a, b)</code></td><td>Element-wise division</td></tr>
+                        <tr><td><code>vec_dot(a, b)</code></td><td>Dot product</td></tr>
+                        <tr><td><code>vec_sum(array)</code></td><td>Sum all elements</td></tr>
+                        <tr><td><code>vec_mean(array)</code></td><td>Average value</td></tr>
+                        <tr><td><code>vec_min(array)</code></td><td>Minimum value</td></tr>
+                        <tr><td><code>vec_max(array)</code></td><td>Maximum value</td></tr>
+                        <tr><td><code>vec_sort(array)</code></td><td>Sort ascending</td></tr>
+                    </tbody>
+                </table>
+
+                <pre><code><span class="keyword">let</span> a = [<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]
+<span class="keyword">let</span> b = [<span class="number">4</span>, <span class="number">5</span>, <span class="number">6</span>]
+<span class="function">print</span>(<span class="function">vec_dot</span>(a, b))  <span class="comment">// 32</span>
+<span class="function">print</span>(<span class="function">vec_sum</span>(a))    <span class="comment">// 6</span></code></pre>
+
+                <!-- BINARY FUNCTIONS -->
+                <h3 id="binary-funcs">Binary Data <span class="tag tag-new">New</span></h3>
+
+                <table>
+                    <thead>
+                        <tr><th>Function</th><th>Description</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><code>bytes_new(size)</code></td><td>Create byte array</td></tr>
+                        <tr><td><code>bytes_get(bytes, index)</code></td><td>Get byte at index</td></tr>
+                        <tr><td><code>bytes_set(bytes, index, value)</code></td><td>Set byte at index</td></tr>
+                        <tr><td><code>bytes_length(bytes)</code></td><td>Length of byte array</td></tr>
+                        <tr><td><code>bytes_to_string(bytes)</code></td><td>Convert to UTF-8 string</td></tr>
+                        <tr><td><code>string_to_bytes(string)</code></td><td>Convert string to bytes</td></tr>
+                        <tr><td><code>base64_encode(bytes)</code></td><td>Encode to base64</td></tr>
+                        <tr><td><code>base64_decode(string)</code></td><td>Decode from base64</td></tr>
+                    </tbody>
+                </table>
+
+                <!-- HASHING FUNCTIONS -->
+                <h3 id="hash-funcs">Cryptographic Hashing <span class="tag tag-new">New</span></h3>
+
+                <table>
+                    <thead>
+                        <tr><th>Function</th><th>Description</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><code>hash_sha256(data)</code></td><td>SHA-256 hash (hex string)</td></tr>
+                        <tr><td><code>hash_md5(data)</code></td><td>MD5 hash (hex string)</td></tr>
+                    </tbody>
+                </table>
+
+                <pre><code><span class="keyword">let</span> hash = <span class="function">hash_sha256</span>(<span class="string">"hello world"</span>)
+<span class="function">print</span>(hash)  <span class="comment">// b94d27b9934d3e08...</span></code></pre>
+
+                <!-- TIME FUNCTIONS -->
+                <h3 id="time-funcs">Time</h3>
+
+                <table>
+                    <thead>
+                        <tr><th>Function</th><th>Description</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><code>clock()</code></td><td>CPU time in seconds</td></tr>
+                        <tr><td><code>time()</code></td><td>Unix timestamp</td></tr>
+                        <tr><td><code>time_ns()</code></td><td>Nanosecond precision timestamp</td></tr>
+                        <tr><td><code>sleep(seconds)</code></td><td>Pause execution</td></tr>
+                    </tbody>
+                </table>
+
+                <pre><code><span class="keyword">let</span> start = <span class="function">time_ns</span>()
+<span class="comment">// ... work ...</span>
+<span class="keyword">let</span> elapsed = <span class="function">time_ns</span>() - start
+<span class="function">print</span>(<span class="string">"Took "</span> + <span class="function">str</span>(elapsed) + <span class="string">" ns"</span>)</code></pre>
+
+                <!-- TYPE FUNCTIONS -->
+                <h3>Type Functions</h3>
+
+                <table>
+                    <thead>
+                        <tr><th>Function</th><th>Description</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><code>type(value)</code></td><td>Get type name as string</td></tr>
+                        <tr><td><code>str(value)</code></td><td>Convert to string</td></tr>
+                        <tr><td><code>num(value)</code></td><td>Convert to number</td></tr>
+                        <tr><td><code>is_nan(n)</code></td><td>Check if NaN</td></tr>
+                        <tr><td><code>is_finite(n)</code></td><td>Check if finite</td></tr>
+                    </tbody>
+                </table>
+
+                <!-- SYSTEM FUNCTIONS -->
+                <h3>System</h3>
+
+                <table>
+                    <thead>
+                        <tr><th>Function</th><th>Description</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><code>exit(code)</code></td><td>Exit with status code</td></tr>
+                        <tr><td><code>getenv(name)</code></td><td>Get environment variable</td></tr>
+                        <tr><td><code>setenv(name, value)</code></td><td>Set environment variable</td></tr>
+                        <tr><td><code>assert(condition, msg)</code></td><td>Assert condition is true</td></tr>
+                    </tbody>
+                </table>
+
+            </div>
+        </main>
+    </div>
 </body>
 
 </html>

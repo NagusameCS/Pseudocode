@@ -7,7 +7,7 @@ let outputChannel: vscode.OutputChannel;
 
 export function activate(context: vscode.ExtensionContext) {
     outputChannel = vscode.window.createOutputChannel('Pseudocode');
-    
+
     // Register run command
     const runCommand = vscode.commands.registerCommand('pseudocode.run', async () => {
         const editor = vscode.window.activeTextEditor;
@@ -15,21 +15,21 @@ export function activate(context: vscode.ExtensionContext) {
             vscode.window.showErrorMessage('No Pseudocode file is open');
             return;
         }
-        
+
         // Save the file first
         await editor.document.save();
-        
+
         const filePath = editor.document.fileName;
         const vmPath = await findVmPath();
-        
+
         if (!vmPath) {
             vscode.window.showErrorMessage('Pseudocode VM (pseudo) not found. Please set pseudocode.vmPath in settings or ensure the VM is built.');
             return;
         }
-        
+
         runPseudocode(vmPath, filePath);
     });
-    
+
     // Register build command
     const buildCommand = vscode.commands.registerCommand('pseudocode.build', async () => {
         const workspaceFolders = vscode.workspace.workspaceFolders;
@@ -37,23 +37,23 @@ export function activate(context: vscode.ExtensionContext) {
             vscode.window.showErrorMessage('No workspace folder open');
             return;
         }
-        
+
         // Look for cvm directory with Makefile
         for (const folder of workspaceFolders) {
             const cvmPath = path.join(folder.uri.fsPath, 'cvm');
             const makefilePath = path.join(cvmPath, 'Makefile');
-            
+
             if (fs.existsSync(makefilePath)) {
                 buildVm(cvmPath);
                 return;
             }
         }
-        
+
         vscode.window.showErrorMessage('Could not find cvm/Makefile in workspace');
     });
-    
+
     context.subscriptions.push(runCommand, buildCommand, outputChannel);
-    
+
     // Register task provider
     const taskProvider = vscode.tasks.registerTaskProvider('pseudocode', {
         provideTasks: () => {
@@ -63,19 +63,19 @@ export function activate(context: vscode.ExtensionContext) {
             return task;
         }
     });
-    
+
     context.subscriptions.push(taskProvider);
 }
 
 async function findVmPath(): Promise<string | null> {
     const config = vscode.workspace.getConfiguration('pseudocode');
     const configuredPath = config.get<string>('vmPath');
-    
+
     // Check configured path first
     if (configuredPath && fs.existsSync(configuredPath)) {
         return configuredPath;
     }
-    
+
     // Check workspace folders for compiled VM
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (workspaceFolders) {
@@ -85,7 +85,7 @@ async function findVmPath(): Promise<string | null> {
             if (fs.existsSync(vmInCvm)) {
                 return vmInCvm;
             }
-            
+
             // Check root pseudo
             const vmInRoot = path.join(folder.uri.fsPath, 'pseudo');
             if (fs.existsSync(vmInRoot)) {
@@ -93,7 +93,7 @@ async function findVmPath(): Promise<string | null> {
             }
         }
     }
-    
+
     // Check if pseudo is in PATH
     return new Promise((resolve) => {
         exec('which pseudo', (error, stdout) => {
@@ -109,31 +109,31 @@ async function findVmPath(): Promise<string | null> {
 function runPseudocode(vmPath: string, filePath: string): void {
     outputChannel.clear();
     outputChannel.show(true);
-    
+
     const config = vscode.workspace.getConfiguration('pseudocode');
     const showTime = config.get<boolean>('showExecutionTime', true);
-    
+
     outputChannel.appendLine(`Running: ${path.basename(filePath)}`);
     outputChannel.appendLine('─'.repeat(50));
-    
+
     const startTime = Date.now();
-    
+
     const process = spawn(vmPath, [filePath], {
         cwd: path.dirname(filePath)
     });
-    
+
     process.stdout.on('data', (data: Buffer) => {
         outputChannel.append(data.toString());
     });
-    
+
     process.stderr.on('data', (data: Buffer) => {
         outputChannel.append(data.toString());
     });
-    
+
     process.on('close', (code: number) => {
         outputChannel.appendLine('');
         outputChannel.appendLine('─'.repeat(50));
-        
+
         if (code === 0) {
             if (showTime) {
                 const elapsed = Date.now() - startTime;
@@ -145,7 +145,7 @@ function runPseudocode(vmPath: string, filePath: string): void {
             outputChannel.appendLine(`✗ Exited with code ${code}`);
         }
     });
-    
+
     process.on('error', (err: Error) => {
         outputChannel.appendLine(`Error: ${err.message}`);
     });
@@ -154,27 +154,27 @@ function runPseudocode(vmPath: string, filePath: string): void {
 function buildVm(cvmPath: string): void {
     outputChannel.clear();
     outputChannel.show(true);
-    
+
     outputChannel.appendLine('Building Pseudocode VM...');
     outputChannel.appendLine('─'.repeat(50));
-    
+
     const process = spawn('make', ['clean', 'pgo'], {
         cwd: cvmPath,
         shell: true
     });
-    
+
     process.stdout.on('data', (data: Buffer) => {
         outputChannel.append(data.toString());
     });
-    
+
     process.stderr.on('data', (data: Buffer) => {
         outputChannel.append(data.toString());
     });
-    
+
     process.on('close', (code: number) => {
         outputChannel.appendLine('');
         outputChannel.appendLine('─'.repeat(50));
-        
+
         if (code === 0) {
             outputChannel.appendLine('✓ Build completed successfully');
             vscode.window.showInformationMessage('Pseudocode VM built successfully!');
@@ -185,4 +185,4 @@ function buildVm(cvmPath: string): void {
     });
 }
 
-export function deactivate() {}
+export function deactivate() { }

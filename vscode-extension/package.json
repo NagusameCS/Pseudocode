@@ -39,8 +39,14 @@
         "languages": [
             {
                 "id": "pseudocode",
-                "aliases": ["Pseudocode", "pseudo"],
-                "extensions": [".pseudo", ".psc"],
+                "aliases": [
+                    "Pseudocode",
+                    "pseudo"
+                ],
+                "extensions": [
+                    ".pseudo",
+                    ".psc"
+                ],
                 "configuration": "./language-configuration.json",
                 "icon": {
                     "light": "./images/icon.png",
@@ -109,7 +115,9 @@
         "taskDefinitions": [
             {
                 "type": "pseudocode",
-                "required": ["task"],
+                "required": [
+                    "task"
+                ],
                 "properties": {
                     "task": {
                         "type": "string",

@@ -3,14 +3,30 @@
     "name": "Pseudocode",
     "scopeName": "source.pseudocode",
     "patterns": [
-        { "include": "#comments" },
-        { "include": "#strings" },
-        { "include": "#numbers" },
-        { "include": "#keywords" },
-        { "include": "#functions" },
-        { "include": "#builtins" },
-        { "include": "#operators" },
-        { "include": "#variables" }
+        {
+            "include": "#comments"
+        },
+        {
+            "include": "#strings"
+        },
+        {
+            "include": "#numbers"
+        },
+        {
+            "include": "#keywords"
+        },
+        {
+            "include": "#functions"
+        },
+        {
+            "include": "#builtins"
+        },
+        {
+            "include": "#operators"
+        },
+        {
+            "include": "#variables"
+        }
     ],
     "repository": {
         "comments": {
@@ -101,8 +117,12 @@
                 {
                     "match": "\\b(fn)\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
                     "captures": {
-                        "1": { "name": "keyword.declaration.pseudocode" },
-                        "2": { "name": "entity.name.function.definition.pseudocode" }
+                        "1": {
+                            "name": "keyword.declaration.pseudocode"
+                        },
+                        "2": {
+                            "name": "entity.name.function.definition.pseudocode"
+                        }
                     }
                 }
             ]

@@ -1651,6 +1651,188 @@ static void declaration(void) {
     skip_newlines();
 }
 
+/* ============ Peephole Optimizer ============ */
+/* Optimizes bytecode patterns after initial emission */
+/* Note: Disabled for now as it corrupts jump offsets */
+/* TODO: Track and update jump offsets when shifting bytecode */
+
+#if 0  /* Disabled - needs jump offset tracking */
+static void peephole_optimize(Chunk* chunk) {
+    uint8_t* code = chunk->code;
+    uint32_t count = chunk->count;
+    
+    for (uint32_t i = 0; i + 2 < count; ) {
+        /* Pattern: CONST_1 ADD -> ADD_1 */
+        if (code[i] == OP_CONST_1 && code[i+1] == OP_ADD) {
+            code[i] = OP_ADD_1;
+            /* Shift remaining code back by 1 */
+            memmove(&code[i+1], &code[i+2], count - i - 2);
+            chunk->count--;
+            count--;
+            continue;
+        }
+        
+        /* Pattern: CONST_1 SUB -> SUB_1 */
+        if (code[i] == OP_CONST_1 && code[i+1] == OP_SUB) {
+            code[i] = OP_SUB_1;
+            memmove(&code[i+1], &code[i+2], count - i - 2);
+            chunk->count--;
+            count--;
+            continue;
+        }
+        
+        /* Pattern: LT JMP_FALSE -> LT_JMP_FALSE */
+        if (code[i] == OP_LT && code[i+1] == OP_JMP_FALSE) {
+            code[i] = OP_LT_JMP_FALSE;
+            memmove(&code[i+1], &code[i+2], count - i - 2);
+            chunk->count--;
+            count--;
+            continue;
+        }
+        
+        /* Pattern: LTE JMP_FALSE -> LTE_JMP_FALSE */
+        if (code[i] == OP_LTE && code[i+1] == OP_JMP_FALSE) {
+            code[i] = OP_LTE_JMP_FALSE;
+            memmove(&code[i+1], &code[i+2], count - i - 2);
+            chunk->count--;
+            count--;
+            continue;
+        }
+        
+        /* Pattern: GT JMP_FALSE -> GT_JMP_FALSE */
+        if (code[i] == OP_GT && code[i+1] == OP_JMP_FALSE) {
+            code[i] = OP_GT_JMP_FALSE;
+            memmove(&code[i+1], &code[i+2], count - i - 2);
+            chunk->count--;
+            count--;
+            continue;
+        }
+        
+        /* Pattern: GTE JMP_FALSE -> GTE_JMP_FALSE */
+        if (code[i] == OP_GTE && code[i+1] == OP_JMP_FALSE) {
+            code[i] = OP_GTE_JMP_FALSE;
+            memmove(&code[i+1], &code[i+2], count - i - 2);
+            chunk->count--;
+            count--;
+            continue;
+        }
+        
+        /* Pattern: EQ JMP_FALSE -> EQ_JMP_FALSE */
+        if (code[i] == OP_EQ && code[i+1] == OP_JMP_FALSE) {
+            code[i] = OP_EQ_JMP_FALSE;
+            memmove(&code[i+1], &code[i+2], count - i - 2);
+            chunk->count--;
+            count--;
+            continue;
+        }
+        
+        /* Pattern: POP POP -> POPN 2 (but we don't have POPN yet) */
+        /* Pattern: NIL POP -> nothing */
+        if (code[i] == OP_NIL && code[i+1] == OP_POP) {
+            memmove(&code[i], &code[i+2], count - i - 2);
+            chunk->count -= 2;
+            count -= 2;
+            continue;
+        }
+        
+        /* Pattern: CONST CONST op -> fold to single CONST if both are numbers */
+        /* This is more complex, handled separately */
+        
+        i++;
+    }
+}
+#endif
+
+/* ============ Constant Folding ============ */
+/* Folds constant expressions at compile time */
+/* Note: Disabled for now as it corrupts jump offsets */
+
+#if 0  /* Disabled - needs jump offset tracking */
+static bool try_fold_constants(Chunk* chunk) {
+    uint8_t* code = chunk->code;
+    uint32_t count = chunk->count;
+    Value* constants = chunk->constants;
+    bool folded = false;
+    
+    for (uint32_t i = 0; i + 4 < count; ) {
+        /* Pattern: CONST a CONST b OP -> CONST result */
+        if (code[i] == OP_CONST && code[i+2] == OP_CONST) {
+            uint8_t idx1 = code[i+1];
+            uint8_t idx2 = code[i+3];
+            uint8_t op = code[i+4];
+            
+            Value v1 = constants[idx1];
+            Value v2 = constants[idx2];
+            
+            /* Only fold numeric constants */
+            bool is_num1 = IS_NUM(v1) || IS_INT(v1);
+            bool is_num2 = IS_NUM(v2) || IS_INT(v2);
+            
+            if (is_num1 && is_num2) {
+                double n1 = IS_INT(v1) ? (double)as_int(v1) : as_num(v1);
+                double n2 = IS_INT(v2) ? (double)as_int(v2) : as_num(v2);
+                double result = 0;
+                bool can_fold = true;
+                bool is_bool = false;
+                bool bool_result = false;
+                
+                switch (op) {
+                    case OP_ADD: result = n1 + n2; break;
+                    case OP_SUB: result = n1 - n2; break;
+                    case OP_MUL: result = n1 * n2; break;
+                    case OP_DIV: 
+                        if (n2 != 0) result = n1 / n2;
+                        else can_fold = false;
+                        break;
+                    case OP_MOD:
+                        if (n2 != 0) result = (double)((int64_t)n1 % (int64_t)n2);
+                        else can_fold = false;
+                        break;
+                    case OP_LT: is_bool = true; bool_result = n1 < n2; break;
+                    case OP_GT: is_bool = true; bool_result = n1 > n2; break;
+                    case OP_LTE: is_bool = true; bool_result = n1 <= n2; break;
+                    case OP_GTE: is_bool = true; bool_result = n1 >= n2; break;
+                    case OP_EQ: is_bool = true; bool_result = n1 == n2; break;
+                    case OP_NEQ: is_bool = true; bool_result = n1 != n2; break;
+                    default: can_fold = false; break;
+                }
+                
+                if (can_fold) {
+                    /* Replace with single constant or boolean */
+                    if (is_bool) {
+                        code[i] = bool_result ? OP_TRUE : OP_FALSE;
+                        /* Remove the next 4 bytes */
+                        memmove(&code[i+1], &code[i+5], count - i - 5);
+                        chunk->count -= 4;
+                        count -= 4;
+                    } else {
+                        /* Add new constant */
+                        Value folded;
+                        if (IS_INT(v1) && IS_INT(v2) && result == (int32_t)result) {
+                            folded = val_int((int32_t)result);
+                        } else {
+                            folded = val_num(result);
+                        }
+                        uint8_t new_idx = (uint8_t)chunk_add_const(chunk, folded);
+                        code[i] = OP_CONST;
+                        code[i+1] = new_idx;
+                        /* Remove the next 3 bytes */
+                        memmove(&code[i+2], &code[i+5], count - i - 5);
+                        chunk->count -= 3;
+                        count -= 3;
+                    }
+                    folded = true;
+                    continue;
+                }
+            }
+        }
+        i++;
+    }
+    
+    return folded;
+}
+#endif
+
 /* ============ Compile Entry Point ============ */
 
 bool compile(const char* source, Chunk* chunk, VM* vm) {
@@ -1672,6 +1854,11 @@ bool compile(const char* source, Chunk* chunk, VM* vm) {
     
     emit_byte(OP_HALT);
     end_compiler();
+    
+    /* Note: Peephole and constant folding optimizations are disabled
+     * because they corrupt jump offsets when shifting bytecode.
+     * The existing superinstructions (OP_CONST_0/1/2, OP_GET_LOCAL_0-3)
+     * are emitted directly during compilation which is safer. */
     
     return !parser.had_error;
 }

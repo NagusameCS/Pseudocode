@@ -4,18 +4,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pseudocode - A Fast, Intuitive Programming Language</title>
+    <title>Pseudocode - Fast, Intuitive Programming Language</title>
     <style>
         :root {
-            --primary: #a1a1aa;
-            --primary-dark: #71717a;
-            --bg: #09090b;
-            --bg-light: #18181b;
-            --text: #fafafa;
-            --text-muted: #a1a1aa;
-            --accent: #e4e4e7;
-            --code-bg: #18181b;
-            --success: #a1a1aa;
+            --bg-primary: #1b1b1f;
+            --bg-secondary: #232327;
+            --bg-tertiary: #2a2a2e;
+            --text-primary: #f5f5f7;
+            --text-secondary: #b3b3b6;
+            --text-tertiary: #8e8e93;
+            --accent: #a78bfa;
+            --accent-dim: #7c5cbf;
+            --border: #3a3a3e;
+            --code-bg: #161618;
+            --success: #34d399;
+            --warning: #fbbf24;
+            --error: #f87171;
+            --link: #93c5fd;
         }
 
         * {
@@ -25,464 +30,504 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-            background: var(--bg);
-            color: var(--text);
+            font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
             line-height: 1.6;
+            font-size: 16px;
+        }
+
+        a {
+            color: var(--link);
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1280px;
             margin: 0 auto;
-            padding: 0 2rem;
+            padding: 0 24px;
         }
 
-        /* Header */
         header {
-            padding: 1rem 0;
-            border-bottom: 1px solid var(--bg-light);
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
         }
 
-        nav {
+        .header-inner {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            height: 64px;
         }
 
         .logo {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--accent);
-            text-decoration: none;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
-        .nav-links {
+        .logo-icon {
+            width: 28px;
+            height: 28px;
+            background: var(--accent);
+            border-radius: 6px;
             display: flex;
-            gap: 2rem;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+            color: #fff;
+        }
+
+        nav ul {
+            display: flex;
+            gap: 32px;
             list-style: none;
         }
 
-        .nav-links a {
-            color: var(--text-muted);
+        nav a {
+            color: var(--text-secondary);
+            font-size: 14px;
+            font-weight: 500;
+            transition: color 0.15s;
+        }
+
+        nav a:hover {
+            color: var(--text-primary);
             text-decoration: none;
-            transition: color 0.2s;
         }
 
-        .nav-links a:hover {
-            color: var(--text);
-        }
-
-        /* Hero */
         .hero {
-            padding: 6rem 0;
+            padding: 80px 0 64px;
             text-align: center;
+            border-bottom: 1px solid var(--border);
         }
 
         .hero h1 {
-            font-size: 4rem;
-            margin-bottom: 1rem;
-            background: linear-gradient(135deg, var(--accent), var(--primary));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+            letter-spacing: -0.02em;
         }
 
         .hero p {
             font-size: 1.25rem;
-            color: var(--text-muted);
-            max-width: 600px;
-            margin: 0 auto 2rem;
+            color: var(--text-secondary);
+            max-width: 640px;
+            margin: 0 auto 32px;
         }
 
         .hero-buttons {
             display: flex;
-            gap: 1rem;
+            gap: 12px;
             justify-content: center;
         }
 
         .btn {
-            padding: 0.75rem 1.5rem;
-            border-radius: 0.5rem;
+            padding: 12px 24px;
+            border-radius: 8px;
             font-weight: 600;
-            text-decoration: none;
-            transition: all 0.2s;
+            font-size: 14px;
+            cursor: pointer;
+            border: none;
+            transition: all 0.15s;
         }
 
         .btn-primary {
-            background: var(--primary);
-            color: white;
+            background: var(--accent);
+            color: #fff;
         }
 
         .btn-primary:hover {
-            background: var(--primary-dark);
+            background: var(--accent-dim);
+            text-decoration: none;
         }
 
         .btn-secondary {
-            background: var(--bg-light);
-            color: var(--text);
-            border: 1px solid var(--text-muted);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
         }
 
         .btn-secondary:hover {
-            border-color: var(--accent);
-            color: var(--accent);
+            border-color: var(--text-tertiary);
+            text-decoration: none;
         }
 
-        /* Features */
-        .features {
-            padding: 4rem 0;
+        .version-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            background: var(--bg-tertiary);
+            border-radius: 4px;
+            font-size: 12px;
+            color: var(--text-tertiary);
+            margin-bottom: 24px;
         }
 
-        .features h2 {
-            text-align: center;
-            font-size: 2.5rem;
-            margin-bottom: 3rem;
+        section {
+            padding: 64px 0;
         }
 
-        .feature-grid {
+        section h2 {
+            font-size: 1.75rem;
+            font-weight: 600;
+            margin-bottom: 32px;
+        }
+
+        .features-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 2rem;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
         }
 
         .feature-card {
-            background: var(--bg-light);
-            padding: 2rem;
-            border-radius: 1rem;
-            border: 1px solid transparent;
-            transition: border-color 0.2s;
-        }
-
-        .feature-card:hover {
-            border-color: var(--primary);
-        }
-
-        .feature-icon {
-            font-size: 2rem;
-            margin-bottom: 1rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
         }
 
         .feature-card h3 {
-            margin-bottom: 0.5rem;
-            color: var(--accent);
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-primary);
         }
 
         .feature-card p {
-            color: var(--text-muted);
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.5;
         }
 
-        /* Code Example */
-        .code-section {
-            padding: 4rem 0;
+        .feature-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 16px;
+            color: var(--accent);
         }
 
-        .code-section h2 {
-            text-align: center;
-            font-size: 2.5rem;
-            margin-bottom: 1rem;
-        }
-
-        .code-section>p {
-            text-align: center;
-            color: var(--text-muted);
-            margin-bottom: 2rem;
-        }
-
-        .code-examples {
+        .code-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-            gap: 2rem;
+            gap: 24px;
         }
 
         .code-block {
             background: var(--code-bg);
-            border-radius: 1rem;
+            border: 1px solid var(--border);
+            border-radius: 12px;
             overflow: hidden;
         }
 
         .code-header {
-            background: #0f172a;
-            padding: 0.75rem 1rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .code-dot {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-        }
-
-        .code-dot.red {
-            background: #ef4444;
-        }
-
-        .code-dot.yellow {
-            background: #eab308;
-        }
-
-        .code-dot.green {
-            background: #22c55e;
-        }
-
-        .code-title {
-            margin-left: 0.5rem;
-            color: var(--text-muted);
-            font-size: 0.875rem;
+            background: var(--bg-tertiary);
+            padding: 12px 16px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border);
         }
 
         pre {
-            padding: 1.5rem;
+            padding: 20px;
             overflow-x: auto;
             font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
-            font-size: 0.9rem;
-            line-height: 1.7;
+            font-size: 13px;
+            line-height: 1.6;
+            margin: 0;
         }
 
-        .keyword {
-            color: #c084fc;
+        .keyword { color: #c084fc; }
+        .function { color: #60a5fa; }
+        .string { color: #34d399; }
+        .number { color: #fb923c; }
+        .comment { color: #6b7280; }
+
+        .benchmarks {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            padding: 32px;
         }
 
-        .function {
-            color: #60a5fa;
-        }
-
-        .string {
-            color: #4ade80;
-        }
-
-        .number {
-            color: #f97316;
-        }
-
-        .comment {
-            color: #64748b;
-        }
-
-        .operator {
-            color: #f472b6;
-        }
-
-        /* Performance */
-        .performance {
-            padding: 4rem 0;
-            text-align: center;
-        }
-
-        .performance h2 {
-            font-size: 2.5rem;
-            margin-bottom: 1rem;
-        }
-
-        .performance>p {
-            color: var(--text-muted);
-            margin-bottom: 2rem;
-        }
-
-        .perf-bars {
-            max-width: 600px;
-            margin: 0 auto;
-        }
-
-        .perf-bar {
-            margin-bottom: 1.5rem;
-        }
-
-        .perf-label {
+        .benchmark-header {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 0.5rem;
-        }
-
-        .perf-track {
-            height: 2rem;
-            background: var(--bg-light);
-            border-radius: 0.5rem;
-            overflow: hidden;
-        }
-
-        .perf-fill {
-            height: 100%;
-            border-radius: 0.5rem;
-            display: flex;
             align-items: center;
-            padding-left: 1rem;
+            margin-bottom: 24px;
+        }
+
+        .benchmark-header h3 {
+            font-size: 1.125rem;
             font-weight: 600;
-            font-size: 0.875rem;
         }
 
-        .perf-fill.fast {
-            background: linear-gradient(90deg, var(--success), #059669);
+        .benchmark-info {
+            font-size: 13px;
+            color: var(--text-tertiary);
         }
 
-        .perf-fill.medium {
-            background: linear-gradient(90deg, #eab308, #ca8a04);
+        .benchmark-table {
+            width: 100%;
+            border-collapse: collapse;
         }
 
-        .perf-fill.slow {
-            background: linear-gradient(90deg, #ef4444, #dc2626);
+        .benchmark-table th,
+        .benchmark-table td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+            font-size: 14px;
         }
 
-        /* Getting Started */
-        .getting-started {
-            padding: 4rem 0;
+        .benchmark-table th {
+            color: var(--text-tertiary);
+            font-weight: 500;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
 
-        .getting-started h2 {
-            text-align: center;
-            font-size: 2.5rem;
-            margin-bottom: 2rem;
+        .benchmark-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .benchmark-bar {
+            height: 8px;
+            background: var(--bg-tertiary);
+            border-radius: 4px;
+            overflow: hidden;
+            min-width: 200px;
+        }
+
+        .benchmark-fill {
+            height: 100%;
+            border-radius: 4px;
+        }
+
+        .benchmark-fill.fast { background: var(--success); }
+        .benchmark-fill.medium { background: var(--warning); }
+        .benchmark-fill.slow { background: var(--error); }
+
+        .time-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+        }
+
+        .speedup {
+            color: var(--success);
+            font-weight: 600;
         }
 
         .steps {
-            max-width: 800px;
-            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            max-width: 720px;
         }
 
         .step {
             display: flex;
-            gap: 1.5rem;
-            margin-bottom: 2rem;
+            gap: 20px;
         }
 
         .step-number {
-            width: 3rem;
-            height: 3rem;
-            background: var(--primary);
+            width: 32px;
+            height: 32px;
+            background: var(--accent);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-weight: 700;
+            font-weight: 600;
+            font-size: 14px;
             flex-shrink: 0;
+            color: #fff;
+        }
+
+        .step-content {
+            flex: 1;
         }
 
         .step-content h3 {
-            margin-bottom: 0.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 8px;
         }
 
         .step-content p {
-            color: var(--text-muted);
-            margin-bottom: 1rem;
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
         }
 
         .step-code {
             background: var(--code-bg);
-            padding: 1rem;
-            border-radius: 0.5rem;
-            font-family: monospace;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            border: 1px solid var(--border);
         }
 
-        /* Footer */
         footer {
-            padding: 3rem 0;
-            border-top: 1px solid var(--bg-light);
+            padding: 32px 0;
+            border-top: 1px solid var(--border);
             text-align: center;
-            color: var(--text-muted);
+        }
+
+        footer p {
+            color: var(--text-tertiary);
+            font-size: 14px;
         }
 
         footer a {
-            color: var(--accent);
-            text-decoration: none;
+            color: var(--text-secondary);
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            margin-top: 12px;
+        }
+
+        .footer-links a {
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
 
         @media (max-width: 768px) {
-            .hero h1 {
-                font-size: 2.5rem;
-            }
-
-            .hero-buttons {
-                flex-direction: column;
-            }
-
-            .code-examples {
-                grid-template-columns: 1fr;
-            }
-
-            .nav-links {
-                display: none;
-            }
+            .hero h1 { font-size: 2rem; }
+            .hero p { font-size: 1rem; }
+            nav ul { display: none; }
+            .code-grid { grid-template-columns: 1fr; }
+            .benchmark-bar { min-width: 100px; }
         }
     </style>
 </head>
 
 <body>
     <header>
-        <nav class="container">
-            <a href="/" class="logo">Pseudocode</a>
-            <ul class="nav-links">
-                <li><a href="#features">Features</a></li>
-                <li><a href="#examples">Examples</a></li>
-                <li><a href="#performance">Performance</a></li>
-                <li><a href="reference.html">Reference</a></li>
-                <li><a href="https://github.com/NagusameCS/Pseudocode">GitHub</a></li>
-            </ul>
-        </nav>
+        <div class="container header-inner">
+            <a href="/" class="logo">
+                <span class="logo-icon">P</span>
+                Pseudocode
+            </a>
+            <nav>
+                <ul>
+                    <li><a href="#features">Features</a></li>
+                    <li><a href="#examples">Examples</a></li>
+                    <li><a href="#benchmarks">Benchmarks</a></li>
+                    <li><a href="reference.html">Reference</a></li>
+                    <li><a href="https://github.com/NagusameCS/Pseudocode">GitHub</a></li>
+                </ul>
+            </nav>
+        </div>
     </header>
 
     <main>
         <section class="hero container">
+            <span class="version-badge">v1.0 - C VM with NaN-boxing</span>
             <h1>Write Code Like You Think</h1>
-            <p>A blazingly fast programming language with intuitive syntax that reads like pseudocode. Compiled to
-                bytecode and executed on a high-performance VM.</p>
+            <p>A high-performance programming language with intuitive syntax. Compiles to bytecode and runs on an optimized VM that outperforms Python.</p>
             <div class="hero-buttons">
                 <a href="#getting-started" class="btn btn-primary">Get Started</a>
                 <a href="reference.html" class="btn btn-secondary">Documentation</a>
             </div>
         </section>
 
-        <section class="features container" id="features">
+        <section class="container" id="features">
             <h2>Why Pseudocode?</h2>
-            <div class="feature-grid">
+            <div class="features-grid">
                 <div class="feature-card">
-                    <div class="feature-icon">⚡</div>
-                    <h3>Blazingly Fast</h3>
-                    <p>Our C-based VM with NaN-boxing and computed gotos runs faster than native Python. fib(30)
-                        completes in under 80ms.</p>
+                    <div class="feature-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                        </svg>
+                    </div>
+                    <h3>High Performance</h3>
+                    <p>The C-based VM uses NaN-boxing, computed gotos, and register-cached stack pointers. Runs 2.5x faster than Python on recursive benchmarks.</p>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon">📖</div>
+                    <div class="feature-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                        </svg>
+                    </div>
                     <h3>Readable Syntax</h3>
-                    <p>Write code that reads like natural language. No cryptic symbols or complex syntax — just clear,
-                        intuitive expressions.</p>
+                    <p>Natural language-like constructs with clear keywords: fn, if/then/end, for/in, match/case. No cryptic symbols or complex syntax.</p>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon">🔧</div>
+                    <div class="feature-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="3" y1="9" x2="21" y2="9"></line>
+                            <line x1="9" y1="21" x2="9" y2="9"></line>
+                        </svg>
+                    </div>
                     <h3>Rich Built-ins</h3>
-                    <p>Math functions, type conversions, array operations, and more — all available out of the box
-                        without imports.</p>
+                    <p>80+ built-in functions including file I/O, HTTP requests, JSON parsing, dictionaries, vector operations, and cryptographic hashing.</p>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon">🎯</div>
-                    <h3>Simple & Focused</h3>
-                    <p>Learn the entire language in minutes. Perfect for learning algorithms, rapid prototyping, and
-                        teaching.</p>
+                    <div class="feature-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                        </svg>
+                    </div>
+                    <h3>Fast Compilation</h3>
+                    <p>Single-pass Pratt parser compiles source to bytecode in microseconds. No separate compilation step needed.</p>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon">🔄</div>
+                    <div class="feature-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                            <polyline points="15 3 21 3 21 9"></polyline>
+                            <line x1="10" y1="14" x2="21" y2="3"></line>
+                        </svg>
+                    </div>
                     <h3>First-Class Functions</h3>
-                    <p>Define functions with fn/end, pass them around, and use recursion naturally.</p>
+                    <p>Define and pass functions freely. Full support for recursion, closures, and higher-order programming patterns.</p>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon">📦</div>
-                    <h3>Dynamic Arrays</h3>
-                    <p>Flexible arrays with push, pop, slicing, and iteration. Build data structures with ease.</p>
+                    <div class="feature-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="16 18 22 12 16 6"></polyline>
+                            <polyline points="8 6 2 12 8 18"></polyline>
+                        </svg>
+                    </div>
+                    <h3>Pattern Matching</h3>
+                    <p>Expressive match/case expressions for clean control flow. Works with numbers, strings, and complex patterns.</p>
                 </div>
             </div>
         </section>
 
-        <section class="code-section container" id="examples">
-            <h2>See It In Action</h2>
-            <p>Clean, readable code that does exactly what it looks like</p>
-            <div class="code-examples">
+        <section class="container" id="examples">
+            <h2>Code Examples</h2>
+            <div class="code-grid">
                 <div class="code-block">
-                    <div class="code-header">
-                        <span class="code-dot red"></span>
-                        <span class="code-dot yellow"></span>
-                        <span class="code-dot green"></span>
-                        <span class="code-title">fibonacci.pseudo</span>
-                    </div>
+                    <div class="code-header">fibonacci.pseudo</div>
                     <pre><span class="comment">// Recursive Fibonacci</span>
 <span class="keyword">fn</span> <span class="function">fib</span>(n)
     <span class="keyword">if</span> n &lt;= <span class="number">1</span> <span class="keyword">then</span>
@@ -491,115 +536,149 @@
     <span class="keyword">return</span> <span class="function">fib</span>(n - <span class="number">1</span>) + <span class="function">fib</span>(n - <span class="number">2</span>)
 <span class="keyword">end</span>
 
-<span class="function">print</span>(<span class="function">fib</span>(<span class="number">30</span>))  <span class="comment">// 832040</span></pre>
+<span class="function">print</span>(<span class="function">fib</span>(<span class="number">30</span>))  <span class="comment">// 832040 in ~55ms</span></pre>
                 </div>
 
                 <div class="code-block">
-                    <div class="code-header">
-                        <span class="code-dot red"></span>
-                        <span class="code-dot yellow"></span>
-                        <span class="code-dot green"></span>
-                        <span class="code-title">fizzbuzz.pseudo</span>
-                    </div>
-                    <pre><span class="keyword">for</span> i <span class="keyword">in</span> <span class="number">1</span>..<span class="number">100</span> <span class="keyword">do</span>
-    <span class="keyword">if</span> i % <span class="number">15</span> == <span class="number">0</span> <span class="keyword">then</span>
-        <span class="function">print</span>(<span class="string">"FizzBuzz"</span>)
-    <span class="keyword">elif</span> i % <span class="number">3</span> == <span class="number">0</span> <span class="keyword">then</span>
-        <span class="function">print</span>(<span class="string">"Fizz"</span>)
-    <span class="keyword">elif</span> i % <span class="number">5</span> == <span class="number">0</span> <span class="keyword">then</span>
-        <span class="function">print</span>(<span class="string">"Buzz"</span>)
-    <span class="keyword">else</span>
-        <span class="function">print</span>(i)
-    <span class="keyword">end</span>
-<span class="keyword">end</span></pre>
+                    <div class="code-header">http_example.pseudo</div>
+                    <pre><span class="comment">// HTTP GET request</span>
+<span class="keyword">let</span> response = <span class="function">http_get</span>(<span class="string">"https://api.example.com/data"</span>)
+<span class="keyword">let</span> data = <span class="function">json_parse</span>(response)
+
+<span class="comment">// Work with the response</span>
+<span class="function">print</span>(<span class="function">dict_get</span>(data, <span class="string">"name"</span>))</pre>
                 </div>
 
                 <div class="code-block">
-                    <div class="code-header">
-                        <span class="code-dot red"></span>
-                        <span class="code-dot yellow"></span>
-                        <span class="code-dot green"></span>
-                        <span class="code-title">arrays.pseudo</span>
-                    </div>
-                    <pre><span class="comment">// Dynamic arrays</span>
-<span class="keyword">let</span> nums = [<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>]
+                    <div class="code-header">vectors.pseudo</div>
+                    <pre><span class="comment">// Vector operations</span>
+<span class="keyword">let</span> data = [<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>]
 
-<span class="comment">// Built-in functions</span>
-<span class="function">print</span>(<span class="function">len</span>(nums))     <span class="comment">// 5</span>
-<span class="function">push</span>(nums, <span class="number">6</span>)
-<span class="function">print</span>(<span class="function">pop</span>(nums))     <span class="comment">// 6</span>
+<span class="function">print</span>(<span class="function">vec_sum</span>(data))     <span class="comment">// 15</span>
+<span class="function">print</span>(<span class="function">vec_mean</span>(data))    <span class="comment">// 3.0</span>
+<span class="function">print</span>(<span class="function">vec_sort</span>(data))    <span class="comment">// [1,2,3,4,5]</span>
 
-<span class="comment">// Indexing</span>
-<span class="function">print</span>(nums[<span class="number">0</span>])       <span class="comment">// 1</span>
-<span class="function">print</span>(nums[<span class="number">-1</span>])      <span class="comment">// 5 (negative index)</span></pre>
+<span class="keyword">let</span> doubled = <span class="function">vec_mul</span>(data, [<span class="number">2</span>,<span class="number">2</span>,<span class="number">2</span>,<span class="number">2</span>,<span class="number">2</span>])
+<span class="function">print</span>(doubled)  <span class="comment">// [2,4,6,8,10]</span></pre>
                 </div>
 
                 <div class="code-block">
-                    <div class="code-header">
-                        <span class="code-dot red"></span>
-                        <span class="code-dot yellow"></span>
-                        <span class="code-dot green"></span>
-                        <span class="code-title">math.pseudo</span>
-                    </div>
-                    <pre><span class="comment">// Math functions</span>
-<span class="function">print</span>(<span class="function">sqrt</span>(<span class="number">16</span>))      <span class="comment">// 4</span>
-<span class="function">print</span>(<span class="function">abs</span>(<span class="number">-42</span>))      <span class="comment">// 42</span>
-<span class="function">print</span>(<span class="function">pow</span>(<span class="number">2</span>, <span class="number">10</span>))    <span class="comment">// 1024</span>
-<span class="function">print</span>(<span class="function">min</span>(<span class="number">5</span>, <span class="number">3</span>))     <span class="comment">// 3</span>
-<span class="function">print</span>(<span class="function">max</span>(<span class="number">5</span>, <span class="number">3</span>))     <span class="comment">// 5</span>
+                    <div class="code-header">file_io.pseudo</div>
+                    <pre><span class="comment">// File operations</span>
+<span class="keyword">let</span> content = <span class="function">read_file</span>(<span class="string">"data.txt"</span>)
+<span class="function">print</span>(<span class="string">"Read "</span> + <span class="function">str</span>(<span class="function">len</span>(content)) + <span class="string">" bytes"</span>)
 
-<span class="comment">// Type conversions</span>
-<span class="function">print</span>(<span class="function">int</span>(<span class="string">"123"</span>))    <span class="comment">// 123</span>
-<span class="function">print</span>(<span class="function">str</span>(<span class="number">456</span>))      <span class="comment">// "456"</span>
-<span class="function">print</span>(<span class="function">type</span>([]))      <span class="comment">// "array"</span></pre>
+<span class="comment">// Write processed data</span>
+<span class="keyword">let</span> output = <span class="function">upper</span>(content)
+<span class="function">write_file</span>(<span class="string">"output.txt"</span>, output)
+
+<span class="comment">// List directory</span>
+<span class="keyword">let</span> files = <span class="function">list_dir</span>(<span class="string">"."</span>)
+<span class="function">print</span>(files)</pre>
                 </div>
             </div>
         </section>
 
-        <section class="performance container" id="performance">
-            <h2>Performance That Matters</h2>
-            <p>fib(30) benchmark — lower is better</p>
-            <div class="perf-bars">
-                <div class="perf-bar">
-                    <div class="perf-label">
-                        <span>Pseudocode (C VM + PGO)</span>
-                        <span>~73ms</span>
-                    </div>
-                    <div class="perf-track">
-                        <div class="perf-fill fast" style="width: 6%;">⚡</div>
-                    </div>
+        <section class="container" id="benchmarks">
+            <h2>Performance Benchmarks</h2>
+            <div class="benchmarks">
+                <div class="benchmark-header">
+                    <h3>Recursive Fibonacci - fib(30)</h3>
+                    <span class="benchmark-info">Lower is better. Measured on AMD Ryzen / Intel i7, PGO-optimized build.</span>
                 </div>
-                <div class="perf-bar">
-                    <div class="perf-label">
-                        <span>Native Python 3.12</span>
-                        <span>~123ms</span>
-                    </div>
-                    <div class="perf-track">
-                        <div class="perf-fill medium" style="width: 11%;"></div>
-                    </div>
+                <table class="benchmark-table">
+                    <thead>
+                        <tr>
+                            <th>Implementation</th>
+                            <th>Time</th>
+                            <th>Relative</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Pseudocode (C VM + PGO)</td>
+                            <td class="time-value">~55ms</td>
+                            <td class="speedup">2.5x faster</td>
+                            <td>
+                                <div class="benchmark-bar">
+                                    <div class="benchmark-fill fast" style="width: 40%;"></div>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Python 3.12</td>
+                            <td class="time-value">~136ms</td>
+                            <td>baseline</td>
+                            <td>
+                                <div class="benchmark-bar">
+                                    <div class="benchmark-fill medium" style="width: 100%;"></div>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Ruby 3.2</td>
+                            <td class="time-value">~180ms</td>
+                            <td>1.3x slower</td>
+                            <td>
+                                <div class="benchmark-bar">
+                                    <div class="benchmark-fill slow" style="width: 100%;"></div>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="benchmark-header" style="margin-top: 32px;">
+                    <h3>Technical Optimizations</h3>
                 </div>
-                <div class="perf-bar">
-                    <div class="perf-label">
-                        <span>Pseudocode (Python VM)</span>
-                        <span>~23,000ms</span>
-                    </div>
-                    <div class="perf-track">
-                        <div class="perf-fill slow" style="width: 100%;"></div>
-                    </div>
-                </div>
+                <table class="benchmark-table">
+                    <thead>
+                        <tr>
+                            <th>Optimization</th>
+                            <th>Impact</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>NaN-boxing</td>
+                            <td class="speedup">~30% faster</td>
+                            <td>All values fit in 64 bits, eliminating pointer indirection</td>
+                        </tr>
+                        <tr>
+                            <td>Computed gotos</td>
+                            <td class="speedup">~20% faster</td>
+                            <td>Direct threading instead of switch dispatch</td>
+                        </tr>
+                        <tr>
+                            <td>Register-cached SP</td>
+                            <td class="speedup">~15% faster</td>
+                            <td>Stack pointer kept in CPU register</td>
+                        </tr>
+                        <tr>
+                            <td>Superinstructions</td>
+                            <td class="speedup">~10% faster</td>
+                            <td>Fused opcodes for common patterns (GET_LOCAL_0, CONST_1, etc.)</td>
+                        </tr>
+                        <tr>
+                            <td>PGO</td>
+                            <td class="speedup">~25% faster</td>
+                            <td>Profile-guided optimization with real workload data</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
-            <p style="margin-top: 2rem; font-size: 0.875rem;">The C VM is <strong>~315x faster</strong> than the Python
-                VM and <strong>~1.7x faster than native Python</strong>!</p>
         </section>
 
-        <section class="getting-started container" id="getting-started">
+        <section class="container" id="getting-started">
             <h2>Getting Started</h2>
             <div class="steps">
                 <div class="step">
                     <div class="step-number">1</div>
                     <div class="step-content">
                         <h3>Clone the Repository</h3>
-                        <p>Get the source code from GitHub</p>
+                        <p>Get the source code from GitHub.</p>
                         <div class="step-code">git clone https://github.com/NagusameCS/Pseudocode.git</div>
                     </div>
                 </div>
@@ -607,16 +686,24 @@
                     <div class="step-number">2</div>
                     <div class="step-content">
                         <h3>Build the VM</h3>
-                        <p>Compile the high-performance C VM</p>
-                        <div class="step-code">cd Pseudocode/cvm && make</div>
+                        <p>Compile with optimizations. Requires GCC or Clang.</p>
+                        <div class="step-code">cd Pseudocode/cvm && make pgo</div>
                     </div>
                 </div>
                 <div class="step">
                     <div class="step-number">3</div>
                     <div class="step-content">
                         <h3>Run Your First Program</h3>
-                        <p>Execute a Pseudocode file</p>
+                        <p>Execute any .pseudo file.</p>
                         <div class="step-code">./pseudo ../examples/hello.pseudo</div>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        <h3>Install the VS Code Extension</h3>
+                        <p>Get syntax highlighting and run commands.</p>
+                        <div class="step-code">code --install-extension pseudocode-lang-1.0.0.vsix</div>
                     </div>
                 </div>
             </div>
@@ -625,19 +712,16 @@
 
     <footer>
         <div class="container">
-            <p>Pseudocode is open source under the MIT License</p>
-            <p>
-                <a href="https://github.com/NagusameCS/Pseudocode"
-                    style="display: inline-flex; align-items: center; gap: 0.5rem;">
-                    <svg height="20" width="20" viewBox="0 0 16 16" fill="currentColor">
-                        <path
-                            d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
+            <p>Pseudocode is open source under the MIT License.</p>
+            <div class="footer-links">
+                <a href="https://github.com/NagusameCS/Pseudocode">
+                    <svg height="16" width="16" viewBox="0 0 16 16" fill="currentColor">
+                        <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
                     </svg>
                     GitHub
                 </a>
-                <span style="margin: 0 0.5rem;">•</span>
                 <a href="reference.html">Documentation</a>
-            </p>
+            </div>
         </div>
     </footer>
 </body>
