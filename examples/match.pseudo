@@ -1,0 +1,50 @@
+// Test pattern matching
+print("=== Pattern Matching Test ===")
+
+fn day_type(day)
+    match day
+        case 1 then
+            print("Monday - Start of week")
+        case 2 then
+            print("Tuesday")
+        case 3 then
+            print("Wednesday - Hump day")
+        case 4 then
+            print("Thursday")
+        case 5 then
+            print("Friday - TGIF!")
+        case 6 then
+            print("Saturday - Weekend!")
+        case 7 then
+            print("Sunday - Weekend!")
+        else
+            print("Invalid day")
+    end
+end
+
+for i in 1..8 do
+    print("Day ")
+    print(i)
+    print(": ")
+    day_type(i)
+end
+
+print("")
+print("=== String Matching ===")
+
+fn handle_command(cmd)
+    match cmd
+        case "start" then
+            print("Starting...")
+        case "stop" then
+            print("Stopping...")
+        case "restart" then
+            print("Restarting...")
+        else
+            print("Unknown command")
+    end
+end
+
+handle_command("start")
+handle_command("stop")
+handle_command("unknown")

@@ -14,6 +14,7 @@ typedef enum {
     TOKEN_IDENT, TOKEN_LET, TOKEN_CONST, TOKEN_FN, TOKEN_RETURN,
     TOKEN_IF, TOKEN_THEN, TOKEN_ELIF, TOKEN_ELSE, TOKEN_END,
     TOKEN_WHILE, TOKEN_FOR, TOKEN_IN, TOKEN_DO, TOKEN_AND, TOKEN_OR, TOKEN_NOT,
+    TOKEN_MATCH, TOKEN_CASE,
     TOKEN_PLUS, TOKEN_MINUS, TOKEN_STAR, TOKEN_SLASH, TOKEN_PERCENT,
     TOKEN_EQ, TOKEN_NEQ, TOKEN_LT, TOKEN_GT, TOKEN_LTE, TOKEN_GTE,
     TOKEN_ASSIGN, TOKEN_ARROW, TOKEN_RANGE,
@@ -903,7 +904,8 @@ static void expression(void) {
 
 static void block(void) {
     skip_newlines();
-    while (!check(TOKEN_END) && !check(TOKEN_ELSE) && !check(TOKEN_ELIF) && !check(TOKEN_EOF)) {
+    while (!check(TOKEN_END) && !check(TOKEN_ELSE) && !check(TOKEN_ELIF) && 
+           !check(TOKEN_CASE) && !check(TOKEN_EOF)) {
         declaration();
         skip_newlines();
     }
@@ -1049,6 +1051,55 @@ static void print_statement(void) {
     emit_byte(OP_PRINT);
 }
 
+/* Pattern matching: match expr case val1 then ... case val2 then ... else ... end */
+static void match_statement(void) {
+    expression();  /* The value to match against */
+    skip_newlines();
+    
+    int end_jumps[256];
+    int end_jump_count = 0;
+    
+    /* Parse case clauses */
+    while (match(TOKEN_CASE)) {
+        /* Duplicate the match value for comparison */
+        emit_byte(OP_DUP);
+        
+        expression();  /* The case pattern/value */
+        consume(TOKEN_THEN, "Expect 'then' after case value.");
+        skip_newlines();
+        
+        /* Compare */
+        emit_byte(OP_EQ);
+        int next_case = emit_jump(OP_JMP_FALSE);
+        emit_byte(OP_POP);  /* Pop comparison result */
+        
+        /* Execute case body */
+        block();
+        
+        /* Jump to end after case body */
+        end_jumps[end_jump_count++] = emit_jump(OP_JMP);
+        
+        patch_jump(next_case);
+        emit_byte(OP_POP);  /* Pop comparison result */
+    }
+    
+    /* Optional else clause (default case) */
+    if (match(TOKEN_ELSE)) {
+        skip_newlines();
+        block();
+    }
+    
+    /* Pop the match value */
+    emit_byte(OP_POP);
+    
+    /* Patch all end jumps to here */
+    for (int i = 0; i < end_jump_count; i++) {
+        patch_jump(end_jumps[i]);
+    }
+    
+    consume(TOKEN_END, "Expect 'end' after match statement.");
+}
+
 static void statement(void) {
     if (match(TOKEN_IF)) {
         if_statement();
@@ -1056,6 +1107,8 @@ static void statement(void) {
         while_statement();
     } else if (match(TOKEN_FOR)) {
         for_statement();
+    } else if (match(TOKEN_MATCH)) {
+        match_statement();
     } else if (match(TOKEN_RETURN)) {
         return_statement();
     } else {

@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pseudocode Playground</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0f172a;
+            --bg-light: #1e293b;
+            --bg-lighter: #334155;
+            --text: #f1f5f9;
+            --text-muted: #94a3b8;
+            --accent: #38bdf8;
+            --accent-hover: #7dd3fc;
+            --success: #4ade80;
+            --error: #f87171;
+            --code-bg: #1e293b;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            background: var(--bg-light);
+            border-bottom: 1px solid var(--bg-lighter);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        .logo span {
+            color: var(--text);
+        }
+
+        nav a {
+            color: var(--text-muted);
+            text-decoration: none;
+            margin-left: 2rem;
+            transition: color 0.2s;
+        }
+
+        nav a:hover {
+            color: var(--accent);
+        }
+
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 1rem;
+            gap: 1rem;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .btn {
+            background: var(--accent);
+            color: var(--bg);
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn:hover {
+            background: var(--accent-hover);
+            transform: translateY(-1px);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: var(--bg-lighter);
+            color: var(--text);
+        }
+
+        .btn-secondary:hover {
+            background: #475569;
+        }
+
+        .status {
+            margin-left: auto;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        .status.loading {
+            color: var(--accent);
+        }
+
+        .status.ready {
+            color: var(--success);
+        }
+
+        .status.error {
+            color: var(--error);
+        }
+
+        .editor-container {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            min-height: 0;
+        }
+
+        .panel {
+            background: var(--bg-light);
+            border-radius: 0.75rem;
+            border: 1px solid var(--bg-lighter);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .panel-header {
+            padding: 0.75rem 1rem;
+            background: var(--bg-lighter);
+            font-weight: 600;
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--bg-lighter);
+        }
+
+        .panel-content {
+            flex: 1;
+            overflow: auto;
+        }
+
+        #editor {
+            width: 100%;
+            height: 100%;
+            min-height: 400px;
+            background: transparent;
+            border: none;
+            color: var(--text);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            padding: 1rem;
+            resize: none;
+            outline: none;
+        }
+
+        #output {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            padding: 1rem;
+            white-space: pre-wrap;
+            color: var(--text);
+        }
+
+        .output-line {
+            margin-bottom: 0.25rem;
+        }
+
+        .output-error {
+            color: var(--error);
+        }
+
+        .output-success {
+            color: var(--success);
+        }
+
+        .examples {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .example-btn {
+            background: var(--bg-light);
+            border: 1px solid var(--bg-lighter);
+            color: var(--text-muted);
+            padding: 0.4rem 0.8rem;
+            border-radius: 0.375rem;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .example-btn:hover {
+            background: var(--bg-lighter);
+            color: var(--text);
+            border-color: var(--accent);
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(15, 23, 42, 0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid var(--bg-lighter);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            margin-top: 1rem;
+            color: var(--text-muted);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        @media (max-width: 768px) {
+            .editor-container {
+                grid-template-columns: 1fr;
+            }
+            
+            header {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            
+            nav a {
+                margin-left: 1rem;
+            }
+            
+            nav a:first-child {
+                margin-left: 0;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="loading" class="loading-overlay">
+        <div class="spinner"></div>
+        <p class="loading-text">Loading Pseudocode Runtime...</p>
+    </div>
+
+    <header>
+        <a href="index.html" class="logo">Pseudo<span>code</span></a>
+        <nav>
+            <a href="index.html">Home</a>
+            <a href="reference.html">Docs</a>
+            <a href="playground.html">Playground</a>
+            <a href="https://github.com/NagusameCS/Pseudocode" target="_blank">GitHub</a>
+        </nav>
+    </header>
+
+    <main class="main">
+        <div class="toolbar">
+            <button id="runBtn" class="btn" onclick="runCode()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M8 5v14l11-7z"/>
+                </svg>
+                Run (Ctrl+Enter)
+            </button>
+            <button class="btn btn-secondary" onclick="clearOutput()">Clear Output</button>
+            
+            <div class="examples">
+                <span style="color: var(--text-muted); font-size: 0.875rem;">Examples:</span>
+                <button class="example-btn" onclick="loadExample('hello')">Hello World</button>
+                <button class="example-btn" onclick="loadExample('fibonacci')">Fibonacci</button>
+                <button class="example-btn" onclick="loadExample('fizzbuzz')">FizzBuzz</button>
+                <button class="example-btn" onclick="loadExample('strings')">Strings</button>
+                <button class="example-btn" onclick="loadExample('bits')">Bit Ops</button>
+            </div>
+            
+            <span id="status" class="status loading">Loading...</span>
+        </div>
+
+        <div class="editor-container">
+            <div class="panel">
+                <div class="panel-header">📝 Code</div>
+                <div class="panel-content">
+                    <textarea id="editor" spellcheck="false">// Welcome to Pseudocode Playground!
+// Write your code here and click Run
+
+fn greet(name)
+    print("Hello, ")
+    print(name)
+    print("!")
+end
+
+greet("World")
+
+// Try the examples above or write your own code
+let x = 10
+let y = 20
+print("Sum: ")
+print(x + y)</textarea>
+                </div>
+            </div>
+            
+            <div class="panel">
+                <div class="panel-header">📤 Output</div>
+                <div class="panel-content">
+                    <div id="output"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"></script>
+    <script>
+        let pyodide = null;
+        let isReady = false;
+
+        const examples = {
+            hello: `// Hello World
+print("Hello, World!")
+
+let name = "Pseudocode"
+print("Welcome to ")
+print(name)
+print("!")`,
+
+            fibonacci: `// Fibonacci sequence
+fn fib(n)
+    if n < 2 then
+        return n
+    end
+    return fib(n - 1) + fib(n - 2)
+end
+
+print("Fibonacci numbers:")
+for i in 0..15 do
+    print(fib(i))
+end`,
+
+            fizzbuzz: `// FizzBuzz
+for i in 1..21 do
+    if i % 15 == 0 then
+        print("FizzBuzz")
+    elif i % 3 == 0 then
+        print("Fizz")
+    elif i % 5 == 0 then
+        print("Buzz")
+    else
+        print(i)
+    end
+end`,
+
+            strings: `// String operations
+let s = "Hello, World!"
+
+print("Original: ")
+print(s)
+
+print("Upper: ")
+print(upper(s))
+
+print("Lower: ")
+print(lower(s))
+
+print("Substring(0,5): ")
+print(substr(s, 0, 5))
+
+print("Find 'World': ")
+print(find(s, "World"))
+
+print("Replace: ")
+print(replace(s, "World", "Pseudocode"))
+
+let words = split("one,two,three", ",")
+print("Split result: ")
+print(words)
+
+print("Join with '-': ")
+print(join(words, "-"))`,
+
+            bits: `// Bit manipulation intrinsics
+print("=== Bit Operations ===")
+
+print("popcount(255) = ")
+print(popcount(255))
+
+print("clz(1) = ")
+print(clz(1))
+
+print("ctz(8) = ")
+print(ctz(8))
+
+print("rotl(1, 4) = ")
+print(rotl(1, 4))
+
+print("rotr(16, 4) = ")
+print(rotr(16, 4))
+
+// Bitwise operators
+let a = 12
+let b = 10
+print("12 & 10 = ")
+print(a & b)
+print("12 | 10 = ")
+print(a | b)
+print("12 ^ 10 = ")
+print(a ^ b)`
+        };
+
+        async function initPyodide() {
+            try {
+                pyodide = await loadPyodide();
+                
+                // Load the Python implementation
+                const response = await fetch('../src/pseudocode.py');
+                const pseudocodeSource = await response.text();
+                
+                // Also load dependencies
+                const lexerResp = await fetch('../src/lexer.py');
+                const lexerSource = await lexerResp.text();
+                
+                const parserResp = await fetch('../src/parser.py');
+                const parserSource = await parserResp.text();
+                
+                const compilerResp = await fetch('../src/compiler.py');
+                const compilerSource = await compilerResp.text();
+                
+                const vmResp = await fetch('../src/vm.py');
+                const vmSource = await vmResp.text();
+                
+                const stdlibResp = await fetch('../src/stdlib.py');
+                const stdlibSource = await stdlibResp.text();
+                
+                const astResp = await fetch('../src/ast_nodes.py');
+                const astSource = await astResp.text();
+                
+                // Write all files to Pyodide's virtual filesystem
+                pyodide.FS.writeFile('/home/pyodide/ast_nodes.py', astSource);
+                pyodide.FS.writeFile('/home/pyodide/lexer.py', lexerSource);
+                pyodide.FS.writeFile('/home/pyodide/parser.py', parserSource);
+                pyodide.FS.writeFile('/home/pyodide/compiler.py', compilerSource);
+                pyodide.FS.writeFile('/home/pyodide/vm.py', vmSource);
+                pyodide.FS.writeFile('/home/pyodide/stdlib.py', stdlibSource);
+                pyodide.FS.writeFile('/home/pyodide/pseudocode.py', pseudocodeSource);
+                
+                // Set up the runner
+                await pyodide.runPythonAsync(`
+import sys
+sys.path.insert(0, '/home/pyodide')
+
+from io import StringIO
+from lexer import Lexer
+from parser import Parser
+from compiler import Compiler
+from vm import VM
+
+def run_pseudocode(source):
+    output = StringIO()
+    old_stdout = sys.stdout
+    sys.stdout = output
+    
+    try:
+        lexer = Lexer(source)
+        tokens = lexer.tokenize()
+        
+        parser = Parser(tokens)
+        ast = parser.parse()
+        
+        compiler = Compiler()
+        bytecode = compiler.compile(ast)
+        
+        vm = VM()
+        vm.run(bytecode)
+        
+        result = output.getvalue()
+        return ("success", result)
+    except Exception as e:
+        return ("error", str(e))
+    finally:
+        sys.stdout = old_stdout
+`);
+                
+                isReady = true;
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('status').textContent = '✓ Ready';
+                document.getElementById('status').className = 'status ready';
+                
+            } catch (error) {
+                console.error('Failed to load Pyodide:', error);
+                document.getElementById('status').textContent = '✗ Failed to load';
+                document.getElementById('status').className = 'status error';
+                document.getElementById('loading').innerHTML = `
+                    <p style="color: var(--error); text-align: center;">
+                        Failed to load the runtime.<br>
+                        <small style="color: var(--text-muted);">Try refreshing the page or check console for errors.</small>
+                    </p>
+                `;
+            }
+        }
+
+        async function runCode() {
+            if (!isReady) {
+                appendOutput('Runtime not ready. Please wait...', 'error');
+                return;
+            }
+
+            const code = document.getElementById('editor').value;
+            const outputEl = document.getElementById('output');
+            
+            document.getElementById('status').textContent = '⟳ Running...';
+            document.getElementById('status').className = 'status loading';
+            document.getElementById('runBtn').disabled = true;
+
+            try {
+                // Escape the code properly for Python
+                const escapedCode = code.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n');
+                
+                const result = await pyodide.runPythonAsync(`run_pseudocode('${escapedCode}')`);
+                const [status, output] = result.toJs();
+                
+                if (status === 'success') {
+                    appendOutput(output || '(no output)', 'success');
+                } else {
+                    appendOutput('Error: ' + output, 'error');
+                }
+            } catch (error) {
+                appendOutput('Runtime error: ' + error.message, 'error');
+            }
+
+            document.getElementById('status').textContent = '✓ Ready';
+            document.getElementById('status').className = 'status ready';
+            document.getElementById('runBtn').disabled = false;
+        }
+
+        function appendOutput(text, type) {
+            const outputEl = document.getElementById('output');
+            const line = document.createElement('div');
+            line.className = 'output-line output-' + type;
+            line.textContent = text;
+            outputEl.appendChild(line);
+            outputEl.scrollTop = outputEl.scrollHeight;
+        }
+
+        function clearOutput() {
+            document.getElementById('output').innerHTML = '';
+        }
+
+        function loadExample(name) {
+            if (examples[name]) {
+                document.getElementById('editor').value = examples[name];
+                clearOutput();
+            }
+        }
+
+        // Keyboard shortcut
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                e.preventDefault();
+                runCode();
+            }
+        });
+
+        // Initialize
+        initPyodide();
+    </script>
+</body>
+
+</html>

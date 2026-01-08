@@ -532,6 +532,19 @@ InterpretResult vm_run(VM* vm) {
     CASE(eq): {
         Value b = POP();
         Value a = POP();
+        /* Handle string comparison by value */
+        if (IS_OBJ(a) && IS_OBJ(b)) {
+            Obj* obj_a = (Obj*)as_obj(a);
+            Obj* obj_b = (Obj*)as_obj(b);
+            if (obj_a->type == OBJ_STRING && obj_b->type == OBJ_STRING) {
+                ObjString* str_a = (ObjString*)obj_a;
+                ObjString* str_b = (ObjString*)obj_b;
+                bool equal = str_a->length == str_b->length &&
+                             memcmp(str_a->chars, str_b->chars, str_a->length) == 0;
+                PUSH(val_bool(equal));
+                DISPATCH();
+            }
+        }
         PUSH(val_bool(a == b));
         DISPATCH();
     }
@@ -539,6 +552,19 @@ InterpretResult vm_run(VM* vm) {
     CASE(neq): {
         Value b = POP();
         Value a = POP();
+        /* Handle string comparison by value */
+        if (IS_OBJ(a) && IS_OBJ(b)) {
+            Obj* obj_a = (Obj*)as_obj(a);
+            Obj* obj_b = (Obj*)as_obj(b);
+            if (obj_a->type == OBJ_STRING && obj_b->type == OBJ_STRING) {
+                ObjString* str_a = (ObjString*)obj_a;
+                ObjString* str_b = (ObjString*)obj_b;
+                bool equal = str_a->length == str_b->length &&
+                             memcmp(str_a->chars, str_b->chars, str_a->length) == 0;
+                PUSH(val_bool(!equal));
+                DISPATCH();
+            }
+        }
         PUSH(val_bool(a != b));
         DISPATCH();
     }

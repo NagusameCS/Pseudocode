@@ -33,6 +33,8 @@ typedef enum {
     TOKEN_AND,
     TOKEN_OR,
     TOKEN_NOT,
+    TOKEN_MATCH,
+    TOKEN_CASE,
     
     /* Operators */
     TOKEN_PLUS,
@@ -180,7 +182,14 @@ static TokenType check_keyword(int start, int length, const char* rest, TokenTyp
 static TokenType identifier_type(void) {
     switch (scanner.start[0]) {
         case 'a': return check_keyword(1, 2, "nd", TOKEN_AND);
-        case 'c': return check_keyword(1, 4, "onst", TOKEN_CONST);
+        case 'c':
+            if (scanner.current - scanner.start > 1) {
+                switch (scanner.start[1]) {
+                    case 'o': return check_keyword(2, 3, "nst", TOKEN_CONST);
+                    case 'a': return check_keyword(2, 2, "se", TOKEN_CASE);
+                }
+            }
+            break;
         case 'd': return check_keyword(1, 1, "o", TOKEN_DO);
         case 'e':
             if (scanner.current - scanner.start > 1) {
@@ -215,6 +224,7 @@ static TokenType identifier_type(void) {
             }
             break;
         case 'l': return check_keyword(1, 2, "et", TOKEN_LET);
+        case 'm': return check_keyword(1, 4, "atch", TOKEN_MATCH);
         case 'n': return check_keyword(1, 2, "ot", TOKEN_NOT);
         case 'o': return check_keyword(1, 1, "r", TOKEN_OR);
         case 'r': return check_keyword(1, 5, "eturn", TOKEN_RETURN);
