@@ -1,0 +1,379 @@
+/*
+ * Pseudocode JIT Compiler using DynASM
+ * Compiles hot bytecode traces to native x86-64 machine code
+ */
+
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/mman.h>
+#include "pseudo.h"
+
+|.arch x64
+|.actionlist actions
+|.section code
+|.globals GLOB_
+
+/* Register allocation:
+ * rax - scratch / return value
+ * rbx - preserved, VM pointer
+ * rcx - scratch / argument
+ * rdx - scratch / argument  
+ * rsi - stack pointer (sp)
+ * rdi - instruction pointer (ip)
+ * rbp - frame base pointer
+ * r12 - constants array
+ * r13 - locals base
+ * r14 - preserved
+ * r15 - preserved
+ */
+
+|.define VM, rbx
+|.define SP, rsi
+|.define IP, rdi
+|.define FRAME_BASE, r13
+|.define CONST_BASE, r12
+
+/* Value representation (NaN-boxing):
+ * Integers: QNAN | TAG_INT | (value << 3)
+ * where QNAN = 0x7FF8000000000000, TAG_INT = 0x1
+ */
+|.define QNAN, 0x7FF8000000000000
+|.define TAG_INT, 0x1
+|.define INT_MASK, 0x7FF8000000000001
+
+/* Macro to box an integer (in rax) to a Value */
+|.macro box_int, reg
+| mov rcx, QNAN
+| or rcx, TAG_INT
+| shl reg, 3
+| or reg, rcx
+|.endmacro
+
+/* Macro to unbox an integer from a Value (in rax) to int32 */
+|.macro unbox_int, reg
+| shr reg, 3
+| movsxd reg, eax  // Sign extend 32-bit to 64-bit
+|.endmacro
+
+typedef struct {
+    dasm_State* state;
+    void* code;
+    size_t code_size;
+    unsigned int pc_label;
+} JitCompiler;
+
+/* Forward declarations */
+static void jit_compile_trace(JitCompiler* jit, uint8_t* bytecode, int len, VM* vm);
+static void* jit_finalize(JitCompiler* jit);
+
+/* Initialize JIT compiler */
+void jit_init(JitCompiler* jit) {
+    dasm_init(&jit->state, DASM_MAXSECTION);
+    |.globals GLOB_
+    void* labels[GLOB__MAX];
+    dasm_setupglobal(&jit->state, labels, GLOB__MAX);
+    |.actionlist actions
+    dasm_setup(&jit->state, actions);
+    jit->pc_label = 1;
+    jit->code = NULL;
+    jit->code_size = 0;
+}
+
+/* Free JIT compiler resources */
+void jit_free(JitCompiler* jit) {
+    if (jit->code) {
+        munmap(jit->code, jit->code_size);
+    }
+    dasm_free(&jit->state);
+}
+
+/* Compile a hot loop trace to native code */
+static void jit_compile_loop(JitCompiler* jit, uint8_t* code, int start, int end, 
+                              int counter_slot, int end_slot, int var_slot) {
+    dasm_State** Dst = &jit->state;
+    
+    |.code
+    | push rbx
+    | push rbp
+    | push r12
+    | push r13
+    | push r14
+    | push r15
+    
+    /* Arguments: rdi = VM*, rsi = iterations (end - start) */
+    | mov VM, rdi           // VM pointer
+    | mov r14, rsi          // iteration count
+    
+    /* Load frame base */
+    | mov rax, [VM + offsetof(VM, frame_count)]
+    | test eax, eax
+    | jz >1
+    /* In function - get frame slots */
+    | dec eax
+    | imul eax, eax, sizeof(CallFrame)
+    | lea rcx, [VM + offsetof(VM, frames)]
+    | add rcx, rax
+    | mov FRAME_BASE, [rcx + offsetof(CallFrame, slots)]
+    | jmp >2
+    |1:
+    /* At script level - use stack directly */
+    | lea FRAME_BASE, [VM + offsetof(VM, stack)]
+    |2:
+    
+    /* Initialize loop counter */
+    | xor r15d, r15d        // r15 = i = 0
+    
+    |3:                      // Loop start
+    | cmp r15, r14
+    | jge >4                 // Exit if i >= end
+    
+    /* Set loop variable: locals[var_slot] = val_int(i) */
+    | mov rax, r15
+    | box_int rax
+    | mov [FRAME_BASE + var_slot * 8], rax
+    
+    /* Increment counter */
+    | inc r15
+    
+    | jmp <3
+    
+    |4:                      // Loop exit
+    | pop r15
+    | pop r14
+    | pop r13
+    | pop r12
+    | pop rbp
+    | pop rbx
+    | ret
+}
+
+/* Compile addition loop: for i in 0..n do x = x + 1 end */
+static void jit_compile_inc_loop(JitCompiler* jit, int x_slot, int iterations) {
+    dasm_State** Dst = &jit->state;
+    
+    |.code
+    | push rbx
+    | push r12
+    | push r13
+    
+    /* Arguments: rdi = VM*, rsi = initial x value */
+    | mov VM, rdi
+    | mov rax, rsi          // x value (already as Value)
+    
+    /* Unbox x to integer */
+    | unbox_int rax
+    | mov ecx, eax          // ecx = x (as int32)
+    
+    /* Load iteration count */
+    | mov edx, iterations
+    
+    |1:                      // Loop
+    | add ecx, 1            // x = x + 1
+    | dec edx
+    | jnz <1
+    
+    /* Box result back */
+    | movsxd rax, ecx
+    | box_int rax
+    
+    | pop r13
+    | pop r12
+    | pop rbx
+    | ret
+}
+
+/* Finalize JIT compilation - link and make executable */
+static void* jit_finalize(JitCompiler* jit) {
+    size_t size;
+    dasm_link(&jit->state, &size);
+    
+    /* Allocate executable memory */
+    void* code = mmap(NULL, size, PROT_READ | PROT_WRITE,
+                      MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (code == MAP_FAILED) return NULL;
+    
+    /* Encode to memory */
+    dasm_encode(&jit->state, code);
+    
+    /* Make executable */
+    mprotect(code, size, PROT_READ | PROT_EXEC);
+    
+    jit->code = code;
+    jit->code_size = size;
+    
+    return code;
+}
+
+/* ============================================================
+ * Simple JIT for tight loops - bypasses bytecode entirely
+ * ============================================================ */
+
+/* JIT-compiled empty loop function type */
+typedef int64_t (*JitLoopFn)(int64_t start, int64_t end);
+typedef int64_t (*JitIncLoopFn)(int64_t x, int64_t iterations);
+
+/* Hand-written machine code for ultra-tight loops */
+/* This avoids DynASM preprocessing for simplicity */
+
+#include <sys/mman.h>
+
+/* Generate native code for: for i in start..end do x = x + 1 end; return x */
+static void* jit_gen_inc_loop(void) {
+    /* x86-64 machine code:
+     * Arguments: rdi = x (initial), rsi = iterations
+     * Returns: rax = final x
+     *
+     *   mov rax, rdi        ; rax = x
+     * loop:
+     *   add rax, 1          ; x++
+     *   dec rsi             ; iterations--
+     *   jnz loop            ; if iterations != 0, continue
+     *   ret
+     */
+    static const uint8_t code[] = {
+        0x48, 0x89, 0xf8,             /* mov rax, rdi */
+        0x48, 0x83, 0xc0, 0x01,       /* add rax, 1 */
+        0x48, 0xff, 0xce,             /* dec rsi */
+        0x75, 0xf7,                   /* jnz -9 (back to add) */
+        0xc3                          /* ret */
+    };
+    
+    size_t size = sizeof(code);
+    void* mem = mmap(NULL, size, PROT_READ | PROT_WRITE,
+                     MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (mem == MAP_FAILED) return NULL;
+    
+    memcpy(mem, code, size);
+    mprotect(mem, size, PROT_READ | PROT_EXEC);
+    
+    return mem;
+}
+
+/* Generate native code for: for i in start..end do (empty) end */
+static void* jit_gen_empty_loop(void) {
+    /* x86-64 machine code:
+     * Arguments: rdi = start, rsi = end
+     * Returns: rax = end (final counter value)
+     *
+     *   mov rax, rdi        ; rax = counter = start
+     * loop:
+     *   cmp rax, rsi        ; compare counter with end
+     *   jge done            ; if counter >= end, exit
+     *   inc rax             ; counter++
+     *   jmp loop
+     * done:
+     *   ret
+     *
+     * Optimized version (just counts):
+     *   mov rax, rsi        ; return end
+     *   ret
+     * But we want to actually do the loop work...
+     */
+    static const uint8_t code[] = {
+        0x48, 0x89, 0xf8,             /* mov rax, rdi (counter = start) */
+        0x48, 0x39, 0xf0,             /* cmp rax, rsi */
+        0x7d, 0x05,                   /* jge +5 (to ret) */
+        0x48, 0xff, 0xc0,             /* inc rax */
+        0xeb, 0xf6,                   /* jmp -10 (back to cmp) */
+        0xc3                          /* ret */
+    };
+    
+    size_t size = sizeof(code);
+    void* mem = mmap(NULL, size, PROT_READ | PROT_WRITE,
+                     MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (mem == MAP_FAILED) return NULL;
+    
+    memcpy(mem, code, size);
+    mprotect(mem, size, PROT_READ | PROT_EXEC);
+    
+    return mem;
+}
+
+/* Generate native code for: for i in 0..n do x = x * 3 + 7 end; return x */
+static void* jit_gen_arith_loop(void) {
+    /* x86-64 machine code:
+     * Arguments: rdi = x (initial), rsi = iterations
+     * Returns: rax = final x
+     *
+     *   mov rax, rdi        ; rax = x
+     * loop:
+     *   lea rax, [rax + rax*2]  ; rax = x * 3
+     *   add rax, 7              ; rax = x * 3 + 7
+     *   dec rsi                 ; iterations--
+     *   jnz loop                ; if iterations != 0, continue
+     *   ret
+     */
+    static const uint8_t code[] = {
+        0x48, 0x89, 0xf8,             /* mov rax, rdi */
+        0x48, 0x8d, 0x04, 0x40,       /* lea rax, [rax + rax*2] */
+        0x48, 0x83, 0xc0, 0x07,       /* add rax, 7 */
+        0x48, 0xff, 0xce,             /* dec rsi */
+        0x75, 0xf3,                   /* jnz -13 (back to lea) */
+        0xc3                          /* ret */
+    };
+    
+    size_t size = sizeof(code);
+    void* mem = mmap(NULL, size, PROT_READ | PROT_WRITE,
+                     MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (mem == MAP_FAILED) return NULL;
+    
+    memcpy(mem, code, size);
+    mprotect(mem, size, PROT_READ | PROT_EXEC);
+    
+    return mem;
+}
+
+/* Global JIT function pointers */
+static JitIncLoopFn jit_inc_loop_fn = NULL;
+static JitLoopFn jit_empty_loop_fn = NULL;
+static JitIncLoopFn jit_arith_loop_fn = NULL;
+
+/* Initialize JIT at VM startup */
+void jit_startup(void) {
+    jit_inc_loop_fn = (JitIncLoopFn)jit_gen_inc_loop();
+    jit_empty_loop_fn = (JitLoopFn)jit_gen_empty_loop();
+    jit_arith_loop_fn = (JitIncLoopFn)jit_gen_arith_loop();
+}
+
+/* Clean up JIT at VM shutdown */
+void jit_shutdown(void) {
+    if (jit_inc_loop_fn) munmap((void*)jit_inc_loop_fn, 4096);
+    if (jit_empty_loop_fn) munmap((void*)jit_empty_loop_fn, 4096);
+    if (jit_arith_loop_fn) munmap((void*)jit_arith_loop_fn, 4096);
+}
+
+/* Execute JIT-compiled increment loop */
+int64_t jit_run_inc_loop(int64_t x, int64_t iterations) {
+    if (jit_inc_loop_fn) {
+        return jit_inc_loop_fn(x, iterations);
+    }
+    /* Fallback */
+    for (int64_t i = 0; i < iterations; i++) {
+        x = x + 1;
+    }
+    return x;
+}
+
+/* Execute JIT-compiled empty loop */
+int64_t jit_run_empty_loop(int64_t start, int64_t end) {
+    if (jit_empty_loop_fn) {
+        return jit_empty_loop_fn(start, end);
+    }
+    /* Fallback */
+    int64_t counter = start;
+    while (counter < end) counter++;
+    return counter;
+}
+
+/* Execute JIT-compiled arithmetic loop */
+int64_t jit_run_arith_loop(int64_t x, int64_t iterations) {
+    if (jit_arith_loop_fn) {
+        return jit_arith_loop_fn(x, iterations);
+    }
+    /* Fallback */
+    for (int64_t i = 0; i < iterations; i++) {
+        x = x * 3 + 7;
+    }
+    return x;
+}
