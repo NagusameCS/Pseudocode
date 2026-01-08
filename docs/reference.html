@@ -33,6 +33,10 @@
         body {
             font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: var(--bg-primary);
+            background-image: 
+                radial-gradient(ellipse at 20% 0%, rgba(60, 60, 70, 0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 100%, rgba(50, 50, 60, 0.1) 0%, transparent 50%),
+                linear-gradient(180deg, rgba(40, 40, 50, 0.05) 0%, transparent 50%);
             color: var(--text-primary);
             line-height: 1.6;
             font-size: 16px;
@@ -392,17 +396,20 @@
         }
 
         .toc-list {
-            columns: 2;
-            column-gap: 32px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px 24px;
             list-style: none;
         }
 
         .toc-list li {
-            margin-bottom: 4px;
+            margin-bottom: 0;
         }
 
         .toc-list a {
             font-size: 13px;
+            display: block;
+            padding: 4px 0;
         }
 
         @media (max-width: 1024px) {
@@ -417,7 +424,7 @@
             }
 
             .toc-list {
-                columns: 1;
+                grid-template-columns: repeat(2, 1fr);
             }
         }
     </style>
@@ -470,6 +477,13 @@
                 <a href="#hash-funcs" class="sidebar-link">Hashing</a>
                 <a href="#time-funcs" class="sidebar-link">Time</a>
             </div>
+            <div class="sidebar-section">
+                <div class="sidebar-title">Data Science</div>
+                <a href="#tensors" class="sidebar-link">Tensors</a>
+                <a href="#tensors" class="sidebar-link">Matrices</a>
+                <a href="#tensors" class="sidebar-link">Neural Network</a>
+                <a href="#crypto" class="sidebar-link">Cryptography</a>
+            </div>
         </aside>
 
         <main class="content">
@@ -493,6 +507,8 @@
                         <li><a href="#pattern-matching">Pattern Matching</a></li>
                         <li><a href="#jit">JIT Intrinsics</a></li>
                         <li><a href="#builtins">Built-in Functions</a></li>
+                        <li><a href="#tensors">Tensors and Matrices</a></li>
+                        <li><a href="#crypto">Cryptography</a></li>
                     </ul>
                 </nav>
 
@@ -1536,6 +1552,277 @@ x = x + <span class="number">1</span></code></pre>
                         </tr>
                     </tbody>
                 </table>
+
+                <!-- TENSOR AND MATRIX OPERATIONS -->
+                <h2 id="tensors">Tensor and Matrix Operations</h2>
+                <p>
+                    Pseudocode provides NumPy-like tensor and matrix types with SIMD-accelerated operations (AVX2).
+                    These are designed for numerical computing, machine learning, and scientific applications.
+                </p>
+
+                <h3>Creating Tensors</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Function</th>
+                            <th>Description</th>
+                            <th>Example</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>tensor_zeros(shape)</code></td>
+                            <td>Create tensor filled with zeros</td>
+                            <td><code>tensor_zeros([2, 3])</code> - 2x3 tensor</td>
+                        </tr>
+                        <tr>
+                            <td><code>tensor_ones(shape)</code></td>
+                            <td>Create tensor filled with ones</td>
+                            <td><code>tensor_ones([100])</code> - 1D tensor</td>
+                        </tr>
+                        <tr>
+                            <td><code>tensor_rand(shape)</code></td>
+                            <td>Create tensor with random values [0, 1)</td>
+                            <td><code>tensor_rand([3, 3])</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>tensor_randn(shape)</code></td>
+                            <td>Create tensor with normal distribution</td>
+                            <td><code>tensor_randn([10, 10])</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>tensor_arange(n)</code></td>
+                            <td>Create tensor [0, 1, 2, ..., n-1]</td>
+                            <td><code>tensor_arange(100)</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>tensor_linspace(start, end, n)</code></td>
+                            <td>Create n evenly spaced values</td>
+                            <td><code>tensor_linspace(0, 1, 50)</code></td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <pre><code><span class="comment">// Create tensors</span>
+<span class="keyword">let</span> a = <span class="function">tensor_zeros</span>([<span class="number">3</span>, <span class="number">4</span>])  <span class="comment">// 3x4 matrix of zeros</span>
+<span class="keyword">let</span> b = <span class="function">tensor_rand</span>([<span class="number">100</span>])      <span class="comment">// 100 random values</span>
+<span class="keyword">let</span> c = <span class="function">tensor_arange</span>(<span class="number">10</span>)       <span class="comment">// [0, 1, 2, ..., 9]</span></code></pre>
+
+                <h3>Tensor Arithmetic (SIMD-Accelerated)</h3>
+                <p>All operations use AVX2 intrinsics to process 4 doubles per CPU instruction.</p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Function</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>tensor_add(a, b)</code></td>
+                            <td>Element-wise addition</td>
+                        </tr>
+                        <tr>
+                            <td><code>tensor_sub(a, b)</code></td>
+                            <td>Element-wise subtraction</td>
+                        </tr>
+                        <tr>
+                            <td><code>tensor_mul(a, b)</code></td>
+                            <td>Element-wise multiplication (Hadamard product)</td>
+                        </tr>
+                        <tr>
+                            <td><code>tensor_div(a, b)</code></td>
+                            <td>Element-wise division</td>
+                        </tr>
+                        <tr>
+                            <td><code>tensor_dot(a, b)</code></td>
+                            <td>Dot product (sum of element-wise products)</td>
+                        </tr>
+                        <tr>
+                            <td><code>tensor_sum(a)</code></td>
+                            <td>Sum of all elements</td>
+                        </tr>
+                        <tr>
+                            <td><code>tensor_mean(a)</code></td>
+                            <td>Mean of all elements</td>
+                        </tr>
+                        <tr>
+                            <td><code>tensor_max(a)</code></td>
+                            <td>Maximum element</td>
+                        </tr>
+                        <tr>
+                            <td><code>tensor_min(a)</code></td>
+                            <td>Minimum element</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>Tensor Shape Operations</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Function</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>tensor_reshape(t, shape)</code></td>
+                            <td>Reshape tensor to new dimensions</td>
+                        </tr>
+                        <tr>
+                            <td><code>tensor_squeeze(t)</code></td>
+                            <td>Remove size-1 dimensions</td>
+                        </tr>
+                        <tr>
+                            <td><code>tensor_unsqueeze(t, dim)</code></td>
+                            <td>Add dimension at position</td>
+                        </tr>
+                        <tr>
+                            <td><code>tensor_shape(t)</code></td>
+                            <td>Get shape as array</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>Matrix Operations</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Function</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>matrix_zeros(rows, cols)</code></td>
+                            <td>Create zero matrix</td>
+                        </tr>
+                        <tr>
+                            <td><code>matrix_ones(rows, cols)</code></td>
+                            <td>Create ones matrix</td>
+                        </tr>
+                        <tr>
+                            <td><code>matrix_eye(n)</code></td>
+                            <td>Create n x n identity matrix</td>
+                        </tr>
+                        <tr>
+                            <td><code>matrix_rand(rows, cols)</code></td>
+                            <td>Create random matrix</td>
+                        </tr>
+                        <tr>
+                            <td><code>matrix_mul(a, b)</code></td>
+                            <td>Matrix multiplication (not element-wise)</td>
+                        </tr>
+                        <tr>
+                            <td><code>matrix_transpose(m)</code></td>
+                            <td>Transpose matrix</td>
+                        </tr>
+                        <tr>
+                            <td><code>matrix_det(m)</code></td>
+                            <td>Matrix determinant (LU decomposition)</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <pre><code><span class="comment">// Matrix multiplication</span>
+<span class="keyword">let</span> a = <span class="function">matrix_rand</span>(<span class="number">3</span>, <span class="number">4</span>)
+<span class="keyword">let</span> b = <span class="function">matrix_rand</span>(<span class="number">4</span>, <span class="number">5</span>)
+<span class="keyword">let</span> c = <span class="function">matrix_mul</span>(a, b)  <span class="comment">// Result is 3x5</span>
+
+<span class="comment">// Identity matrix</span>
+<span class="keyword">let</span> I = <span class="function">matrix_eye</span>(<span class="number">4</span>)  <span class="comment">// 4x4 identity</span></code></pre>
+
+                <h3>Neural Network Primitives</h3>
+                <p>Built-in activation functions and loss functions for machine learning.</p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Function</th>
+                            <th>Description</th>
+                            <th>Formula</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>relu(t)</code></td>
+                            <td>Rectified Linear Unit</td>
+                            <td>max(0, x)</td>
+                        </tr>
+                        <tr>
+                            <td><code>sigmoid(t)</code></td>
+                            <td>Sigmoid activation</td>
+                            <td>1 / (1 + exp(-x))</td>
+                        </tr>
+                        <tr>
+                            <td><code>softmax(t)</code></td>
+                            <td>Softmax (normalizes to probabilities)</td>
+                            <td>exp(x) / sum(exp(x))</td>
+                        </tr>
+                        <tr>
+                            <td><code>mse_loss(pred, target)</code></td>
+                            <td>Mean Squared Error loss</td>
+                            <td>mean((pred - target)^2)</td>
+                        </tr>
+                        <tr>
+                            <td><code>ce_loss(pred, target)</code></td>
+                            <td>Cross-Entropy loss</td>
+                            <td>-sum(target * log(pred))</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <pre><code><span class="comment">// Neural network forward pass</span>
+<span class="keyword">let</span> input = <span class="function">tensor_rand</span>([<span class="number">10</span>])
+<span class="keyword">let</span> weights = <span class="function">matrix_rand</span>(<span class="number">10</span>, <span class="number">5</span>)
+<span class="keyword">let</span> hidden = <span class="function">relu</span>(<span class="function">matrix_mul</span>(input, weights))
+<span class="keyword">let</span> output = <span class="function">softmax</span>(hidden)
+<span class="function">print</span>(<span class="function">tensor_sum</span>(output))  <span class="comment">// 1.0</span></code></pre>
+
+                <!-- CRYPTOGRAPHY -->
+                <h2 id="crypto">Cryptographic Functions</h2>
+                <p>Built-in cryptographic hashing and encoding functions. No external libraries required.</p>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Function</th>
+                            <th>Description</th>
+                            <th>Output</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>sha256(string)</code></td>
+                            <td>SHA-256 cryptographic hash</td>
+                            <td>64-character hex string</td>
+                        </tr>
+                        <tr>
+                            <td><code>md5(string)</code></td>
+                            <td>MD5 hash (not for security)</td>
+                            <td>32-character hex string</td>
+                        </tr>
+                        <tr>
+                            <td><code>encode_base64(string)</code></td>
+                            <td>Base64 encode</td>
+                            <td>Base64 string</td>
+                        </tr>
+                        <tr>
+                            <td><code>decode_base64(string)</code></td>
+                            <td>Base64 decode</td>
+                            <td>Original string</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <pre><code><span class="comment">// Cryptographic hashing</span>
+<span class="keyword">let</span> hash = <span class="function">sha256</span>(<span class="string">"hello"</span>)
+<span class="function">print</span>(hash)  <span class="comment">// 2cf24dba5fb0a30e26e83b2ac5b9e29e...</span>
+
+<span class="comment">// Base64 encoding</span>
+<span class="keyword">let</span> encoded = <span class="function">encode_base64</span>(<span class="string">"Hello, World!"</span>)
+<span class="keyword">let</span> decoded = <span class="function">decode_base64</span>(encoded)
+<span class="function">print</span>(decoded)  <span class="comment">// Hello, World!</span></code></pre>
 
             </div>
         </main>
