@@ -249,6 +249,25 @@ typedef enum {
     OP_ROUND,       /* Round */
     OP_RAND,        /* Random 0-1 */
     
+    /* Bit manipulation intrinsics - map to CPU instructions */
+    OP_POPCOUNT,    /* Population count (count 1 bits) */
+    OP_CLZ,         /* Count leading zeros */
+    OP_CTZ,         /* Count trailing zeros */
+    OP_ROTL,        /* Rotate left */
+    OP_ROTR,        /* Rotate right */
+    
+    /* String operations */
+    OP_SUBSTR,      /* Substring extraction */
+    OP_UPPER,       /* To uppercase */
+    OP_LOWER,       /* To lowercase */
+    OP_SPLIT,       /* Split string into array */
+    OP_JOIN,        /* Join array into string */
+    OP_REPLACE,     /* Replace in string */
+    OP_FIND,        /* Find substring */
+    OP_TRIM,        /* Trim whitespace */
+    OP_CHAR,        /* Get char code */
+    OP_ORD,         /* Char code to string */
+    
     OP_HALT,
     
     /* ============ SUPERINSTRUCTIONS ============ */

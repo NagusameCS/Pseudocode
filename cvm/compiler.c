@@ -561,6 +561,131 @@ static void variable(bool can_assign) {
             emit_byte(OP_POW);
             return;
         }
+        /* Bit manipulation intrinsics */
+        if (name.length == 8 && memcmp(name.start, "popcount", 8) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after popcount argument.");
+            emit_byte(OP_POPCOUNT);
+            return;
+        }
+        if (name.length == 3 && memcmp(name.start, "clz", 3) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after clz argument.");
+            emit_byte(OP_CLZ);
+            return;
+        }
+        if (name.length == 3 && memcmp(name.start, "ctz", 3) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after ctz argument.");
+            emit_byte(OP_CTZ);
+            return;
+        }
+        if (name.length == 4 && memcmp(name.start, "rotl", 4) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_COMMA, "Expect ',' after first rotl argument.");
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after rotl arguments.");
+            emit_byte(OP_ROTL);
+            return;
+        }
+        if (name.length == 4 && memcmp(name.start, "rotr", 4) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_COMMA, "Expect ',' after first rotr argument.");
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after rotr arguments.");
+            emit_byte(OP_ROTR);
+            return;
+        }
+        /* String operations */
+        if (name.length == 6 && memcmp(name.start, "substr", 6) == 0) {
+            advance();
+            expression();  /* string */
+            consume(TOKEN_COMMA, "Expect ',' after string.");
+            expression();  /* start */
+            consume(TOKEN_COMMA, "Expect ',' after start.");
+            expression();  /* length */
+            consume(TOKEN_RPAREN, "Expect ')' after substr arguments.");
+            emit_byte(OP_SUBSTR);
+            return;
+        }
+        if (name.length == 5 && memcmp(name.start, "upper", 5) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after upper argument.");
+            emit_byte(OP_UPPER);
+            return;
+        }
+        if (name.length == 5 && memcmp(name.start, "lower", 5) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after lower argument.");
+            emit_byte(OP_LOWER);
+            return;
+        }
+        if (name.length == 5 && memcmp(name.start, "split", 5) == 0) {
+            advance();
+            expression();  /* string */
+            consume(TOKEN_COMMA, "Expect ',' after string.");
+            expression();  /* delimiter */
+            consume(TOKEN_RPAREN, "Expect ')' after split arguments.");
+            emit_byte(OP_SPLIT);
+            return;
+        }
+        if (name.length == 4 && memcmp(name.start, "join", 4) == 0) {
+            advance();
+            expression();  /* array */
+            consume(TOKEN_COMMA, "Expect ',' after array.");
+            expression();  /* delimiter */
+            consume(TOKEN_RPAREN, "Expect ')' after join arguments.");
+            emit_byte(OP_JOIN);
+            return;
+        }
+        if (name.length == 7 && memcmp(name.start, "replace", 7) == 0) {
+            advance();
+            expression();  /* string */
+            consume(TOKEN_COMMA, "Expect ',' after string.");
+            expression();  /* from */
+            consume(TOKEN_COMMA, "Expect ',' after from.");
+            expression();  /* to */
+            consume(TOKEN_RPAREN, "Expect ')' after replace arguments.");
+            emit_byte(OP_REPLACE);
+            return;
+        }
+        if (name.length == 4 && memcmp(name.start, "find", 4) == 0) {
+            advance();
+            expression();  /* haystack */
+            consume(TOKEN_COMMA, "Expect ',' after string.");
+            expression();  /* needle */
+            consume(TOKEN_RPAREN, "Expect ')' after find arguments.");
+            emit_byte(OP_FIND);
+            return;
+        }
+        if (name.length == 4 && memcmp(name.start, "trim", 4) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after trim argument.");
+            emit_byte(OP_TRIM);
+            return;
+        }
+        if (name.length == 4 && memcmp(name.start, "char", 4) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after char argument.");
+            emit_byte(OP_CHAR);
+            return;
+        }
+        if (name.length == 3 && memcmp(name.start, "ord", 3) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after ord argument.");
+            emit_byte(OP_ORD);
+            return;
+        }
     }
     
     named_variable(name, can_assign);

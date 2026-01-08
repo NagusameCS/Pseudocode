@@ -315,6 +315,23 @@ InterpretResult vm_run(VM* vm) {
         [OP_CEIL] = &&op_ceil,
         [OP_ROUND] = &&op_round,
         [OP_RAND] = &&op_rand,
+        /* Bit manipulation intrinsics */
+        [OP_POPCOUNT] = &&op_popcount,
+        [OP_CLZ] = &&op_clz,
+        [OP_CTZ] = &&op_ctz,
+        [OP_ROTL] = &&op_rotl,
+        [OP_ROTR] = &&op_rotr,
+        /* String operations */
+        [OP_SUBSTR] = &&op_substr,
+        [OP_UPPER] = &&op_upper,
+        [OP_LOWER] = &&op_lower,
+        [OP_SPLIT] = &&op_split,
+        [OP_JOIN] = &&op_join,
+        [OP_REPLACE] = &&op_replace,
+        [OP_FIND] = &&op_find,
+        [OP_TRIM] = &&op_trim,
+        [OP_CHAR] = &&op_char,
+        [OP_ORD] = &&op_ord,
         [OP_HALT] = &&op_halt,
         /* Superinstructions */
         [OP_GET_LOCAL_0] = &&op_get_local_0,
@@ -1016,6 +1033,318 @@ InterpretResult vm_run(VM* vm) {
     
     CASE(rand): {
         PUSH(val_num((double)rand() / RAND_MAX));
+        DISPATCH();
+    }
+    
+    /* ============ BIT MANIPULATION INTRINSICS ============ */
+    /* Map directly to CPU instructions via GCC builtins */
+    
+    CASE(popcount): {
+        Value v = POP();
+        int32_t n = IS_INT(v) ? as_int(v) : (int32_t)as_num(v);
+        PUSH(val_int(__builtin_popcount((unsigned int)n)));
+        DISPATCH();
+    }
+    
+    CASE(clz): {
+        Value v = POP();
+        int32_t n = IS_INT(v) ? as_int(v) : (int32_t)as_num(v);
+        PUSH(val_int(n == 0 ? 32 : __builtin_clz((unsigned int)n)));
+        DISPATCH();
+    }
+    
+    CASE(ctz): {
+        Value v = POP();
+        int32_t n = IS_INT(v) ? as_int(v) : (int32_t)as_num(v);
+        PUSH(val_int(n == 0 ? 32 : __builtin_ctz((unsigned int)n)));
+        DISPATCH();
+    }
+    
+    CASE(rotl): {
+        Value vn = POP();
+        Value vx = POP();
+        uint32_t n = (IS_INT(vn) ? as_int(vn) : (int32_t)as_num(vn)) & 31;
+        uint32_t x = IS_INT(vx) ? (uint32_t)as_int(vx) : (uint32_t)as_num(vx);
+        PUSH(val_int((int32_t)((x << n) | (x >> (32 - n)))));
+        DISPATCH();
+    }
+    
+    CASE(rotr): {
+        Value vn = POP();
+        Value vx = POP();
+        uint32_t n = (IS_INT(vn) ? as_int(vn) : (int32_t)as_num(vn)) & 31;
+        uint32_t x = IS_INT(vx) ? (uint32_t)as_int(vx) : (uint32_t)as_num(vx);
+        PUSH(val_int((int32_t)((x >> n) | (x << (32 - n)))));
+        DISPATCH();
+    }
+    
+    /* ============ STRING OPERATIONS ============ */
+    
+    CASE(substr): {
+        Value vlen = POP();
+        Value vstart = POP();
+        Value vstr = POP();
+        
+        if (!IS_OBJ(vstr)) {
+            PUSH(VAL_NIL);
+            DISPATCH();
+        }
+        ObjString* str = (ObjString*)as_obj(vstr);
+        int32_t start = IS_INT(vstart) ? as_int(vstart) : (int32_t)as_num(vstart);
+        int32_t len = IS_INT(vlen) ? as_int(vlen) : (int32_t)as_num(vlen);
+        
+        if (start < 0) start = 0;
+        if (start >= (int32_t)str->length) {
+            PUSH(val_obj(copy_string(vm, "", 0)));
+            DISPATCH();
+        }
+        if (len < 0 || start + len > (int32_t)str->length) {
+            len = str->length - start;
+        }
+        
+        PUSH(val_obj(copy_string(vm, str->chars + start, len)));
+        DISPATCH();
+    }
+    
+    CASE(upper): {
+        Value v = POP();
+        if (!IS_OBJ(v)) {
+            PUSH(VAL_NIL);
+            DISPATCH();
+        }
+        ObjString* str = (ObjString*)as_obj(v);
+        char* buf = malloc(str->length + 1);
+        for (uint32_t i = 0; i < str->length; i++) {
+            char c = str->chars[i];
+            buf[i] = (c >= 'a' && c <= 'z') ? (c - 32) : c;
+        }
+        buf[str->length] = '\0';
+        ObjString* result = copy_string(vm, buf, str->length);
+        free(buf);
+        PUSH(val_obj(result));
+        DISPATCH();
+    }
+    
+    CASE(lower): {
+        Value v = POP();
+        if (!IS_OBJ(v)) {
+            PUSH(VAL_NIL);
+            DISPATCH();
+        }
+        ObjString* str = (ObjString*)as_obj(v);
+        char* buf = malloc(str->length + 1);
+        for (uint32_t i = 0; i < str->length; i++) {
+            char c = str->chars[i];
+            buf[i] = (c >= 'A' && c <= 'Z') ? (c + 32) : c;
+        }
+        buf[str->length] = '\0';
+        ObjString* result = copy_string(vm, buf, str->length);
+        free(buf);
+        PUSH(val_obj(result));
+        DISPATCH();
+    }
+    
+    CASE(split): {
+        Value vdelim = POP();
+        Value vstr = POP();
+        
+        if (!IS_OBJ(vstr) || !IS_OBJ(vdelim)) {
+            PUSH(VAL_NIL);
+            DISPATCH();
+        }
+        ObjString* str = (ObjString*)as_obj(vstr);
+        ObjString* delim = (ObjString*)as_obj(vdelim);
+        
+        /* Count parts */
+        int count = 1;
+        const char* p = str->chars;
+        while ((p = strstr(p, delim->chars)) != NULL) {
+            count++;
+            p += delim->length;
+        }
+        
+        /* Create array */
+        ObjArray* arr = new_array(vm, count);
+        p = str->chars;
+        int idx = 0;
+        const char* next;
+        while ((next = strstr(p, delim->chars)) != NULL) {
+            arr->values[idx++] = val_obj(copy_string(vm, p, next - p));
+            p = next + delim->length;
+        }
+        arr->values[idx] = val_obj(copy_string(vm, p, str->chars + str->length - p));
+        arr->count = count;
+        
+        PUSH(val_obj(arr));
+        DISPATCH();
+    }
+    
+    CASE(join): {
+        Value vdelim = POP();
+        Value varr = POP();
+        
+        if (!IS_OBJ(varr) || !IS_OBJ(vdelim)) {
+            PUSH(VAL_NIL);
+            DISPATCH();
+        }
+        ObjArray* arr = (ObjArray*)as_obj(varr);
+        ObjString* delim = (ObjString*)as_obj(vdelim);
+        
+        if (arr->count == 0) {
+            PUSH(val_obj(copy_string(vm, "", 0)));
+            DISPATCH();
+        }
+        
+        /* Calculate total length */
+        size_t total = 0;
+        for (uint32_t i = 0; i < arr->count; i++) {
+            Value v = arr->values[i];
+            if (IS_OBJ(v)) {
+                ObjString* s = (ObjString*)as_obj(v);
+                total += s->length;
+            }
+            if (i > 0) total += delim->length;
+        }
+        
+        /* Build result */
+        char* buf = malloc(total + 1);
+        char* dst = buf;
+        for (uint32_t i = 0; i < arr->count; i++) {
+            if (i > 0) {
+                memcpy(dst, delim->chars, delim->length);
+                dst += delim->length;
+            }
+            Value v = arr->values[i];
+            if (IS_OBJ(v)) {
+                ObjString* s = (ObjString*)as_obj(v);
+                memcpy(dst, s->chars, s->length);
+                dst += s->length;
+            }
+        }
+        *dst = '\0';
+        
+        ObjString* result = copy_string(vm, buf, total);
+        free(buf);
+        PUSH(val_obj(result));
+        DISPATCH();
+    }
+    
+    CASE(replace): {
+        Value vto = POP();
+        Value vfrom = POP();
+        Value vstr = POP();
+        
+        if (!IS_OBJ(vstr) || !IS_OBJ(vfrom) || !IS_OBJ(vto)) {
+            PUSH(VAL_NIL);
+            DISPATCH();
+        }
+        ObjString* str = (ObjString*)as_obj(vstr);
+        ObjString* from = (ObjString*)as_obj(vfrom);
+        ObjString* to = (ObjString*)as_obj(vto);
+        
+        if (from->length == 0) {
+            PUSH(vstr);
+            DISPATCH();
+        }
+        
+        /* Count occurrences */
+        int count = 0;
+        const char* p = str->chars;
+        while ((p = strstr(p, from->chars)) != NULL) {
+            count++;
+            p += from->length;
+        }
+        
+        if (count == 0) {
+            PUSH(vstr);
+            DISPATCH();
+        }
+        
+        /* Calculate new length */
+        size_t new_len = str->length + count * ((int)to->length - (int)from->length);
+        char* buf = malloc(new_len + 1);
+        char* dst = buf;
+        p = str->chars;
+        const char* next;
+        
+        while ((next = strstr(p, from->chars)) != NULL) {
+            memcpy(dst, p, next - p);
+            dst += next - p;
+            memcpy(dst, to->chars, to->length);
+            dst += to->length;
+            p = next + from->length;
+        }
+        memcpy(dst, p, str->chars + str->length - p);
+        buf[new_len] = '\0';
+        
+        ObjString* result = copy_string(vm, buf, new_len);
+        free(buf);
+        PUSH(val_obj(result));
+        DISPATCH();
+    }
+    
+    CASE(find): {
+        Value vneedle = POP();
+        Value vhaystack = POP();
+        
+        if (!IS_OBJ(vhaystack) || !IS_OBJ(vneedle)) {
+            PUSH(val_int(-1));
+            DISPATCH();
+        }
+        ObjString* haystack = (ObjString*)as_obj(vhaystack);
+        ObjString* needle = (ObjString*)as_obj(vneedle);
+        
+        const char* found = strstr(haystack->chars, needle->chars);
+        if (found) {
+            PUSH(val_int((int32_t)(found - haystack->chars)));
+        } else {
+            PUSH(val_int(-1));
+        }
+        DISPATCH();
+    }
+    
+    CASE(trim): {
+        Value v = POP();
+        if (!IS_OBJ(v)) {
+            PUSH(VAL_NIL);
+            DISPATCH();
+        }
+        ObjString* str = (ObjString*)as_obj(v);
+        
+        const char* start = str->chars;
+        const char* end = str->chars + str->length;
+        
+        while (start < end && (*start == ' ' || *start == '\t' || *start == '\n' || *start == '\r')) {
+            start++;
+        }
+        while (end > start && (*(end-1) == ' ' || *(end-1) == '\t' || *(end-1) == '\n' || *(end-1) == '\r')) {
+            end--;
+        }
+        
+        PUSH(val_obj(copy_string(vm, start, end - start)));
+        DISPATCH();
+    }
+    
+    CASE(char): {
+        Value v = POP();
+        int32_t code = IS_INT(v) ? as_int(v) : (int32_t)as_num(v);
+        char buf[2] = {(char)code, '\0'};
+        PUSH(val_obj(copy_string(vm, buf, 1)));
+        DISPATCH();
+    }
+    
+    CASE(ord): {
+        Value v = POP();
+        if (!IS_OBJ(v)) {
+            PUSH(val_int(0));
+            DISPATCH();
+        }
+        ObjString* str = (ObjString*)as_obj(v);
+        if (str->length == 0) {
+            PUSH(val_int(0));
+        } else {
+            PUSH(val_int((unsigned char)str->chars[0]));
+        }
         DISPATCH();
     }
     

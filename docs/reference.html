@@ -284,6 +284,8 @@
             <ul>
                 <li><a href="#io-functions">I/O Functions</a></li>
                 <li><a href="#math-functions">Math Functions</a></li>
+                <li><a href="#bit-functions">Bit Intrinsics</a></li>
+                <li><a href="#string-functions">String Functions</a></li>
                 <li><a href="#type-functions">Type Functions</a></li>
                 <li><a href="#array-functions">Array Functions</a></li>
             </ul>
@@ -622,6 +624,101 @@ numbers[<span class="number">0</span>] = <span class="number">10</span>     <spa
                 <td><code>rand()</code></td>
                 <td>Random 0.0 to 1.0</td>
                 <td><code>rand()</code> → <code>0.547...</code></td>
+            </tr>
+        </table>
+
+        <h2 id="bit-functions">Bit Manipulation Intrinsics</h2>
+        <p>Low-level bit manipulation functions that map directly to CPU instructions for maximum performance.</p>
+        <table>
+            <tr>
+                <th>Function</th>
+                <th>Description</th>
+                <th>Example</th>
+            </tr>
+            <tr>
+                <td><code>popcount(x)</code></td>
+                <td>Count set bits (1s)</td>
+                <td><code>popcount(11)</code> → <code>3</code></td>
+            </tr>
+            <tr>
+                <td><code>clz(x)</code></td>
+                <td>Count leading zeros</td>
+                <td><code>clz(16)</code> → <code>27</code></td>
+            </tr>
+            <tr>
+                <td><code>ctz(x)</code></td>
+                <td>Count trailing zeros</td>
+                <td><code>ctz(8)</code> → <code>3</code></td>
+            </tr>
+            <tr>
+                <td><code>rotl(x, n)</code></td>
+                <td>Rotate bits left by n</td>
+                <td><code>rotl(1, 4)</code> → <code>16</code></td>
+            </tr>
+            <tr>
+                <td><code>rotr(x, n)</code></td>
+                <td>Rotate bits right by n</td>
+                <td><code>rotr(16, 4)</code> → <code>1</code></td>
+            </tr>
+        </table>
+
+        <h2 id="string-functions">String Functions</h2>
+        <p>Comprehensive string manipulation functions.</p>
+        <table>
+            <tr>
+                <th>Function</th>
+                <th>Description</th>
+                <th>Example</th>
+            </tr>
+            <tr>
+                <td><code>upper(s)</code></td>
+                <td>Convert to uppercase</td>
+                <td><code>upper("hello")</code> → <code>"HELLO"</code></td>
+            </tr>
+            <tr>
+                <td><code>lower(s)</code></td>
+                <td>Convert to lowercase</td>
+                <td><code>lower("HELLO")</code> → <code>"hello"</code></td>
+            </tr>
+            <tr>
+                <td><code>substr(s, start, len)</code></td>
+                <td>Extract substring</td>
+                <td><code>substr("hello", 0, 2)</code> → <code>"he"</code></td>
+            </tr>
+            <tr>
+                <td><code>find(s, needle)</code></td>
+                <td>Find substring index (-1 if not found)</td>
+                <td><code>find("hello", "ll")</code> → <code>2</code></td>
+            </tr>
+            <tr>
+                <td><code>replace(s, from, to)</code></td>
+                <td>Replace all occurrences</td>
+                <td><code>replace("aaa", "a", "b")</code> → <code>"bbb"</code></td>
+            </tr>
+            <tr>
+                <td><code>split(s, delim)</code></td>
+                <td>Split into array</td>
+                <td><code>split("a,b,c", ",")</code> → <code>["a","b","c"]</code></td>
+            </tr>
+            <tr>
+                <td><code>join(arr, delim)</code></td>
+                <td>Join array into string</td>
+                <td><code>join(["a","b"], "-")</code> → <code>"a-b"</code></td>
+            </tr>
+            <tr>
+                <td><code>trim(s)</code></td>
+                <td>Remove leading/trailing whitespace</td>
+                <td><code>trim("  hi  ")</code> → <code>"hi"</code></td>
+            </tr>
+            <tr>
+                <td><code>char(n)</code></td>
+                <td>ASCII code to character</td>
+                <td><code>char(65)</code> → <code>"A"</code></td>
+            </tr>
+            <tr>
+                <td><code>ord(s)</code></td>
+                <td>First character to ASCII code</td>
+                <td><code>ord("A")</code> → <code>65</code></td>
             </tr>
         </table>
 

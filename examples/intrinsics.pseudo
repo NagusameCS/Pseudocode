@@ -1,0 +1,64 @@
+print("=== Bit Manipulation Intrinsics ===")
+
+print("popcount(0b1011) = ")
+print(popcount(11))
+
+print("popcount(255) = ")
+print(popcount(255))
+
+print("clz(1) = ")
+print(clz(1))
+
+print("clz(16) = ")
+print(clz(16))
+
+print("ctz(8) = ")
+print(ctz(8))
+
+print("ctz(12) = ")
+print(ctz(12))
+
+print("rotl(1, 4) = ")
+print(rotl(1, 4))
+
+print("rotr(16, 4) = ")
+print(rotr(16, 4))
+
+print("")
+print("=== String Operations ===")
+
+let s = "Hello, World!"
+print("Original: ")
+print(s)
+
+print("upper: ")
+print(upper(s))
+
+print("lower: ")
+print(lower(s))
+
+print("substr(s, 0, 5): ")
+print(substr(s, 0, 5))
+
+print("find(s, 'World'): ")
+print(find(s, "World"))
+
+print("replace(s, 'World', 'Pseudo'): ")
+print(replace(s, "World", "Pseudo"))
+
+let words = split("one,two,three", ",")
+print("split('one,two,three', ','): ")
+print(words)
+
+print("join(words, '-'): ")
+print(join(words, "-"))
+
+print("trim('  hello  '): '")
+print(trim("  hello  "))
+print("'")
+
+print("char(65): ")
+print(char(65))
+
+print("ord('A'): ")
+print(ord("A"))
