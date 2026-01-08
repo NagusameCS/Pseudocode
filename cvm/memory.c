@@ -1,5 +1,8 @@
 /*
  * Pseudocode Language - Memory Management
+ *
+ * Copyright (c) 2026 NagusameCS
+ * Licensed under the MIT License
  */
 
 #include "pseudo.h"
@@ -194,6 +197,35 @@ void free_object(VM* vm, Obj* object) {
             ObjBytes* bytes = (ObjBytes*)object;
             free(bytes->data);
             FREE(vm, ObjBytes, object);
+            break;
+        }
+        case OBJ_TENSOR: {
+            ObjTensor* tensor = (ObjTensor*)object;
+            if (tensor->owns_data && tensor->data) {
+                free(tensor->data);
+            }
+            /* Note: grad is managed separately as its own object */
+            FREE(vm, ObjTensor, object);
+            break;
+        }
+        case OBJ_MATRIX: {
+            ObjMatrix* mat = (ObjMatrix*)object;
+            if (mat->owns_data && mat->data) {
+                free(mat->data);
+            }
+            FREE(vm, ObjMatrix, object);
+            break;
+        }
+        case OBJ_DATAFRAME: {
+            ObjDataFrame* df = (ObjDataFrame*)object;
+            /* Free column arrays and data - they are GC managed */
+            FREE(vm, ObjDataFrame, object);
+            break;
+        }
+        case OBJ_GRAD_TAPE: {
+            ObjGradTape* tape = (ObjGradTape*)object;
+            free(tape->entries);
+            FREE(vm, ObjGradTape, object);
             break;
         }
     }

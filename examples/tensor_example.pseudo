@@ -1,0 +1,151 @@
+/*
+ * Tensor Operations Example
+ * Demonstrates NumPy-like tensor and matrix operations in Pseudocode
+ */
+
+print("=== Tensor Operations Demo ===")
+
+// Create tensors
+let zeros = tensor_zeros([3, 3])
+let ones = tensor_ones([3, 3])
+let rand_t = tensor_rand([2, 3])
+
+print("Zeros tensor:")
+print(zeros)
+print("Zeros sum:")
+print(tensor_sum(zeros))
+
+print("Ones tensor:")
+print(ones)
+print("Ones sum:")
+print(tensor_sum(ones))
+
+print("Random tensor:")
+print(rand_t)
+print("Random mean:")
+print(tensor_mean(rand_t))
+
+// Create from array
+let arr = [1.0, 2.0, 3.0, 4.0, 5.0]
+let t = tensor(arr)
+print("Tensor from array:")
+print(t)
+print("Sum:")
+print(tensor_sum(t))
+print("Max:")
+print(tensor_max(t))
+print("Min:")
+print(tensor_min(t))
+
+// Tensor arithmetic
+print("")
+print("=== Tensor Arithmetic ===")
+let a = tensor([1.0, 2.0, 3.0])
+let b = tensor([4.0, 5.0, 6.0])
+print("a:")
+print(a)
+print("b:")
+print(b)
+
+let c = tensor_add(a, b)
+print("a + b:")
+print(c)
+print("Sum (should be 21):")
+print(tensor_sum(c))
+
+let d = tensor_mul(a, b)
+print("a * b (element-wise):")
+print(d)
+print("Sum (should be 32):")
+print(tensor_sum(d))
+
+// Dot product
+let dot = tensor_dot(a, b)
+print("Dot product (should be 32):")
+print(dot)
+
+// Math operations
+print("")
+print("=== Math Operations ===")
+let exp_t = tensor_exp(tensor([0.0, 1.0, 2.0]))
+print("exp([0,1,2]):")
+print(exp_t)
+
+let sqrt_t = tensor_sqrt(tensor([1.0, 4.0, 9.0]))
+print("sqrt([1,4,9]):")
+print(sqrt_t)
+print("Sum (should be 6):")
+print(tensor_sum(sqrt_t))
+
+print("")
+print("=== Matrix Operations Demo ===")
+
+// Create matrices  
+let m1 = matrix_zeros(3, 3)
+let m2 = matrix_eye(3)
+
+print("Identity 3x3:")
+print(m2)
+print("Identity trace (should be 3):")
+print(matrix_trace(m2))
+
+// Matrix from 2D array
+let data = [[1, 2], [3, 4]]
+let mat = matrix(data)
+print("2x2 matrix:")
+print(mat)
+print("Determinant (should be -2):")
+print(matrix_det(mat))
+
+// Matrix addition
+let eye = matrix_eye(2)
+let mat_sum = matrix_add(mat, eye)
+print("Matrix + Identity:")
+print(mat_sum)
+
+print("")
+print("=== Neural Network Activations ===")
+
+let logits = tensor([-1.0, 0.0, 1.0, 2.0])
+print("Logits:")
+print(logits)
+
+let relu_out = relu(logits)
+print("ReLU output:")
+print(relu_out)
+print("ReLU sum (should be 3):")
+print(tensor_sum(relu_out))
+
+let sigmoid_out = sigmoid(logits)
+print("Sigmoid output:")
+print(sigmoid_out)
+
+let softmax_out = softmax(logits)
+print("Softmax output:")
+print(softmax_out)
+print("Softmax sum (should be 1):")
+print(tensor_sum(softmax_out))
+
+// Loss functions
+print("")
+print("=== Loss Functions ===")
+let pred = tensor([0.9, 0.1, 0.8])
+let target = tensor([1.0, 0.0, 1.0])
+print("Predictions:")
+print(pred)
+print("Targets:")
+print(target)
+let mse = mse_loss(pred, target)
+print("MSE loss:")
+print(mse)
+
+print("")
+print("=== Range and Arange ===")
+let r = tensor_arange(0, 10, 2)
+print("Arange(0, 10, 2):")
+print(r)
+print("Sum (should be 20):")
+print(tensor_sum(r))
+
+print("")
+print("All tensor/matrix tests completed!")

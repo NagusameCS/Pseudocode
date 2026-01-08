@@ -1,3 +1,10 @@
+/*
+ * Pseudocode Language - VS Code Extension
+ *
+ * Copyright (c) 2026 NagusameCS
+ * Licensed under the MIT License
+ */
+
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';

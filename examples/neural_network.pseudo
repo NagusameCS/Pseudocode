@@ -1,0 +1,131 @@
+/*
+ * Simple Neural Network Example
+ * Demonstrates forward pass with activations and loss computation
+ */
+
+print("=== Simple Neural Network Demo ===")
+print("")
+
+// Create a simple 2-layer neural network for XOR
+// Input: 2 features, Hidden: 4 neurons, Output: 1 neuron
+
+// Training data for XOR
+let x1 = tensor([0.0, 0.0])
+let x2 = tensor([0.0, 1.0])
+let x3 = tensor([1.0, 0.0])
+let x4 = tensor([1.0, 1.0])
+
+let y1 = tensor([0.0])
+let y2 = tensor([1.0])
+let y3 = tensor([1.0])
+let y4 = tensor([0.0])
+
+print("XOR Problem:")
+print("[0,0] -> 0")
+print("[0,1] -> 1")
+print("[1,0] -> 1")
+print("[1,1] -> 0")
+print("")
+
+// Initialize weights (normally random, using fixed for reproducibility)
+// Layer 1: 2 inputs -> 4 hidden
+let w1 = tensor([0.5, -0.5, 0.3, -0.3, 0.7, -0.7, 0.1, -0.1])  // 2x4 flattened
+let b1 = tensor([0.0, 0.0, 0.0, 0.0])
+
+// Layer 2: 4 hidden -> 1 output
+let w2 = tensor([0.5, -0.5, 0.5, -0.5])
+let b2 = tensor([0.0])
+
+print("=== Forward Pass Example ===")
+
+// For now, demonstrate activation functions on sample data
+let hidden_pre = tensor([-2.0, -1.0, 0.0, 1.0, 2.0])
+print("Pre-activation values:")
+print(hidden_pre)
+
+print("")
+print("After ReLU:")
+let hidden_relu = relu(hidden_pre)
+print(hidden_relu)
+
+print("")
+print("After Sigmoid:")
+let hidden_sig = sigmoid(hidden_pre)
+print(hidden_sig)
+
+print("")
+print("After Tanh:")
+let hidden_tanh = tanh(hidden_pre)
+print(hidden_tanh)
+
+print("")
+print("After Softmax:")
+let logits = tensor([1.0, 2.0, 3.0])
+let probs = softmax(logits)
+print(probs)
+print("Sum (should be 1):")
+print(tensor_sum(probs))
+
+print("")
+print("=== Loss Functions ===")
+
+// MSE Loss example
+let predictions = tensor([0.8, 0.3, 0.9, 0.1])
+let targets = tensor([1.0, 0.0, 1.0, 0.0])
+
+print("Predictions:")
+print(predictions)
+print("Targets:")
+print(targets)
+
+let mse = mse_loss(predictions, targets)
+print("MSE Loss:")
+print(mse)
+
+// Cross-entropy for classification
+let ce = ce_loss(predictions, targets)
+print("Cross-Entropy Loss:")
+print(ce)
+
+print("")
+print("=== Tensor Operations for Neural Nets ===")
+
+// Simulate a layer forward pass
+let input = tensor([0.5, 0.8])
+print("Input:")
+print(input)
+
+// Element-wise operations
+let scaled = tensor_mul(input, tensor([2.0, 2.0]))
+print("Scaled (x2):")
+print(scaled)
+
+// Add bias
+let with_bias = tensor_add(scaled, tensor([0.1, 0.1]))
+print("With bias:")
+print(with_bias)
+
+// Apply activation
+let activated = relu(with_bias)
+print("After ReLU:")
+print(activated)
+
+print("")
+print("=== Matrix Multiply for Batched Operations ===")
+
+// Create weight matrix
+let weights = matrix([[0.5, -0.5, 0.3], [-0.3, 0.7, -0.7]])
+print("Weights (2x3):")
+print(weights)
+
+// For batched forward pass, would use matrix_matmul
+let identity = matrix_eye(2)
+print("Identity (2x2):")
+print(identity)
+
+let result = matrix_matmul(identity, weights)
+print("Identity @ Weights (should equal Weights):")
+print(result)
+
+print("")
+print("Neural network demo completed!")

@@ -1,6 +1,9 @@
 /*
  * Pseudocode Language - High Performance C Implementation
  * Uses NaN-boxing, computed gotos, and direct threading
+ *
+ * Copyright (c) 2026 NagusameCS
+ * Licensed under the MIT License
  */
 
 #ifndef PSEUDO_H
@@ -108,6 +111,10 @@ typedef enum {
     OBJ_RANGE,
     OBJ_DICT,       /* Dictionary/HashMap */
     OBJ_BYTES,      /* Byte array for binary data */
+    OBJ_TENSOR,     /* N-dimensional tensor for ML/scientific computing */
+    OBJ_MATRIX,     /* 2D matrix with BLAS-style operations */
+    OBJ_DATAFRAME,  /* Tabular data with named columns */
+    OBJ_GRAD_TAPE,  /* Autograd tape for automatic differentiation */
 } ObjType;
 
 typedef struct Obj {
@@ -162,6 +169,80 @@ typedef struct {
     uint8_t* data;
 } ObjBytes;
 
+/* ============ Data Science Types ============ */
+
+/* Forward declaration */
+typedef struct ObjTensor ObjTensor;
+
+/* Tensor - N-dimensional array for ML/scientific computing */
+/* Supports arbitrary dimensions, strides for views, f64 data */
+#define TENSOR_MAX_DIMS 8
+
+struct ObjTensor {
+    Obj obj;
+    uint32_t ndim;                      /* Number of dimensions */
+    uint32_t shape[TENSOR_MAX_DIMS];    /* Size in each dimension */
+    int64_t strides[TENSOR_MAX_DIMS];   /* Byte stride for each dim */
+    uint32_t size;                      /* Total number of elements */
+    double* data;                       /* Contiguous f64 data */
+    bool owns_data;                     /* True if we should free data */
+    bool requires_grad;                 /* For autograd */
+    ObjTensor* grad;                    /* Gradient tensor */
+};
+
+/* Matrix - 2D matrix optimized for linear algebra */
+/* Row-major storage, BLAS-compatible */
+typedef struct {
+    Obj obj;
+    uint32_t rows;
+    uint32_t cols;
+    double* data;                       /* Row-major f64 data */
+    bool owns_data;
+} ObjMatrix;
+
+/* DataFrame - Tabular data with named columns */
+typedef struct {
+    Obj obj;
+    uint32_t num_rows;
+    uint32_t num_cols;
+    ObjString** column_names;           /* Column name strings */
+    ObjArray** columns;                 /* Array of column arrays */
+} ObjDataFrame;
+
+/* GradTape - Records operations for automatic differentiation */
+typedef struct GradTapeEntry {
+    uint8_t op;                         /* Operation type */
+    ObjTensor* result;                  /* Output tensor */
+    ObjTensor* inputs[3];               /* Input tensors (max 3) */
+    double scalar;                      /* Scalar argument if any */
+} GradTapeEntry;
+
+typedef struct {
+    Obj obj;
+    GradTapeEntry* entries;
+    uint32_t count;
+    uint32_t capacity;
+    bool recording;
+} ObjGradTape;
+
+/* Autograd operation types */
+typedef enum {
+    GRAD_OP_ADD,
+    GRAD_OP_SUB,
+    GRAD_OP_MUL,
+    GRAD_OP_DIV,
+    GRAD_OP_MATMUL,
+    GRAD_OP_RELU,
+    GRAD_OP_SIGMOID,
+    GRAD_OP_TANH,
+    GRAD_OP_SOFTMAX,
+    GRAD_OP_SUM,
+    GRAD_OP_MEAN,
+    GRAD_OP_POW,
+    GRAD_OP_EXP,
+    GRAD_OP_LOG,
+} GradOpType;
+
 /* Object type checks */
 #define OBJ_TYPE(v)    (((Obj*)as_obj(v))->type)
 #define IS_STRING(v)   (IS_OBJ(v) && OBJ_TYPE(v) == OBJ_STRING)
@@ -170,6 +251,10 @@ typedef struct {
 #define IS_RANGE(v)    (IS_OBJ(v) && OBJ_TYPE(v) == OBJ_RANGE)
 #define IS_DICT(v)     (IS_OBJ(v) && OBJ_TYPE(v) == OBJ_DICT)
 #define IS_BYTES(v)    (IS_OBJ(v) && OBJ_TYPE(v) == OBJ_BYTES)
+#define IS_TENSOR(v)   (IS_OBJ(v) && OBJ_TYPE(v) == OBJ_TENSOR)
+#define IS_MATRIX(v)   (IS_OBJ(v) && OBJ_TYPE(v) == OBJ_MATRIX)
+#define IS_DATAFRAME(v) (IS_OBJ(v) && OBJ_TYPE(v) == OBJ_DATAFRAME)
+#define IS_GRAD_TAPE(v) (IS_OBJ(v) && OBJ_TYPE(v) == OBJ_GRAD_TAPE)
 
 #define AS_STRING(v)   ((ObjString*)as_obj(v))
 #define AS_ARRAY(v)    ((ObjArray*)as_obj(v))
@@ -177,6 +262,10 @@ typedef struct {
 #define AS_RANGE(v)    ((ObjRange*)as_obj(v))
 #define AS_DICT(v)     ((ObjDict*)as_obj(v))
 #define AS_BYTES(v)    ((ObjBytes*)as_obj(v))
+#define AS_TENSOR(v)   ((ObjTensor*)as_obj(v))
+#define AS_MATRIX(v)   ((ObjMatrix*)as_obj(v))
+#define AS_DATAFRAME(v) ((ObjDataFrame*)as_obj(v))
+#define AS_GRAD_TAPE(v) ((ObjGradTape*)as_obj(v))
 
 /* ============ Bytecode ============ */
 
@@ -430,6 +519,87 @@ typedef enum {
     OP_HASH,            /* Hash a value (fast) */
     OP_HASH_SHA256,     /* SHA-256 hash */
     OP_HASH_MD5,        /* MD5 hash */
+    
+    /* ============ TENSOR OPERATIONS ============ */
+    /* Creation */
+    OP_TENSOR,          /* Create tensor from array + shape */
+    OP_TENSOR_ZEROS,    /* Create zero tensor */
+    OP_TENSOR_ONES,     /* Create ones tensor */
+    OP_TENSOR_RAND,     /* Create random tensor */
+    OP_TENSOR_RANDN,    /* Create random normal tensor */
+    OP_TENSOR_ARANGE,   /* Create range tensor */
+    OP_TENSOR_LINSPACE, /* Create linearly spaced tensor */
+    OP_TENSOR_EYE,      /* Create identity matrix */
+    
+    /* Shape operations */
+    OP_TENSOR_SHAPE,    /* Get tensor shape */
+    OP_TENSOR_RESHAPE,  /* Reshape tensor */
+    OP_TENSOR_TRANSPOSE,/* Transpose tensor */
+    OP_TENSOR_FLATTEN,  /* Flatten to 1D */
+    OP_TENSOR_SQUEEZE,  /* Remove size-1 dimensions */
+    OP_TENSOR_UNSQUEEZE,/* Add dimension */
+    
+    /* Element-wise ops */
+    OP_TENSOR_ADD,      /* Tensor + Tensor */
+    OP_TENSOR_SUB,      /* Tensor - Tensor */
+    OP_TENSOR_MUL,      /* Tensor * Tensor (element-wise) */
+    OP_TENSOR_DIV,      /* Tensor / Tensor */
+    OP_TENSOR_POW,      /* Tensor ** scalar */
+    OP_TENSOR_NEG,      /* -Tensor */
+    OP_TENSOR_ABS,      /* abs(Tensor) */
+    OP_TENSOR_SQRT,     /* sqrt(Tensor) */
+    OP_TENSOR_EXP,      /* exp(Tensor) */
+    OP_TENSOR_LOG,      /* log(Tensor) */
+    
+    /* Reduction ops */
+    OP_TENSOR_SUM,      /* Sum all or along axis */
+    OP_TENSOR_MEAN,     /* Mean all or along axis */
+    OP_TENSOR_MIN,      /* Min all or along axis */
+    OP_TENSOR_MAX,      /* Max all or along axis */
+    OP_TENSOR_ARGMIN,   /* Index of min */
+    OP_TENSOR_ARGMAX,   /* Index of max */
+    
+    /* Linear algebra */
+    OP_TENSOR_MATMUL,   /* Matrix multiplication */
+    OP_TENSOR_DOT,      /* Dot product */
+    OP_TENSOR_NORM,     /* L2 norm */
+    
+    /* Indexing */
+    OP_TENSOR_GET,      /* Get element/slice */
+    OP_TENSOR_SET,      /* Set element/slice */
+    
+    /* ============ MATRIX OPERATIONS ============ */
+    OP_MATRIX,          /* Create matrix from 2D array */
+    OP_MATRIX_ZEROS,    /* Zero matrix (rows, cols) */
+    OP_MATRIX_ONES,     /* Ones matrix */
+    OP_MATRIX_EYE,      /* Identity matrix */
+    OP_MATRIX_RAND,     /* Random matrix */
+    OP_MATRIX_DIAG,     /* Diagonal matrix from array */
+    
+    OP_MATRIX_ADD,      /* Matrix + Matrix */
+    OP_MATRIX_SUB,      /* Matrix - Matrix */
+    OP_MATRIX_MUL,      /* Matrix * Matrix (element-wise) */
+    OP_MATRIX_MATMUL,   /* Matrix @ Matrix */
+    OP_MATRIX_SCALE,    /* scalar * Matrix */
+    
+    OP_MATRIX_T,        /* Transpose */
+    OP_MATRIX_INV,      /* Inverse */
+    OP_MATRIX_DET,      /* Determinant */
+    OP_MATRIX_TRACE,    /* Trace */
+    OP_MATRIX_SOLVE,    /* Solve Ax = b */
+    
+    /* ============ AUTOGRAD OPERATIONS ============ */
+    OP_GRAD_TAPE,       /* Create gradient tape */
+    
+    /* Neural network activations */
+    OP_NN_RELU,         /* ReLU activation */
+    OP_NN_SIGMOID,      /* Sigmoid activation */
+    OP_NN_TANH,         /* Tanh activation */
+    OP_NN_SOFTMAX,      /* Softmax activation */
+    
+    /* Loss functions */
+    OP_NN_MSE_LOSS,     /* Mean squared error */
+    OP_NN_CE_LOSS,      /* Cross-entropy loss */
     
     OP_OPCODE_COUNT,    /* Total number of opcodes */
 } OpCode;

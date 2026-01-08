@@ -1,5 +1,8 @@
 /*
  * Pseudocode Language - Main Entry Point
+ *
+ * Copyright (c) 2026 NagusameCS
+ * Licensed under the MIT License
  */
 
 #include "pseudo.h"

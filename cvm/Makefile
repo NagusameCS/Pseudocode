@@ -9,7 +9,7 @@ CFLAGS += -std=gnu11  # Use gnu11 to allow computed gotos
 # Debug build
 DEBUG_FLAGS = -O0 -g -DDEBUG -fsanitize=address,undefined
 
-SOURCES = main.c lexer.c compiler.c vm.c memory.c jit.c
+SOURCES = main.c lexer.c compiler.c vm.c memory.c jit.c tensor.c
 OBJECTS = $(SOURCES:.c=.o)
 TARGET = pseudo
 

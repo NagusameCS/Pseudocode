@@ -1,6 +1,9 @@
 /*
  * Pseudocode Language - Lexer (Scanner)
  * High-performance single-pass tokenization
+ *
+ * Copyright (c) 2026 NagusameCS
+ * Licensed under the MIT License
  */
 
 #include "pseudo.h"

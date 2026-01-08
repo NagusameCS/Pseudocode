@@ -3,6 +3,9 @@
  * 
  * This JIT compiles hot loops directly to native machine code,
  * bypassing the bytecode interpreter entirely for maximum speed.
+ *
+ * Copyright (c) 2026 NagusameCS
+ * Licensed under the MIT License
  */
 
 #include <stdint.h>

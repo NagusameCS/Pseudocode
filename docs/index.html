@@ -108,10 +108,74 @@
             text-decoration: none;
         }
 
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideInLeft {
+            from {
+                opacity: 0;
+                transform: translateX(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.7;
+            }
+        }
+
+        @keyframes gradientShift {
+            0% {
+                background-position: 0% 50%;
+            }
+            50% {
+                background-position: 100% 50%;
+            }
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+
+        @keyframes barGrow {
+            from {
+                width: 0%;
+            }
+        }
+
+        .animate-fadeInUp {
+            animation: fadeInUp 0.6s ease-out forwards;
+        }
+
+        .animate-slideInLeft {
+            animation: slideInLeft 0.5s ease-out forwards;
+        }
+
+        .animate-delay-1 { animation-delay: 0.1s; opacity: 0; }
+        .animate-delay-2 { animation-delay: 0.2s; opacity: 0; }
+        .animate-delay-3 { animation-delay: 0.3s; opacity: 0; }
+        .animate-delay-4 { animation-delay: 0.4s; opacity: 0; }
+
         .hero {
             padding: 80px 0 64px;
             text-align: center;
             border-bottom: 1px solid var(--border);
+            background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
         }
 
         .hero h1 {
@@ -119,6 +183,12 @@
             font-weight: 700;
             margin-bottom: 16px;
             letter-spacing: -0.02em;
+            background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent) 100%);
+            background-size: 200% 200%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: gradientShift 4s ease infinite;
         }
 
         .hero p {
@@ -141,17 +211,21 @@
             font-size: 14px;
             cursor: pointer;
             border: none;
-            transition: all 0.15s;
+            transition: all 0.2s ease;
+            transform: translateY(0);
         }
 
         .btn-primary {
             background: var(--accent);
             color: #fff;
+            box-shadow: 0 4px 12px rgba(167, 139, 250, 0.3);
         }
 
         .btn-primary:hover {
             background: var(--accent-dim);
             text-decoration: none;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(167, 139, 250, 0.4);
         }
 
         .btn-secondary {
@@ -196,6 +270,14 @@
             border: 1px solid var(--border);
             border-radius: 12px;
             padding: 24px;
+            transition: all 0.3s ease;
+            transform: translateY(0);
+        }
+
+        .feature-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--accent);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
         }
 
         .feature-card h3 {
@@ -482,10 +564,9 @@
 
     <main>
         <section class="hero container">
-            <span class="version-badge">v1.0 - C VM with NaN-boxing</span>
-            <h1>Write Code Like You Think</h1>
-            <p>A high-performance programming language with intuitive syntax. Compiles to bytecode and runs on an
-                optimized VM that outperforms Python.</p>
+            <span class="version-badge animate-fadeInUp">v1.0 - Tensor/Matrix Support with SIMD</span>
+            <h1 class="animate-fadeInUp animate-delay-1">Write Code Like You Think</h1>
+            <p class="animate-fadeInUp animate-delay-2">A high-performance programming language with intuitive syntax. Features an x86-64 JIT compiler, NumPy-like tensors, and SIMD acceleration.</p>
             <div class="hero-buttons">
                 <a href="#getting-started" class="btn btn-primary">Get Started</a>
                 <a href="reference.html" class="btn btn-secondary">Documentation</a>
@@ -570,6 +651,29 @@
                     <p>Expressive match/case expressions for clean control flow. Works with numbers, strings, and
                         complex patterns.</p>
                 </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <rect x="2" y="2" width="20" height="20" rx="2"></rect>
+                            <line x1="7" y1="8" x2="17" y2="8"></line>
+                            <line x1="7" y1="12" x2="17" y2="12"></line>
+                            <line x1="7" y1="16" x2="13" y2="16"></line>
+                        </svg>
+                    </div>
+                    <h3>Data Science / ML</h3>
+                    <p>NumPy-like tensors and matrices with SIMD acceleration (AVX2). Neural network primitives: ReLU, sigmoid, softmax, loss functions.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                        </svg>
+                    </div>
+                    <h3>Cryptographic Hashing</h3>
+                    <p>Built-in SHA-256 and MD5 hashing, Base64 encoding/decoding. No external libraries required.</p>
+                </div>
             </div>
         </section>
 
@@ -626,6 +730,37 @@
 <span class="keyword">let</span> files = <span class="function">list_dir</span>(<span class="string">"."</span>)
 <span class="function">print</span>(files)</pre>
                 </div>
+
+                <div class="code-block">
+                    <div class="code-header">neural_network.pseudo</div>
+                    <pre><span class="comment">// Tensor operations with SIMD</span>
+<span class="keyword">let</span> a = <span class="function">tensor</span>([<span class="number">1.0</span>, <span class="number">2.0</span>, <span class="number">3.0</span>])
+<span class="keyword">let</span> b = <span class="function">tensor</span>([<span class="number">4.0</span>, <span class="number">5.0</span>, <span class="number">6.0</span>])
+<span class="keyword">let</span> c = <span class="function">tensor_add</span>(a, b)
+
+<span class="comment">// Neural network activations</span>
+<span class="keyword">let</span> logits = <span class="function">tensor</span>([<span class="number">-1</span>, <span class="number">0</span>, <span class="number">1</span>, <span class="number">2</span>])
+<span class="keyword">let</span> probs = <span class="function">softmax</span>(logits)
+<span class="function">print</span>(<span class="function">tensor_sum</span>(probs)) <span class="comment">// 1.0</span>
+
+<span class="comment">// Loss function</span>
+<span class="keyword">let</span> loss = <span class="function">mse_loss</span>(pred, target)</pre>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header">cryptography.pseudo</div>
+                    <pre><span class="comment">// Cryptographic hashing</span>
+<span class="keyword">let</span> hash = <span class="function">sha256</span>(<span class="string">"hello"</span>)
+<span class="function">print</span>(hash)
+<span class="comment">// 2cf24dba5fb0a30e26e83b2...</span>
+
+<span class="keyword">let</span> md5_hash = <span class="function">md5</span>(<span class="string">"password"</span>)
+<span class="function">print</span>(md5_hash)
+
+<span class="comment">// Base64 encoding</span>
+<span class="keyword">let</span> encoded = <span class="function">encode_base64</span>(<span class="string">"data"</span>)
+<span class="keyword">let</span> decoded = <span class="function">decode_base64</span>(encoded)</pre>
+                </div>
             </div>
         </section>
 
@@ -633,8 +768,8 @@
             <h2>Performance Benchmarks</h2>
             <div class="benchmarks">
                 <div class="benchmark-header">
-                    <h3>🚀 JIT Compiler - C-Speed Performance</h3>
-                    <span class="benchmark-info">New! x86-64 JIT compilation for tight loops. Lower is better.</span>
+                    <h3>JIT Compiler - Native x86-64 Performance</h3>
+                    <span class="benchmark-info">Direct machine code generation via DynASM. Lower is better.</span>
                 </div>
                 <table class="benchmark-table">
                     <thead>
@@ -649,34 +784,34 @@
                     <tbody>
                         <tr>
                             <td>Increment Loop (x = x + 1)</td>
-                            <td class="time-value">32ms</td>
-                            <td class="time-value">33ms</td>
-                            <td class="speedup">0.97x C</td>
+                            <td class="time-value">684ms</td>
+                            <td class="time-value">43ms</td>
+                            <td class="speedup">JIT active</td>
                             <td>
                                 <div class="benchmark-bar">
-                                    <div class="benchmark-fill fast" style="width: 97%;"></div>
+                                    <div class="benchmark-fill fast" style="width: 85%; animation: barGrow 1s ease-out;"></div>
                                 </div>
                             </td>
                         </tr>
                         <tr>
                             <td>Arithmetic Loop (x = x*3 + 7)</td>
-                            <td class="time-value">63ms</td>
-                            <td class="time-value">64ms</td>
-                            <td class="speedup">0.98x C</td>
+                            <td class="time-value">1142ms</td>
+                            <td class="time-value">110ms</td>
+                            <td class="speedup">JIT active</td>
                             <td>
                                 <div class="benchmark-bar">
-                                    <div class="benchmark-fill fast" style="width: 98%;"></div>
+                                    <div class="benchmark-fill fast" style="width: 80%; animation: barGrow 1s ease-out 0.1s backwards;"></div>
                                 </div>
                             </td>
                         </tr>
                         <tr>
                             <td>Branch Loop (if/else)</td>
-                            <td class="time-value">76ms</td>
-                            <td class="time-value">64ms</td>
-                            <td class="speedup">0.84x C</td>
+                            <td class="time-value">1269ms</td>
+                            <td class="time-value">61ms</td>
+                            <td class="speedup">JIT active</td>
                             <td>
                                 <div class="benchmark-bar">
-                                    <div class="benchmark-fill fast" style="width: 84%;"></div>
+                                    <div class="benchmark-fill fast" style="width: 75%; animation: barGrow 1s ease-out 0.2s backwards;"></div>
                                 </div>
                             </td>
                         </tr>
@@ -819,9 +954,65 @@
                             <td>Fused opcodes for common patterns (GET_LOCAL_0, FOR_COUNT)</td>
                         </tr>
                         <tr>
+                            <td>SIMD (AVX2)</td>
+                            <td class="speedup">4x faster</td>
+                            <td>Process 4 doubles per instruction for tensor operations</td>
+                        </tr>
+                        <tr>
                             <td>PGO</td>
                             <td class="speedup">~25% faster</td>
                             <td>Profile-guided optimization with real workload data</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="benchmark-header" style="margin-top: 32px;">
+                    <h3>vs Python 3.12 - Common Operations</h3>
+                    <span class="benchmark-info">Direct comparison with Python on identical workloads. Lower is better.</span>
+                </div>
+                <table class="benchmark-table">
+                    <thead>
+                        <tr>
+                            <th>Benchmark</th>
+                            <th>Pseudocode</th>
+                            <th>Python</th>
+                            <th>Speedup</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Empty Loop (1e8)</td>
+                            <td class="time-value">~700ms</td>
+                            <td class="time-value">4013ms</td>
+                            <td class="speedup">5.7x faster</td>
+                            <td>
+                                <div class="benchmark-bar">
+                                    <div class="benchmark-fill fast" style="width: 85%; animation: barGrow 1s ease-out;"></div>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Branching (1e8)</td>
+                            <td class="time-value">1284ms</td>
+                            <td class="time-value">4204ms</td>
+                            <td class="speedup">3.3x faster</td>
+                            <td>
+                                <div class="benchmark-bar">
+                                    <div class="benchmark-fill fast" style="width: 70%; animation: barGrow 1s ease-out 0.1s backwards;"></div>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>HashMap (1e7)</td>
+                            <td class="time-value">~400ms</td>
+                            <td class="time-value">1384ms</td>
+                            <td class="speedup">3.5x faster</td>
+                            <td>
+                                <div class="benchmark-bar">
+                                    <div class="benchmark-fill fast" style="width: 72%; animation: barGrow 1s ease-out 0.2s backwards;"></div>
+                                </div>
+                            </td>
                         </tr>
                     </tbody>
                 </table>
@@ -869,7 +1060,7 @@
 
     <footer>
         <div class="container">
-            <p>Pseudocode is open source under the MIT License.</p>
+            <p>Pseudocode is open source under the MIT License. Copyright 2025 NagusameCS.</p>
             <div class="footer-links">
                 <a href="https://github.com/NagusameCS/Pseudocode">
                     <svg height="16" width="16" viewBox="0 0 16 16" fill="currentColor">
@@ -879,6 +1070,7 @@
                     GitHub
                 </a>
                 <a href="reference.html">Documentation</a>
+                <a href="SPEC.md">Language Spec</a>
             </div>
         </div>
     </footer>

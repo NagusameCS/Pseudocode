@@ -1,12 +1,16 @@
 /*
  * Pseudocode Language - High Performance Virtual Machine
  * Uses computed gotos (GCC/Clang) or switch dispatch
+ *
+ * Copyright (c) 2026 NagusameCS
+ * Licensed under the MIT License
  */
 
 #define _POSIX_C_SOURCE 200809L  /* For clock_gettime, popen, etc */
 #define _GNU_SOURCE
 
 #include "pseudo.h"
+#include "tensor.h"
 #include "jit.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -156,6 +160,296 @@ static void runtime_error(VM* vm, const char* format, ...) {
     vm->frame_count = 0;
 }
 
+/* ============ JSON Parser ============ */
+
+static void json_skip_whitespace(const char** json, const char* end) {
+    while (*json < end && (**json == ' ' || **json == '\t' || **json == '\n' || **json == '\r')) {
+        (*json)++;
+    }
+}
+
+static Value json_parse_value(VM* vm, const char** json, const char* end);
+
+static Value json_parse_string(VM* vm, const char** json, const char* end) {
+    if (*json >= end || **json != '"') return VAL_NIL;
+    (*json)++;  /* Skip opening quote */
+    
+    const char* start = *json;
+    size_t len = 0;
+    
+    /* First pass: count length (handling escapes) */
+    while (*json < end && **json != '"') {
+        if (**json == '\\' && *json + 1 < end) {
+            (*json)++;
+        }
+        (*json)++;
+        len++;
+    }
+    
+    /* Allocate and copy */
+    char* buffer = malloc(len + 1);
+    const char* src = start;
+    size_t dst_idx = 0;
+    
+    while (src < *json) {
+        if (*src == '\\' && src + 1 < *json) {
+            src++;
+            switch (*src) {
+                case 'n': buffer[dst_idx++] = '\n'; break;
+                case 't': buffer[dst_idx++] = '\t'; break;
+                case 'r': buffer[dst_idx++] = '\r'; break;
+                case '"': buffer[dst_idx++] = '"'; break;
+                case '\\': buffer[dst_idx++] = '\\'; break;
+                default: buffer[dst_idx++] = *src; break;
+            }
+        } else {
+            buffer[dst_idx++] = *src;
+        }
+        src++;
+    }
+    buffer[dst_idx] = '\0';
+    
+    if (*json < end && **json == '"') (*json)++;  /* Skip closing quote */
+    
+    ObjString* str = copy_string(vm, buffer, dst_idx);
+    free(buffer);
+    return val_obj(str);
+}
+
+static Value json_parse_number(VM* vm, const char** json, const char* end) {
+    (void)vm;
+    const char* start = *json;
+    bool is_float = false;
+    
+    if (**json == '-') (*json)++;
+    while (*json < end && (**json >= '0' && **json <= '9')) (*json)++;
+    
+    if (*json < end && **json == '.') {
+        is_float = true;
+        (*json)++;
+        while (*json < end && (**json >= '0' && **json <= '9')) (*json)++;
+    }
+    
+    if (*json < end && (**json == 'e' || **json == 'E')) {
+        is_float = true;
+        (*json)++;
+        if (*json < end && (**json == '+' || **json == '-')) (*json)++;
+        while (*json < end && (**json >= '0' && **json <= '9')) (*json)++;
+    }
+    
+    char* num_str = malloc(*json - start + 1);
+    memcpy(num_str, start, *json - start);
+    num_str[*json - start] = '\0';
+    
+    double val = atof(num_str);
+    free(num_str);
+    
+    if (!is_float && val == (int32_t)val) {
+        return val_int((int32_t)val);
+    }
+    return val_num(val);
+}
+
+static Value json_parse_array(VM* vm, const char** json, const char* end) {
+    if (*json >= end || **json != '[') return VAL_NIL;
+    (*json)++;  /* Skip '[' */
+    
+    ObjArray* arr = (ObjArray*)pseudo_realloc(vm, NULL, 0, sizeof(ObjArray));
+    arr->obj.type = OBJ_ARRAY;
+    arr->obj.next = vm->objects;
+    arr->obj.marked = false;
+    vm->objects = (Obj*)arr;
+    arr->values = NULL;
+    arr->count = 0;
+    arr->capacity = 0;
+    
+    json_skip_whitespace(json, end);
+    
+    if (*json < end && **json == ']') {
+        (*json)++;
+        return val_obj(arr);
+    }
+    
+    while (*json < end) {
+        json_skip_whitespace(json, end);
+        Value item = json_parse_value(vm, json, end);
+        
+        /* Add to array */
+        if (arr->count >= arr->capacity) {
+            uint32_t new_cap = arr->capacity < 8 ? 8 : arr->capacity * 2;
+            arr->values = realloc(arr->values, sizeof(Value) * new_cap);
+            arr->capacity = new_cap;
+        }
+        arr->values[arr->count++] = item;
+        
+        json_skip_whitespace(json, end);
+        if (*json >= end) break;
+        if (**json == ']') { (*json)++; break; }
+        if (**json == ',') (*json)++;
+    }
+    
+    return val_obj(arr);
+}
+
+static Value json_parse_object(VM* vm, const char** json, const char* end) {
+    if (*json >= end || **json != '{') return VAL_NIL;
+    (*json)++;  /* Skip '{' */
+    
+    ObjDict* dict = (ObjDict*)pseudo_realloc(vm, NULL, 0, sizeof(ObjDict));
+    dict->obj.type = OBJ_DICT;
+    dict->obj.next = vm->objects;
+    dict->obj.marked = false;
+    vm->objects = (Obj*)dict;
+    dict->keys = NULL;
+    dict->values = NULL;
+    dict->count = 0;
+    dict->capacity = 0;
+    
+    json_skip_whitespace(json, end);
+    
+    if (*json < end && **json == '}') {
+        (*json)++;
+        return val_obj(dict);
+    }
+    
+    while (*json < end) {
+        json_skip_whitespace(json, end);
+        
+        /* Parse key (must be string) */
+        if (*json >= end || **json != '"') break;
+        Value key = json_parse_string(vm, json, end);
+        if (!IS_STRING(key)) break;
+        
+        json_skip_whitespace(json, end);
+        if (*json >= end || **json != ':') break;
+        (*json)++;  /* Skip ':' */
+        
+        json_skip_whitespace(json, end);
+        Value value = json_parse_value(vm, json, end);
+        
+        /* Add to dict */
+        if (dict->count >= dict->capacity) {
+            uint32_t new_cap = dict->capacity < 8 ? 8 : dict->capacity * 2;
+            dict->keys = realloc(dict->keys, sizeof(ObjString*) * new_cap);
+            dict->values = realloc(dict->values, sizeof(Value) * new_cap);
+            dict->capacity = new_cap;
+        }
+        dict->keys[dict->count] = AS_STRING(key);
+        dict->values[dict->count] = value;
+        dict->count++;
+        
+        json_skip_whitespace(json, end);
+        if (*json >= end) break;
+        if (**json == '}') { (*json)++; break; }
+        if (**json == ',') (*json)++;
+    }
+    
+    return val_obj(dict);
+}
+
+static Value json_parse_value(VM* vm, const char** json, const char* end) {
+    json_skip_whitespace(json, end);
+    if (*json >= end) return VAL_NIL;
+    
+    char c = **json;
+    
+    if (c == '"') return json_parse_string(vm, json, end);
+    if (c == '[') return json_parse_array(vm, json, end);
+    if (c == '{') return json_parse_object(vm, json, end);
+    if (c == '-' || (c >= '0' && c <= '9')) return json_parse_number(vm, json, end);
+    
+    /* Keywords */
+    if (end - *json >= 4 && memcmp(*json, "true", 4) == 0) {
+        *json += 4;
+        return VAL_TRUE;
+    }
+    if (end - *json >= 5 && memcmp(*json, "false", 5) == 0) {
+        *json += 5;
+        return VAL_FALSE;
+    }
+    if (end - *json >= 4 && memcmp(*json, "null", 4) == 0) {
+        *json += 4;
+        return VAL_NIL;
+    }
+    
+    return VAL_NIL;
+}
+
+/* ============ JSON Stringify ============ */
+
+static void json_stringify_append(char** buf, size_t* len, size_t* cap, const char* str, size_t slen) {
+    while (*len + slen + 1 > *cap) {
+        *cap = *cap < 64 ? 64 : *cap * 2;
+        *buf = realloc(*buf, *cap);
+    }
+    memcpy(*buf + *len, str, slen);
+    *len += slen;
+    (*buf)[*len] = '\0';
+}
+
+static void json_stringify_value_impl(VM* vm, Value val, char** buf, size_t* len, size_t* cap) {
+    if (IS_NIL(val)) {
+        json_stringify_append(buf, len, cap, "null", 4);
+    } else if (IS_BOOL(val)) {
+        if (IS_TRUE(val)) {
+            json_stringify_append(buf, len, cap, "true", 4);
+        } else {
+            json_stringify_append(buf, len, cap, "false", 5);
+        }
+    } else if (IS_INT(val)) {
+        char num[32];
+        int n = snprintf(num, sizeof(num), "%d", as_int(val));
+        json_stringify_append(buf, len, cap, num, n);
+    } else if (IS_NUM(val)) {
+        char num[32];
+        int n = snprintf(num, sizeof(num), "%g", as_num(val));
+        json_stringify_append(buf, len, cap, num, n);
+    } else if (IS_STRING(val)) {
+        ObjString* str = AS_STRING(val);
+        json_stringify_append(buf, len, cap, "\"", 1);
+        for (size_t i = 0; i < str->length; i++) {
+            char c = str->chars[i];
+            if (c == '"') json_stringify_append(buf, len, cap, "\\\"", 2);
+            else if (c == '\\') json_stringify_append(buf, len, cap, "\\\\", 2);
+            else if (c == '\n') json_stringify_append(buf, len, cap, "\\n", 2);
+            else if (c == '\r') json_stringify_append(buf, len, cap, "\\r", 2);
+            else if (c == '\t') json_stringify_append(buf, len, cap, "\\t", 2);
+            else json_stringify_append(buf, len, cap, &c, 1);
+        }
+        json_stringify_append(buf, len, cap, "\"", 1);
+    } else if (IS_ARRAY(val)) {
+        ObjArray* arr = AS_ARRAY(val);
+        json_stringify_append(buf, len, cap, "[", 1);
+        for (uint32_t i = 0; i < arr->count; i++) {
+            if (i > 0) json_stringify_append(buf, len, cap, ",", 1);
+            json_stringify_value_impl(vm, arr->values[i], buf, len, cap);
+        }
+        json_stringify_append(buf, len, cap, "]", 1);
+    } else if (IS_DICT(val)) {
+        ObjDict* dict = AS_DICT(val);
+        json_stringify_append(buf, len, cap, "{", 1);
+        for (uint32_t i = 0; i < dict->count; i++) {
+            if (i > 0) json_stringify_append(buf, len, cap, ",", 1);
+            json_stringify_append(buf, len, cap, "\"", 1);
+            json_stringify_append(buf, len, cap, dict->keys[i]->chars, dict->keys[i]->length);
+            json_stringify_append(buf, len, cap, "\":", 2);
+            json_stringify_value_impl(vm, dict->values[i], buf, len, cap);
+        }
+        json_stringify_append(buf, len, cap, "}", 1);
+    } else {
+        json_stringify_append(buf, len, cap, "null", 4);
+    }
+}
+
+static ObjString* json_stringify_value(VM* vm, Value val) {
+    char* buf = NULL;
+    size_t len = 0, cap = 0;
+    json_stringify_value_impl(vm, val, &buf, &len, &cap);
+    ObjString* result = copy_string(vm, buf ? buf : "null", buf ? len : 4);
+    free(buf);
+    return result;
+}
+
 /* ============ Value Operations ============ */
 
 static void print_value(Value value) {
@@ -194,6 +488,31 @@ static void print_value(Value value) {
                 break;
             case OBJ_RANGE:
                 printf("%d..%d", ((ObjRange*)obj)->start, ((ObjRange*)obj)->end);
+                break;
+            case OBJ_TENSOR: {
+                ObjTensor* t = (ObjTensor*)obj;
+                printf("Tensor(shape=[");
+                for (uint32_t i = 0; i < t->ndim; i++) {
+                    if (i > 0) printf(", ");
+                    printf("%u", t->shape[i]);
+                }
+                printf("], data=[");
+                uint32_t max_print = t->size > 10 ? 10 : t->size;
+                for (uint32_t i = 0; i < max_print; i++) {
+                    if (i > 0) printf(", ");
+                    printf("%g", t->data[i]);
+                }
+                if (t->size > max_print) printf(", ...");
+                printf("])");
+                break;
+            }
+            case OBJ_MATRIX: {
+                ObjMatrix* m = (ObjMatrix*)obj;
+                printf("Matrix(%ux%u)", m->rows, m->cols);
+                break;
+            }
+            case OBJ_GRAD_TAPE:
+                printf("<GradTape>");
                 break;
             default:
                 printf("<object>");
@@ -455,6 +774,68 @@ InterpretResult vm_run(VM* vm) {
         [OP_HASH] = &&op_hash,
         [OP_HASH_SHA256] = &&op_hash_sha256,
         [OP_HASH_MD5] = &&op_hash_md5,
+        /* Tensor operations */
+        [OP_TENSOR] = &&op_tensor,
+        [OP_TENSOR_ZEROS] = &&op_tensor_zeros,
+        [OP_TENSOR_ONES] = &&op_tensor_ones,
+        [OP_TENSOR_RAND] = &&op_tensor_rand,
+        [OP_TENSOR_RANDN] = &&op_tensor_randn,
+        [OP_TENSOR_ARANGE] = &&op_tensor_arange,
+        [OP_TENSOR_LINSPACE] = &&op_tensor_linspace,
+        [OP_TENSOR_EYE] = &&op_tensor_eye,
+        [OP_TENSOR_SHAPE] = &&op_tensor_shape,
+        [OP_TENSOR_RESHAPE] = &&op_tensor_reshape,
+        [OP_TENSOR_TRANSPOSE] = &&op_tensor_transpose,
+        [OP_TENSOR_FLATTEN] = &&op_tensor_flatten,
+        [OP_TENSOR_SQUEEZE] = &&op_tensor_squeeze,
+        [OP_TENSOR_UNSQUEEZE] = &&op_tensor_unsqueeze,
+        [OP_TENSOR_ADD] = &&op_tensor_add,
+        [OP_TENSOR_SUB] = &&op_tensor_sub,
+        [OP_TENSOR_MUL] = &&op_tensor_mul,
+        [OP_TENSOR_DIV] = &&op_tensor_div,
+        [OP_TENSOR_POW] = &&op_tensor_pow,
+        [OP_TENSOR_NEG] = &&op_tensor_neg,
+        [OP_TENSOR_ABS] = &&op_tensor_abs,
+        [OP_TENSOR_SQRT] = &&op_tensor_sqrt,
+        [OP_TENSOR_EXP] = &&op_tensor_exp,
+        [OP_TENSOR_LOG] = &&op_tensor_log,
+        [OP_TENSOR_SUM] = &&op_tensor_sum,
+        [OP_TENSOR_MEAN] = &&op_tensor_mean,
+        [OP_TENSOR_MIN] = &&op_tensor_min,
+        [OP_TENSOR_MAX] = &&op_tensor_max,
+        [OP_TENSOR_ARGMIN] = &&op_tensor_argmin,
+        [OP_TENSOR_ARGMAX] = &&op_tensor_argmax,
+        [OP_TENSOR_MATMUL] = &&op_tensor_matmul,
+        [OP_TENSOR_DOT] = &&op_tensor_dot,
+        [OP_TENSOR_NORM] = &&op_tensor_norm,
+        [OP_TENSOR_GET] = &&op_tensor_get,
+        [OP_TENSOR_SET] = &&op_tensor_set,
+        /* Matrix operations */
+        [OP_MATRIX] = &&op_matrix,
+        [OP_MATRIX_ZEROS] = &&op_matrix_zeros,
+        [OP_MATRIX_ONES] = &&op_matrix_ones,
+        [OP_MATRIX_EYE] = &&op_matrix_eye,
+        [OP_MATRIX_RAND] = &&op_matrix_rand,
+        [OP_MATRIX_DIAG] = &&op_matrix_diag,
+        [OP_MATRIX_ADD] = &&op_matrix_add,
+        [OP_MATRIX_SUB] = &&op_matrix_sub,
+        [OP_MATRIX_MUL] = &&op_matrix_mul,
+        [OP_MATRIX_MATMUL] = &&op_matrix_matmul,
+        [OP_MATRIX_SCALE] = &&op_matrix_scale,
+        [OP_MATRIX_T] = &&op_matrix_t,
+        [OP_MATRIX_INV] = &&op_matrix_inv,
+        [OP_MATRIX_DET] = &&op_matrix_det,
+        [OP_MATRIX_TRACE] = &&op_matrix_trace,
+        [OP_MATRIX_SOLVE] = &&op_matrix_solve,
+        /* Autograd */
+        [OP_GRAD_TAPE] = &&op_grad_tape,
+        /* Neural network */
+        [OP_NN_RELU] = &&op_nn_relu,
+        [OP_NN_SIGMOID] = &&op_nn_sigmoid,
+        [OP_NN_TANH] = &&op_nn_tanh,
+        [OP_NN_SOFTMAX] = &&op_nn_softmax,
+        [OP_NN_MSE_LOSS] = &&op_nn_mse_loss,
+        [OP_NN_CE_LOSS] = &&op_nn_ce_loss,
     };
     
     #define DISPATCH() goto *dispatch_table[*ip++]
@@ -2149,7 +2530,7 @@ InterpretResult vm_run(VM* vm) {
     }
     
     /* ============ JSON ============ */
-    /* Simple recursive descent JSON parser */
+    /* Recursive descent JSON parser */
     
     CASE(json_parse): {
         Value str_val = POP();
@@ -2157,17 +2538,20 @@ InterpretResult vm_run(VM* vm) {
             PUSH(VAL_NIL);
             DISPATCH();
         }
-        /* For now, push nil - full JSON parser would be extensive */
-        /* TODO: Implement proper JSON parsing */
-        PUSH(VAL_NIL);
+        ObjString* str = AS_STRING(str_val);
+        const char* json = str->chars;
+        const char* end = json + str->length;
+        vm->sp = sp;
+        Value result = json_parse_value(vm, &json, end);
+        sp = vm->sp;
+        PUSH(result);
         DISPATCH();
     }
     
     CASE(json_stringify): {
-        /* TODO: Implement JSON stringification */
-        POP();
+        Value val = POP();
         vm->sp = sp;
-        ObjString* result = copy_string(vm, "null", 4);
+        ObjString* result = json_stringify_value(vm, val);
         sp = vm->sp;
         PUSH(val_obj(result));
         DISPATCH();
@@ -2970,12 +3354,48 @@ InterpretResult vm_run(VM* vm) {
             DISPATCH();
         }
         ObjString* str = AS_STRING(str_val);
+        
+        /* Base64 decode lookup table */
+        static const int8_t b64_table[256] = {
+            -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+            -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+            -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,62,-1,-1,-1,63,
+            52,53,54,55,56,57,58,59,60,61,-1,-1,-1,-2,-1,-1,
+            -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,
+            15,16,17,18,19,20,21,22,23,24,25,-1,-1,-1,-1,-1,
+            -1,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,
+            41,42,43,44,45,46,47,48,49,50,51,-1,-1,-1,-1,-1,
+            -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+            -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+            -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+            -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+            -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+            -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+            -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+            -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1
+        };
+        
         uint32_t out_len = (str->length / 4) * 3;
         vm->sp = sp;
-        ObjBytes* bytes = new_bytes(vm, out_len);
+        ObjBytes* bytes = new_bytes(vm, out_len + 4);
         sp = vm->sp;
-        /* TODO: Proper base64 decode */
-        bytes->length = 0;
+        
+        uint32_t j = 0;
+        uint32_t acc = 0;
+        int bits = 0;
+        
+        for (uint32_t i = 0; i < str->length; i++) {
+            int8_t val = b64_table[(uint8_t)str->chars[i]];
+            if (val == -2) break;  /* Padding '=' */
+            if (val < 0) continue;  /* Skip invalid */
+            acc = (acc << 6) | val;
+            bits += 6;
+            if (bits >= 8) {
+                bits -= 8;
+                bytes->data[j++] = (acc >> bits) & 0xFF;
+            }
+        }
+        bytes->length = j;
         PUSH(val_obj(bytes));
         DISPATCH();
     }
@@ -3028,22 +3448,1091 @@ InterpretResult vm_run(VM* vm) {
     }
     
     CASE(hash_sha256): {
-        /* TODO: Implement SHA-256 */
-        POP();
+        Value v = POP();
+        const uint8_t* data;
+        size_t len;
+        
+        if (IS_STRING(v)) {
+            ObjString* s = AS_STRING(v);
+            data = (const uint8_t*)s->chars;
+            len = s->length;
+        } else if (IS_BYTES(v)) {
+            ObjBytes* b = AS_BYTES(v);
+            data = b->data;
+            len = b->length;
+        } else {
+            vm->sp = sp;
+            ObjString* str = copy_string(vm, "0000000000000000000000000000000000000000000000000000000000000000", 64);
+            sp = vm->sp;
+            PUSH(val_obj(str));
+            DISPATCH();
+        }
+        
+        /* SHA-256 implementation */
+        static const uint32_t sha256_k[64] = {
+            0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+            0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+            0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+            0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+            0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+            0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+            0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+            0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2
+        };
+        
+        #define SHA256_ROTR(x,n) (((x)>>(n))|((x)<<(32-(n))))
+        #define SHA256_CH(x,y,z) (((x)&(y))^((~(x))&(z)))
+        #define SHA256_MAJ(x,y,z) (((x)&(y))^((x)&(z))^((y)&(z)))
+        #define SHA256_EP0(x) (SHA256_ROTR(x,2)^SHA256_ROTR(x,13)^SHA256_ROTR(x,22))
+        #define SHA256_EP1(x) (SHA256_ROTR(x,6)^SHA256_ROTR(x,11)^SHA256_ROTR(x,25))
+        #define SHA256_SIG0(x) (SHA256_ROTR(x,7)^SHA256_ROTR(x,18)^((x)>>3))
+        #define SHA256_SIG1(x) (SHA256_ROTR(x,17)^SHA256_ROTR(x,19)^((x)>>10))
+        
+        uint32_t h[8] = {0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19};
+        
+        /* Pad message */
+        size_t bit_len = len * 8;
+        size_t padded_len = ((len + 9 + 63) / 64) * 64;
+        uint8_t* msg = calloc(padded_len, 1);
+        memcpy(msg, data, len);
+        msg[len] = 0x80;
+        for (int i = 0; i < 8; i++) {
+            msg[padded_len - 1 - i] = (bit_len >> (i * 8)) & 0xFF;
+        }
+        
+        /* Process blocks */
+        for (size_t blk = 0; blk < padded_len; blk += 64) {
+            uint32_t w[64];
+            for (int i = 0; i < 16; i++) {
+                w[i] = ((uint32_t)msg[blk + i*4] << 24) | ((uint32_t)msg[blk + i*4+1] << 16) |
+                       ((uint32_t)msg[blk + i*4+2] << 8) | msg[blk + i*4+3];
+            }
+            for (int i = 16; i < 64; i++) {
+                w[i] = SHA256_SIG1(w[i-2]) + w[i-7] + SHA256_SIG0(w[i-15]) + w[i-16];
+            }
+            
+            uint32_t a=h[0],b=h[1],c=h[2],d=h[3],e=h[4],f=h[5],g=h[6],hh=h[7];
+            for (int i = 0; i < 64; i++) {
+                uint32_t t1 = hh + SHA256_EP1(e) + SHA256_CH(e,f,g) + sha256_k[i] + w[i];
+                uint32_t t2 = SHA256_EP0(a) + SHA256_MAJ(a,b,c);
+                hh=g; g=f; f=e; e=d+t1; d=c; c=b; b=a; a=t1+t2;
+            }
+            h[0]+=a; h[1]+=b; h[2]+=c; h[3]+=d; h[4]+=e; h[5]+=f; h[6]+=g; h[7]+=hh;
+        }
+        free(msg);
+        
+        #undef SHA256_ROTR
+        #undef SHA256_CH
+        #undef SHA256_MAJ
+        #undef SHA256_EP0
+        #undef SHA256_EP1
+        #undef SHA256_SIG0
+        #undef SHA256_SIG1
+        
+        char hex[65];
+        for (int i = 0; i < 8; i++) {
+            snprintf(hex + i*8, 9, "%08x", h[i]);
+        }
+        
         vm->sp = sp;
-        ObjString* str = copy_string(vm, "0000000000000000000000000000000000000000000000000000000000000000", 64);
+        ObjString* str = copy_string(vm, hex, 64);
         sp = vm->sp;
         PUSH(val_obj(str));
         DISPATCH();
     }
     
     CASE(hash_md5): {
-        /* TODO: Implement MD5 */
-        POP();
+        Value v = POP();
+        const uint8_t* data;
+        size_t len;
+        
+        if (IS_STRING(v)) {
+            ObjString* s = AS_STRING(v);
+            data = (const uint8_t*)s->chars;
+            len = s->length;
+        } else if (IS_BYTES(v)) {
+            ObjBytes* b = AS_BYTES(v);
+            data = b->data;
+            len = b->length;
+        } else {
+            vm->sp = sp;
+            ObjString* str = copy_string(vm, "00000000000000000000000000000000", 32);
+            sp = vm->sp;
+            PUSH(val_obj(str));
+            DISPATCH();
+        }
+        
+        /* MD5 implementation */
+        static const uint32_t md5_k[64] = {
+            0xd76aa478,0xe8c7b756,0x242070db,0xc1bdceee,0xf57c0faf,0x4787c62a,0xa8304613,0xfd469501,
+            0x698098d8,0x8b44f7af,0xffff5bb1,0x895cd7be,0x6b901122,0xfd987193,0xa679438e,0x49b40821,
+            0xf61e2562,0xc040b340,0x265e5a51,0xe9b6c7aa,0xd62f105d,0x02441453,0xd8a1e681,0xe7d3fbc8,
+            0x21e1cde6,0xc33707d6,0xf4d50d87,0x455a14ed,0xa9e3e905,0xfcefa3f8,0x676f02d9,0x8d2a4c8a,
+            0xfffa3942,0x8771f681,0x6d9d6122,0xfde5380c,0xa4beea44,0x4bdecfa9,0xf6bb4b60,0xbebfbc70,
+            0x289b7ec6,0xeaa127fa,0xd4ef3085,0x04881d05,0xd9d4d039,0xe6db99e5,0x1fa27cf8,0xc4ac5665,
+            0xf4292244,0x432aff97,0xab9423a7,0xfc93a039,0x655b59c3,0x8f0ccc92,0xffeff47d,0x85845dd1,
+            0x6fa87e4f,0xfe2ce6e0,0xa3014314,0x4e0811a1,0xf7537e82,0xbd3af235,0x2ad7d2bb,0xeb86d391
+        };
+        static const uint32_t md5_s[64] = {
+            7,12,17,22,7,12,17,22,7,12,17,22,7,12,17,22,
+            5,9,14,20,5,9,14,20,5,9,14,20,5,9,14,20,
+            4,11,16,23,4,11,16,23,4,11,16,23,4,11,16,23,
+            6,10,15,21,6,10,15,21,6,10,15,21,6,10,15,21
+        };
+        
+        #define MD5_ROTL(x,n) (((x)<<(n))|((x)>>(32-(n))))
+        
+        uint32_t h0=0x67452301, h1=0xefcdab89, h2=0x98badcfe, h3=0x10325476;
+        
+        size_t bit_len = len * 8;
+        size_t padded_len = ((len + 9 + 63) / 64) * 64;
+        uint8_t* msg = calloc(padded_len, 1);
+        memcpy(msg, data, len);
+        msg[len] = 0x80;
+        /* MD5 uses little-endian length */
+        for (int i = 0; i < 8; i++) {
+            msg[padded_len - 8 + i] = (bit_len >> (i * 8)) & 0xFF;
+        }
+        
+        for (size_t blk = 0; blk < padded_len; blk += 64) {
+            uint32_t w[16];
+            for (int i = 0; i < 16; i++) {
+                w[i] = msg[blk + i*4] | ((uint32_t)msg[blk + i*4+1] << 8) |
+                       ((uint32_t)msg[blk + i*4+2] << 16) | ((uint32_t)msg[blk + i*4+3] << 24);
+            }
+            
+            uint32_t a=h0, b=h1, c=h2, d=h3;
+            for (int i = 0; i < 64; i++) {
+                uint32_t f, g;
+                if (i < 16) { f = (b & c) | ((~b) & d); g = i; }
+                else if (i < 32) { f = (d & b) | ((~d) & c); g = (5*i + 1) % 16; }
+                else if (i < 48) { f = b ^ c ^ d; g = (3*i + 5) % 16; }
+                else { f = c ^ (b | (~d)); g = (7*i) % 16; }
+                f = f + a + md5_k[i] + w[g];
+                a = d; d = c; c = b; b = b + MD5_ROTL(f, md5_s[i]);
+            }
+            h0 += a; h1 += b; h2 += c; h3 += d;
+        }
+        free(msg);
+        
+        #undef MD5_ROTL
+        
+        char hex[33];
+        snprintf(hex, 33, "%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
+            h0&0xFF,(h0>>8)&0xFF,(h0>>16)&0xFF,(h0>>24)&0xFF,
+            h1&0xFF,(h1>>8)&0xFF,(h1>>16)&0xFF,(h1>>24)&0xFF,
+            h2&0xFF,(h2>>8)&0xFF,(h2>>16)&0xFF,(h2>>24)&0xFF,
+            h3&0xFF,(h3>>8)&0xFF,(h3>>16)&0xFF,(h3>>24)&0xFF);
+        
         vm->sp = sp;
-        ObjString* str = copy_string(vm, "00000000000000000000000000000000", 32);
+        ObjString* str = copy_string(vm, hex, 32);
         sp = vm->sp;
         PUSH(val_obj(str));
+        DISPATCH();
+    }
+    
+    /* ============ TENSOR OPERATIONS ============ */
+    
+    CASE(tensor): {
+        /* Create tensor from array */
+        Value arr_val = POP();
+        if (!IS_ARRAY(arr_val)) {
+            PUSH(VAL_NIL);
+            DISPATCH();
+        }
+        vm->sp = sp;
+        ObjTensor* t = tensor_from_array(vm, AS_ARRAY(arr_val));
+        sp = vm->sp;
+        PUSH(val_obj(t));
+        DISPATCH();
+    }
+    
+    CASE(tensor_zeros): {
+        Value shape_val = POP();
+        if (!IS_ARRAY(shape_val)) {
+            PUSH(VAL_NIL);
+            DISPATCH();
+        }
+        ObjArray* shape_arr = AS_ARRAY(shape_val);
+        uint32_t shape[8];
+        uint32_t ndim = shape_arr->count > 8 ? 8 : shape_arr->count;
+        for (uint32_t i = 0; i < ndim; i++) {
+            shape[i] = IS_INT(shape_arr->values[i]) ? as_int(shape_arr->values[i]) 
+                                                     : (uint32_t)as_num(shape_arr->values[i]);
+        }
+        vm->sp = sp;
+        ObjTensor* t = tensor_zeros(vm, ndim, shape);
+        sp = vm->sp;
+        PUSH(val_obj(t));
+        DISPATCH();
+    }
+    
+    CASE(tensor_ones): {
+        Value shape_val = POP();
+        if (!IS_ARRAY(shape_val)) {
+            PUSH(VAL_NIL);
+            DISPATCH();
+        }
+        ObjArray* shape_arr = AS_ARRAY(shape_val);
+        uint32_t shape[8];
+        uint32_t ndim = shape_arr->count > 8 ? 8 : shape_arr->count;
+        for (uint32_t i = 0; i < ndim; i++) {
+            shape[i] = IS_INT(shape_arr->values[i]) ? as_int(shape_arr->values[i])
+                                                     : (uint32_t)as_num(shape_arr->values[i]);
+        }
+        vm->sp = sp;
+        ObjTensor* t = tensor_ones(vm, ndim, shape);
+        sp = vm->sp;
+        PUSH(val_obj(t));
+        DISPATCH();
+    }
+    
+    CASE(tensor_rand): {
+        Value shape_val = POP();
+        if (!IS_ARRAY(shape_val)) {
+            PUSH(VAL_NIL);
+            DISPATCH();
+        }
+        ObjArray* shape_arr = AS_ARRAY(shape_val);
+        uint32_t shape[8];
+        uint32_t ndim = shape_arr->count > 8 ? 8 : shape_arr->count;
+        for (uint32_t i = 0; i < ndim; i++) {
+            shape[i] = IS_INT(shape_arr->values[i]) ? as_int(shape_arr->values[i])
+                                                     : (uint32_t)as_num(shape_arr->values[i]);
+        }
+        vm->sp = sp;
+        ObjTensor* t = tensor_rand(vm, ndim, shape);
+        sp = vm->sp;
+        PUSH(val_obj(t));
+        DISPATCH();
+    }
+    
+    CASE(tensor_randn): {
+        Value shape_val = POP();
+        if (!IS_ARRAY(shape_val)) {
+            PUSH(VAL_NIL);
+            DISPATCH();
+        }
+        ObjArray* shape_arr = AS_ARRAY(shape_val);
+        uint32_t shape[8];
+        uint32_t ndim = shape_arr->count > 8 ? 8 : shape_arr->count;
+        for (uint32_t i = 0; i < ndim; i++) {
+            shape[i] = IS_INT(shape_arr->values[i]) ? as_int(shape_arr->values[i])
+                                                     : (uint32_t)as_num(shape_arr->values[i]);
+        }
+        vm->sp = sp;
+        ObjTensor* t = tensor_randn(vm, ndim, shape);
+        sp = vm->sp;
+        PUSH(val_obj(t));
+        DISPATCH();
+    }
+    
+    CASE(tensor_arange): {
+        Value step_val = POP();
+        Value stop_val = POP();
+        Value start_val = POP();
+        double start = IS_INT(start_val) ? as_int(start_val) : as_num(start_val);
+        double stop = IS_INT(stop_val) ? as_int(stop_val) : as_num(stop_val);
+        double step = IS_INT(step_val) ? as_int(step_val) : as_num(step_val);
+        vm->sp = sp;
+        ObjTensor* t = tensor_arange(vm, start, stop, step);
+        sp = vm->sp;
+        PUSH(val_obj(t));
+        DISPATCH();
+    }
+    
+    CASE(tensor_linspace): {
+        Value num_val = POP();
+        Value stop_val = POP();
+        Value start_val = POP();
+        double start = IS_INT(start_val) ? as_int(start_val) : as_num(start_val);
+        double stop = IS_INT(stop_val) ? as_int(stop_val) : as_num(stop_val);
+        uint32_t num = IS_INT(num_val) ? as_int(num_val) : (uint32_t)as_num(num_val);
+        vm->sp = sp;
+        ObjTensor* t = tensor_linspace(vm, start, stop, num);
+        sp = vm->sp;
+        PUSH(val_obj(t));
+        DISPATCH();
+    }
+    
+    CASE(tensor_eye): {
+        Value n_val = POP();
+        uint32_t n = IS_INT(n_val) ? as_int(n_val) : (uint32_t)as_num(n_val);
+        uint32_t shape[2] = {n, n};
+        vm->sp = sp;
+        ObjTensor* t = tensor_zeros(vm, 2, shape);
+        sp = vm->sp;
+        for (uint32_t i = 0; i < n; i++) {
+            t->data[i * n + i] = 1.0;
+        }
+        PUSH(val_obj(t));
+        DISPATCH();
+    }
+    
+    CASE(tensor_shape): {
+        Value t_val = POP();
+        if (!IS_TENSOR(t_val)) {
+            PUSH(VAL_NIL);
+            DISPATCH();
+        }
+        ObjTensor* t = AS_TENSOR(t_val);
+        vm->sp = sp;
+        ObjArray* arr = new_array(vm, t->ndim);
+        sp = vm->sp;
+        for (uint32_t i = 0; i < t->ndim; i++) {
+            arr->values[i] = val_int(t->shape[i]);
+        }
+        arr->count = t->ndim;
+        PUSH(val_obj(arr));
+        DISPATCH();
+    }
+    
+    CASE(tensor_reshape): {
+        Value shape_val = POP();
+        Value t_val = POP();
+        if (!IS_TENSOR(t_val) || !IS_ARRAY(shape_val)) {
+            PUSH(VAL_NIL);
+            DISPATCH();
+        }
+        ObjTensor* t = AS_TENSOR(t_val);
+        ObjArray* shape_arr = AS_ARRAY(shape_val);
+        uint32_t shape[8];
+        uint32_t ndim = shape_arr->count > 8 ? 8 : shape_arr->count;
+        uint32_t new_size = 1;
+        for (uint32_t i = 0; i < ndim; i++) {
+            shape[i] = IS_INT(shape_arr->values[i]) ? as_int(shape_arr->values[i])
+                                                     : (uint32_t)as_num(shape_arr->values[i]);
+            new_size *= shape[i];
+        }
+        if (new_size != t->size) {
+            PUSH(VAL_NIL);
+            DISPATCH();
+        }
+        vm->sp = sp;
+        ObjTensor* result = tensor_create(vm, ndim, shape);
+        sp = vm->sp;
+        memcpy(result->data, t->data, t->size * sizeof(double));
+        PUSH(val_obj(result));
+        DISPATCH();
+    }
+    
+    CASE(tensor_transpose): {
+        Value t_val = POP();
+        if (!IS_TENSOR(t_val)) {
+            PUSH(VAL_NIL);
+            DISPATCH();
+        }
+        ObjTensor* t = AS_TENSOR(t_val);
+        if (t->ndim != 2) {
+            PUSH(val_obj(t)); /* Only 2D transpose for now */
+            DISPATCH();
+        }
+        uint32_t new_shape[2] = {t->shape[1], t->shape[0]};
+        vm->sp = sp;
+        ObjTensor* result = tensor_create(vm, 2, new_shape);
+        sp = vm->sp;
+        for (uint32_t i = 0; i < t->shape[0]; i++) {
+            for (uint32_t j = 0; j < t->shape[1]; j++) {
+                result->data[j * t->shape[0] + i] = t->data[i * t->shape[1] + j];
+            }
+        }
+        PUSH(val_obj(result));
+        DISPATCH();
+    }
+    
+    CASE(tensor_flatten): {
+        Value t_val = POP();
+        if (!IS_TENSOR(t_val)) {
+            PUSH(VAL_NIL);
+            DISPATCH();
+        }
+        ObjTensor* t = AS_TENSOR(t_val);
+        uint32_t shape[1] = {t->size};
+        vm->sp = sp;
+        ObjTensor* result = tensor_create(vm, 1, shape);
+        sp = vm->sp;
+        memcpy(result->data, t->data, t->size * sizeof(double));
+        PUSH(val_obj(result));
+        DISPATCH();
+    }
+    
+    CASE(tensor_squeeze): {
+        Value t_val = POP();
+        if (!IS_TENSOR(t_val)) {
+            PUSH(VAL_NIL);
+            DISPATCH();
+        }
+        ObjTensor* t = AS_TENSOR(t_val);
+        
+        /* Count non-1 dimensions */
+        uint32_t new_ndim = 0;
+        uint32_t new_shape[8];
+        for (uint32_t i = 0; i < t->ndim && new_ndim < 8; i++) {
+            if (t->shape[i] != 1) {
+                new_shape[new_ndim++] = t->shape[i];
+            }
+        }
+        if (new_ndim == 0) { new_ndim = 1; new_shape[0] = 1; }
+        
+        vm->sp = sp;
+        ObjTensor* result = tensor_create(vm, new_ndim, new_shape);
+        sp = vm->sp;
+        memcpy(result->data, t->data, t->size * sizeof(double));
+        PUSH(val_obj(result));
+        DISPATCH();
+    }
+    
+    CASE(tensor_unsqueeze): {
+        Value dim_val = POP();
+        Value t_val = POP();
+        if (!IS_TENSOR(t_val)) {
+            PUSH(VAL_NIL);
+            DISPATCH();
+        }
+        ObjTensor* t = AS_TENSOR(t_val);
+        uint32_t dim = IS_INT(dim_val) ? as_int(dim_val) : (uint32_t)as_num(dim_val);
+        if (dim > t->ndim || t->ndim >= 8) {
+            PUSH(t_val);
+            DISPATCH();
+        }
+        
+        /* Build new shape with 1 inserted at dim */
+        uint32_t new_shape[8];
+        for (uint32_t i = 0; i < dim; i++) new_shape[i] = t->shape[i];
+        new_shape[dim] = 1;
+        for (uint32_t i = dim; i < t->ndim; i++) new_shape[i+1] = t->shape[i];
+        
+        vm->sp = sp;
+        ObjTensor* result = tensor_create(vm, t->ndim + 1, new_shape);
+        sp = vm->sp;
+        memcpy(result->data, t->data, t->size * sizeof(double));
+        PUSH(val_obj(result));
+        DISPATCH();
+    }
+    
+    CASE(tensor_add): {
+        Value b_val = POP();
+        Value a_val = POP();
+        if (!IS_TENSOR(a_val) || !IS_TENSOR(b_val)) {
+            PUSH(VAL_NIL);
+            DISPATCH();
+        }
+        vm->sp = sp;
+        ObjTensor* result = tensor_add_tensors(vm, AS_TENSOR(a_val), AS_TENSOR(b_val));
+        sp = vm->sp;
+        PUSH(result ? val_obj(result) : VAL_NIL);
+        DISPATCH();
+    }
+    
+    CASE(tensor_sub): {
+        Value b_val = POP();
+        Value a_val = POP();
+        if (!IS_TENSOR(a_val) || !IS_TENSOR(b_val)) {
+            PUSH(VAL_NIL);
+            DISPATCH();
+        }
+        vm->sp = sp;
+        ObjTensor* result = tensor_sub_tensors(vm, AS_TENSOR(a_val), AS_TENSOR(b_val));
+        sp = vm->sp;
+        PUSH(result ? val_obj(result) : VAL_NIL);
+        DISPATCH();
+    }
+    
+    CASE(tensor_mul): {
+        Value b_val = POP();
+        Value a_val = POP();
+        if (!IS_TENSOR(a_val) || !IS_TENSOR(b_val)) {
+            PUSH(VAL_NIL);
+            DISPATCH();
+        }
+        vm->sp = sp;
+        ObjTensor* result = tensor_mul_tensors(vm, AS_TENSOR(a_val), AS_TENSOR(b_val));
+        sp = vm->sp;
+        PUSH(result ? val_obj(result) : VAL_NIL);
+        DISPATCH();
+    }
+    
+    CASE(tensor_div): {
+        Value b_val = POP();
+        Value a_val = POP();
+        if (!IS_TENSOR(a_val) || !IS_TENSOR(b_val)) {
+            PUSH(VAL_NIL);
+            DISPATCH();
+        }
+        vm->sp = sp;
+        ObjTensor* result = tensor_div_tensors(vm, AS_TENSOR(a_val), AS_TENSOR(b_val));
+        sp = vm->sp;
+        PUSH(result ? val_obj(result) : VAL_NIL);
+        DISPATCH();
+    }
+    
+    CASE(tensor_pow): {
+        Value p_val = POP();
+        Value t_val = POP();
+        if (!IS_TENSOR(t_val)) {
+            PUSH(VAL_NIL);
+            DISPATCH();
+        }
+        double power = IS_INT(p_val) ? as_int(p_val) : as_num(p_val);
+        vm->sp = sp;
+        ObjTensor* result = tensor_pow_op(vm, AS_TENSOR(t_val), power);
+        sp = vm->sp;
+        PUSH(val_obj(result));
+        DISPATCH();
+    }
+    
+    CASE(tensor_neg): {
+        Value t_val = POP();
+        if (!IS_TENSOR(t_val)) {
+            PUSH(VAL_NIL);
+            DISPATCH();
+        }
+        vm->sp = sp;
+        ObjTensor* result = tensor_neg(vm, AS_TENSOR(t_val));
+        sp = vm->sp;
+        PUSH(val_obj(result));
+        DISPATCH();
+    }
+    
+    CASE(tensor_abs): {
+        Value t_val = POP();
+        if (!IS_TENSOR(t_val)) {
+            PUSH(VAL_NIL);
+            DISPATCH();
+        }
+        vm->sp = sp;
+        ObjTensor* result = tensor_abs(vm, AS_TENSOR(t_val));
+        sp = vm->sp;
+        PUSH(val_obj(result));
+        DISPATCH();
+    }
+    
+    CASE(tensor_sqrt): {
+        Value t_val = POP();
+        if (!IS_TENSOR(t_val)) {
+            PUSH(VAL_NIL);
+            DISPATCH();
+        }
+        vm->sp = sp;
+        ObjTensor* result = tensor_sqrt_op(vm, AS_TENSOR(t_val));
+        sp = vm->sp;
+        PUSH(val_obj(result));
+        DISPATCH();
+    }
+    
+    CASE(tensor_exp): {
+        Value t_val = POP();
+        if (!IS_TENSOR(t_val)) {
+            PUSH(VAL_NIL);
+            DISPATCH();
+        }
+        vm->sp = sp;
+        ObjTensor* result = tensor_exp_op(vm, AS_TENSOR(t_val));
+        sp = vm->sp;
+        PUSH(val_obj(result));
+        DISPATCH();
+    }
+    
+    CASE(tensor_log): {
+        Value t_val = POP();
+        if (!IS_TENSOR(t_val)) {
+            PUSH(VAL_NIL);
+            DISPATCH();
+        }
+        vm->sp = sp;
+        ObjTensor* result = tensor_log_op(vm, AS_TENSOR(t_val));
+        sp = vm->sp;
+        PUSH(val_obj(result));
+        DISPATCH();
+    }
+    
+    CASE(tensor_sum): {
+        Value t_val = POP();
+        if (!IS_TENSOR(t_val)) {
+            PUSH(val_num(0));
+            DISPATCH();
+        }
+        double sum = tensor_sum_all(AS_TENSOR(t_val));
+        PUSH(val_num(sum));
+        DISPATCH();
+    }
+    
+    CASE(tensor_mean): {
+        Value t_val = POP();
+        if (!IS_TENSOR(t_val)) {
+            PUSH(val_num(0));
+            DISPATCH();
+        }
+        double mean = tensor_mean_all(AS_TENSOR(t_val));
+        PUSH(val_num(mean));
+        DISPATCH();
+    }
+    
+    CASE(tensor_min): {
+        Value t_val = POP();
+        if (!IS_TENSOR(t_val)) {
+            PUSH(val_num(0));
+            DISPATCH();
+        }
+        double min = tensor_min_all(AS_TENSOR(t_val));
+        PUSH(val_num(min));
+        DISPATCH();
+    }
+    
+    CASE(tensor_max): {
+        Value t_val = POP();
+        if (!IS_TENSOR(t_val)) {
+            PUSH(val_num(0));
+            DISPATCH();
+        }
+        double max = tensor_max_all(AS_TENSOR(t_val));
+        PUSH(val_num(max));
+        DISPATCH();
+    }
+    
+    CASE(tensor_argmin): {
+        Value t_val = POP();
+        if (!IS_TENSOR(t_val)) {
+            PUSH(val_int(0));
+            DISPATCH();
+        }
+        ObjTensor* t = AS_TENSOR(t_val);
+        uint32_t idx = 0;
+        double min = t->data[0];
+        for (uint32_t i = 1; i < t->size; i++) {
+            if (t->data[i] < min) {
+                min = t->data[i];
+                idx = i;
+            }
+        }
+        PUSH(val_int(idx));
+        DISPATCH();
+    }
+    
+    CASE(tensor_argmax): {
+        Value t_val = POP();
+        if (!IS_TENSOR(t_val)) {
+            PUSH(val_int(0));
+            DISPATCH();
+        }
+        ObjTensor* t = AS_TENSOR(t_val);
+        uint32_t idx = 0;
+        double max = t->data[0];
+        for (uint32_t i = 1; i < t->size; i++) {
+            if (t->data[i] > max) {
+                max = t->data[i];
+                idx = i;
+            }
+        }
+        PUSH(val_int(idx));
+        DISPATCH();
+    }
+    
+    CASE(tensor_matmul): {
+        Value b_val = POP();
+        Value a_val = POP();
+        if (!IS_TENSOR(a_val) || !IS_TENSOR(b_val)) {
+            PUSH(VAL_NIL);
+            DISPATCH();
+        }
+        ObjTensor* a = AS_TENSOR(a_val);
+        ObjTensor* b = AS_TENSOR(b_val);
+        if (a->ndim != 2 || b->ndim != 2 || a->shape[1] != b->shape[0]) {
+            PUSH(VAL_NIL);
+            DISPATCH();
+        }
+        uint32_t new_shape[2] = {a->shape[0], b->shape[1]};
+        vm->sp = sp;
+        ObjTensor* result = tensor_zeros(vm, 2, new_shape);
+        sp = vm->sp;
+        /* Matrix multiplication */
+        for (uint32_t i = 0; i < a->shape[0]; i++) {
+            for (uint32_t k = 0; k < a->shape[1]; k++) {
+                double aik = a->data[i * a->shape[1] + k];
+                for (uint32_t j = 0; j < b->shape[1]; j++) {
+                    result->data[i * b->shape[1] + j] += aik * b->data[k * b->shape[1] + j];
+                }
+            }
+        }
+        PUSH(val_obj(result));
+        DISPATCH();
+    }
+    
+    CASE(tensor_dot): {
+        Value b_val = POP();
+        Value a_val = POP();
+        if (!IS_TENSOR(a_val) || !IS_TENSOR(b_val)) {
+            PUSH(val_num(0));
+            DISPATCH();
+        }
+        ObjTensor* a = AS_TENSOR(a_val);
+        ObjTensor* b = AS_TENSOR(b_val);
+        if (a->size != b->size) {
+            PUSH(val_num(0));
+            DISPATCH();
+        }
+        double dot = tensor_dot(a->data, b->data, a->size);
+        PUSH(val_num(dot));
+        DISPATCH();
+    }
+    
+    CASE(tensor_norm): {
+        Value t_val = POP();
+        if (!IS_TENSOR(t_val)) {
+            PUSH(val_num(0));
+            DISPATCH();
+        }
+        double norm = tensor_norm(AS_TENSOR(t_val));
+        PUSH(val_num(norm));
+        DISPATCH();
+    }
+    
+    CASE(tensor_get): {
+        Value idx_val = POP();
+        Value t_val = POP();
+        if (!IS_TENSOR(t_val)) {
+            PUSH(val_num(0));
+            DISPATCH();
+        }
+        ObjTensor* t = AS_TENSOR(t_val);
+        uint32_t idx = IS_INT(idx_val) ? as_int(idx_val) : (uint32_t)as_num(idx_val);
+        if (idx >= t->size) {
+            PUSH(val_num(0));
+            DISPATCH();
+        }
+        PUSH(val_num(t->data[idx]));
+        DISPATCH();
+    }
+    
+    CASE(tensor_set): {
+        Value val = POP();
+        Value idx_val = POP();
+        Value t_val = POP();
+        if (!IS_TENSOR(t_val)) {
+            PUSH(VAL_FALSE);
+            DISPATCH();
+        }
+        ObjTensor* t = AS_TENSOR(t_val);
+        uint32_t idx = IS_INT(idx_val) ? as_int(idx_val) : (uint32_t)as_num(idx_val);
+        if (idx >= t->size) {
+            PUSH(VAL_FALSE);
+            DISPATCH();
+        }
+        t->data[idx] = IS_INT(val) ? as_int(val) : as_num(val);
+        PUSH(VAL_TRUE);
+        DISPATCH();
+    }
+    
+    /* ============ MATRIX OPERATIONS ============ */
+    
+    CASE(matrix): {
+        Value arr_val = POP();
+        if (!IS_ARRAY(arr_val)) {
+            PUSH(VAL_NIL);
+            DISPATCH();
+        }
+        vm->sp = sp;
+        ObjMatrix* m = matrix_from_array(vm, AS_ARRAY(arr_val));
+        sp = vm->sp;
+        PUSH(val_obj(m));
+        DISPATCH();
+    }
+    
+    CASE(matrix_zeros): {
+        Value cols_val = POP();
+        Value rows_val = POP();
+        uint32_t rows = IS_INT(rows_val) ? as_int(rows_val) : (uint32_t)as_num(rows_val);
+        uint32_t cols = IS_INT(cols_val) ? as_int(cols_val) : (uint32_t)as_num(cols_val);
+        vm->sp = sp;
+        ObjMatrix* m = matrix_zeros(vm, rows, cols);
+        sp = vm->sp;
+        PUSH(val_obj(m));
+        DISPATCH();
+    }
+    
+    CASE(matrix_ones): {
+        Value cols_val = POP();
+        Value rows_val = POP();
+        uint32_t rows = IS_INT(rows_val) ? as_int(rows_val) : (uint32_t)as_num(rows_val);
+        uint32_t cols = IS_INT(cols_val) ? as_int(cols_val) : (uint32_t)as_num(cols_val);
+        vm->sp = sp;
+        ObjMatrix* m = matrix_ones(vm, rows, cols);
+        sp = vm->sp;
+        PUSH(val_obj(m));
+        DISPATCH();
+    }
+    
+    CASE(matrix_eye): {
+        Value n_val = POP();
+        uint32_t n = IS_INT(n_val) ? as_int(n_val) : (uint32_t)as_num(n_val);
+        vm->sp = sp;
+        ObjMatrix* m = matrix_eye(vm, n);
+        sp = vm->sp;
+        PUSH(val_obj(m));
+        DISPATCH();
+    }
+    
+    CASE(matrix_rand): {
+        Value cols_val = POP();
+        Value rows_val = POP();
+        uint32_t rows = IS_INT(rows_val) ? as_int(rows_val) : (uint32_t)as_num(rows_val);
+        uint32_t cols = IS_INT(cols_val) ? as_int(cols_val) : (uint32_t)as_num(cols_val);
+        vm->sp = sp;
+        ObjMatrix* m = matrix_rand(vm, rows, cols);
+        sp = vm->sp;
+        PUSH(val_obj(m));
+        DISPATCH();
+    }
+    
+    CASE(matrix_diag): {
+        Value arr_val = POP();
+        if (!IS_ARRAY(arr_val)) {
+            PUSH(VAL_NIL);
+            DISPATCH();
+        }
+        ObjArray* arr = AS_ARRAY(arr_val);
+        uint32_t n = arr->count;
+        vm->sp = sp;
+        ObjMatrix* m = matrix_zeros(vm, n, n);
+        sp = vm->sp;
+        for (uint32_t i = 0; i < n; i++) {
+            Value v = arr->values[i];
+            m->data[i * n + i] = IS_INT(v) ? as_int(v) : as_num(v);
+        }
+        PUSH(val_obj(m));
+        DISPATCH();
+    }
+    
+    CASE(matrix_add): {
+        Value b_val = POP();
+        Value a_val = POP();
+        if (!IS_MATRIX(a_val) || !IS_MATRIX(b_val)) {
+            PUSH(VAL_NIL);
+            DISPATCH();
+        }
+        vm->sp = sp;
+        ObjMatrix* result = matrix_add(vm, AS_MATRIX(a_val), AS_MATRIX(b_val));
+        sp = vm->sp;
+        PUSH(result ? val_obj(result) : VAL_NIL);
+        DISPATCH();
+    }
+    
+    CASE(matrix_sub): {
+        Value b_val = POP();
+        Value a_val = POP();
+        if (!IS_MATRIX(a_val) || !IS_MATRIX(b_val)) {
+            PUSH(VAL_NIL);
+            DISPATCH();
+        }
+        vm->sp = sp;
+        ObjMatrix* result = matrix_sub(vm, AS_MATRIX(a_val), AS_MATRIX(b_val));
+        sp = vm->sp;
+        PUSH(result ? val_obj(result) : VAL_NIL);
+        DISPATCH();
+    }
+    
+    CASE(matrix_mul): {
+        Value b_val = POP();
+        Value a_val = POP();
+        if (!IS_MATRIX(a_val) || !IS_MATRIX(b_val)) {
+            PUSH(VAL_NIL);
+            DISPATCH();
+        }
+        ObjMatrix* a = AS_MATRIX(a_val);
+        ObjMatrix* b = AS_MATRIX(b_val);
+        if (a->rows != b->rows || a->cols != b->cols) {
+            PUSH(VAL_NIL);
+            DISPATCH();
+        }
+        vm->sp = sp;
+        ObjMatrix* result = matrix_create(vm, a->rows, a->cols);
+        sp = vm->sp;
+        size_t n = a->rows * a->cols;
+        tensor_mul(result->data, a->data, b->data, n);
+        PUSH(val_obj(result));
+        DISPATCH();
+    }
+    
+    CASE(matrix_matmul): {
+        Value b_val = POP();
+        Value a_val = POP();
+        if (!IS_MATRIX(a_val) || !IS_MATRIX(b_val)) {
+            PUSH(VAL_NIL);
+            DISPATCH();
+        }
+        vm->sp = sp;
+        ObjMatrix* result = matrix_matmul(vm, AS_MATRIX(a_val), AS_MATRIX(b_val));
+        sp = vm->sp;
+        PUSH(result ? val_obj(result) : VAL_NIL);
+        DISPATCH();
+    }
+    
+    CASE(matrix_scale): {
+        Value s_val = POP();
+        Value m_val = POP();
+        if (!IS_MATRIX(m_val)) {
+            PUSH(VAL_NIL);
+            DISPATCH();
+        }
+        ObjMatrix* m = AS_MATRIX(m_val);
+        double s = IS_INT(s_val) ? as_int(s_val) : as_num(s_val);
+        vm->sp = sp;
+        ObjMatrix* result = matrix_create(vm, m->rows, m->cols);
+        sp = vm->sp;
+        for (uint32_t i = 0; i < m->rows * m->cols; i++) {
+            result->data[i] = m->data[i] * s;
+        }
+        PUSH(val_obj(result));
+        DISPATCH();
+    }
+    
+    CASE(matrix_t): {
+        Value m_val = POP();
+        if (!IS_MATRIX(m_val)) {
+            PUSH(VAL_NIL);
+            DISPATCH();
+        }
+        vm->sp = sp;
+        ObjMatrix* result = matrix_transpose(vm, AS_MATRIX(m_val));
+        sp = vm->sp;
+        PUSH(val_obj(result));
+        DISPATCH();
+    }
+    
+    CASE(matrix_inv): {
+        Value m_val = POP();
+        if (!IS_MATRIX(m_val)) {
+            PUSH(VAL_NIL);
+            DISPATCH();
+        }
+        vm->sp = sp;
+        ObjMatrix* result = matrix_inverse(vm, AS_MATRIX(m_val));
+        sp = vm->sp;
+        PUSH(result ? val_obj(result) : VAL_NIL);
+        DISPATCH();
+    }
+    
+    CASE(matrix_det): {
+        Value m_val = POP();
+        if (!IS_MATRIX(m_val)) {
+            PUSH(val_num(0));
+            DISPATCH();
+        }
+        double det = matrix_det(AS_MATRIX(m_val));
+        PUSH(val_num(det));
+        DISPATCH();
+    }
+    
+    CASE(matrix_trace): {
+        Value m_val = POP();
+        if (!IS_MATRIX(m_val)) {
+            PUSH(val_num(0));
+            DISPATCH();
+        }
+        double trace = matrix_trace(AS_MATRIX(m_val));
+        PUSH(val_num(trace));
+        DISPATCH();
+    }
+    
+    CASE(matrix_solve): {
+        Value b_val = POP();
+        Value a_val = POP();
+        if (!IS_MATRIX(a_val) || !IS_MATRIX(b_val)) {
+            PUSH(VAL_NIL);
+            DISPATCH();
+        }
+        vm->sp = sp;
+        ObjMatrix* result = matrix_solve(vm, AS_MATRIX(a_val), AS_MATRIX(b_val));
+        sp = vm->sp;
+        PUSH(result ? val_obj(result) : VAL_NIL);
+        DISPATCH();
+    }
+    
+    /* ============ AUTOGRAD ============ */
+    
+    CASE(grad_tape): {
+        vm->sp = sp;
+        ObjGradTape* tape = grad_tape_create(vm);
+        sp = vm->sp;
+        PUSH(val_obj(tape));
+        DISPATCH();
+    }
+    
+    /* ============ NEURAL NETWORK ============ */
+    
+    CASE(nn_relu): {
+        Value t_val = POP();
+        if (!IS_TENSOR(t_val)) {
+            PUSH(VAL_NIL);
+            DISPATCH();
+        }
+        vm->sp = sp;
+        ObjTensor* result = tensor_relu(vm, AS_TENSOR(t_val));
+        sp = vm->sp;
+        PUSH(val_obj(result));
+        DISPATCH();
+    }
+    
+    CASE(nn_sigmoid): {
+        Value t_val = POP();
+        if (!IS_TENSOR(t_val)) {
+            PUSH(VAL_NIL);
+            DISPATCH();
+        }
+        vm->sp = sp;
+        ObjTensor* result = tensor_sigmoid(vm, AS_TENSOR(t_val));
+        sp = vm->sp;
+        PUSH(val_obj(result));
+        DISPATCH();
+    }
+    
+    CASE(nn_tanh): {
+        Value t_val = POP();
+        if (!IS_TENSOR(t_val)) {
+            PUSH(VAL_NIL);
+            DISPATCH();
+        }
+        vm->sp = sp;
+        ObjTensor* result = tensor_tanh_op(vm, AS_TENSOR(t_val));
+        sp = vm->sp;
+        PUSH(val_obj(result));
+        DISPATCH();
+    }
+    
+    CASE(nn_softmax): {
+        Value t_val = POP();
+        if (!IS_TENSOR(t_val)) {
+            PUSH(VAL_NIL);
+            DISPATCH();
+        }
+        vm->sp = sp;
+        ObjTensor* result = tensor_softmax(vm, AS_TENSOR(t_val));
+        sp = vm->sp;
+        PUSH(val_obj(result));
+        DISPATCH();
+    }
+    
+    CASE(nn_mse_loss): {
+        Value target_val = POP();
+        Value pred_val = POP();
+        if (!IS_TENSOR(pred_val) || !IS_TENSOR(target_val)) {
+            PUSH(val_num(0));
+            DISPATCH();
+        }
+        double loss = tensor_mse_loss(AS_TENSOR(pred_val), AS_TENSOR(target_val));
+        PUSH(val_num(loss));
+        DISPATCH();
+    }
+    
+    CASE(nn_ce_loss): {
+        Value target_val = POP();
+        Value pred_val = POP();
+        if (!IS_TENSOR(pred_val) || !IS_TENSOR(target_val)) {
+            PUSH(val_num(0));
+            DISPATCH();
+        }
+        double loss = tensor_cross_entropy_loss(AS_TENSOR(pred_val), AS_TENSOR(target_val));
+        PUSH(val_num(loss));
         DISPATCH();
     }
 

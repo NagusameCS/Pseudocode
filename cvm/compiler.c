@@ -1,6 +1,9 @@
 /*
  * Pseudocode Language - Compiler
  * Single-pass Pratt parser with bytecode emission
+ *
+ * Copyright (c) 2026 NagusameCS
+ * Licensed under the MIT License
  */
 
 #include "pseudo.h"
@@ -1242,6 +1245,357 @@ static void variable(bool can_assign) {
             expression();
             consume(TOKEN_RPAREN, "Expect ')' after hash argument.");
             emit_byte(OP_HASH);
+            return;
+        }
+        if (name.length == 6 && memcmp(name.start, "sha256", 6) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after sha256 argument.");
+            emit_byte(OP_HASH_SHA256);
+            return;
+        }
+        if (name.length == 3 && memcmp(name.start, "md5", 3) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after md5 argument.");
+            emit_byte(OP_HASH_MD5);
+            return;
+        }
+        
+        /* ============ TENSOR OPERATIONS ============ */
+        if (name.length == 12 && memcmp(name.start, "tensor_zeros", 12) == 0) {
+            advance();
+            expression();  /* shape array */
+            consume(TOKEN_RPAREN, "Expect ')' after tensor_zeros argument.");
+            emit_byte(OP_TENSOR_ZEROS);
+            return;
+        }
+        if (name.length == 11 && memcmp(name.start, "tensor_ones", 11) == 0) {
+            advance();
+            expression();  /* shape array */
+            consume(TOKEN_RPAREN, "Expect ')' after tensor_ones argument.");
+            emit_byte(OP_TENSOR_ONES);
+            return;
+        }
+        if (name.length == 11 && memcmp(name.start, "tensor_rand", 11) == 0) {
+            advance();
+            expression();  /* shape array */
+            consume(TOKEN_RPAREN, "Expect ')' after tensor_rand argument.");
+            emit_byte(OP_TENSOR_RAND);
+            return;
+        }
+        if (name.length == 12 && memcmp(name.start, "tensor_randn", 12) == 0) {
+            advance();
+            expression();  /* shape array */
+            consume(TOKEN_RPAREN, "Expect ')' after tensor_randn argument.");
+            emit_byte(OP_TENSOR_RANDN);
+            return;
+        }
+        if (name.length == 13 && memcmp(name.start, "tensor_arange", 13) == 0) {
+            advance();
+            expression();  /* start */
+            consume(TOKEN_COMMA, "Expect ',' after start.");
+            expression();  /* stop */
+            consume(TOKEN_COMMA, "Expect ',' after stop.");
+            expression();  /* step */
+            consume(TOKEN_RPAREN, "Expect ')' after tensor_arange arguments.");
+            emit_byte(OP_TENSOR_ARANGE);
+            return;
+        }
+        if (name.length == 6 && memcmp(name.start, "tensor", 6) == 0) {
+            advance();
+            expression();  /* array data */
+            consume(TOKEN_RPAREN, "Expect ')' after tensor argument.");
+            emit_byte(OP_TENSOR);
+            return;
+        }
+        if (name.length == 10 && memcmp(name.start, "tensor_add", 10) == 0) {
+            advance();
+            expression();  /* tensor a */
+            consume(TOKEN_COMMA, "Expect ',' after first tensor.");
+            expression();  /* tensor b */
+            consume(TOKEN_RPAREN, "Expect ')' after tensor_add arguments.");
+            emit_byte(OP_TENSOR_ADD);
+            return;
+        }
+        if (name.length == 10 && memcmp(name.start, "tensor_sub", 10) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_COMMA, "Expect ',' after first tensor.");
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after tensor_sub arguments.");
+            emit_byte(OP_TENSOR_SUB);
+            return;
+        }
+        if (name.length == 10 && memcmp(name.start, "tensor_mul", 10) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_COMMA, "Expect ',' after first tensor.");
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after tensor_mul arguments.");
+            emit_byte(OP_TENSOR_MUL);
+            return;
+        }
+        if (name.length == 10 && memcmp(name.start, "tensor_div", 10) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_COMMA, "Expect ',' after first tensor.");
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after tensor_div arguments.");
+            emit_byte(OP_TENSOR_DIV);
+            return;
+        }
+        if (name.length == 10 && memcmp(name.start, "tensor_sum", 10) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after tensor_sum argument.");
+            emit_byte(OP_TENSOR_SUM);
+            return;
+        }
+        if (name.length == 11 && memcmp(name.start, "tensor_mean", 11) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after tensor_mean argument.");
+            emit_byte(OP_TENSOR_MEAN);
+            return;
+        }
+        if (name.length == 10 && memcmp(name.start, "tensor_min", 10) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after tensor_min argument.");
+            emit_byte(OP_TENSOR_MIN);
+            return;
+        }
+        if (name.length == 10 && memcmp(name.start, "tensor_max", 10) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after tensor_max argument.");
+            emit_byte(OP_TENSOR_MAX);
+            return;
+        }
+        if (name.length == 11 && memcmp(name.start, "tensor_sqrt", 11) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after tensor_sqrt argument.");
+            emit_byte(OP_TENSOR_SQRT);
+            return;
+        }
+        if (name.length == 10 && memcmp(name.start, "tensor_exp", 10) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after tensor_exp argument.");
+            emit_byte(OP_TENSOR_EXP);
+            return;
+        }
+        if (name.length == 10 && memcmp(name.start, "tensor_log", 10) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after tensor_log argument.");
+            emit_byte(OP_TENSOR_LOG);
+            return;
+        }
+        if (name.length == 10 && memcmp(name.start, "tensor_abs", 10) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after tensor_abs argument.");
+            emit_byte(OP_TENSOR_ABS);
+            return;
+        }
+        if (name.length == 10 && memcmp(name.start, "tensor_neg", 10) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after tensor_neg argument.");
+            emit_byte(OP_TENSOR_NEG);
+            return;
+        }
+        if (name.length == 10 && memcmp(name.start, "tensor_dot", 10) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_COMMA, "Expect ',' after first tensor.");
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after tensor_dot arguments.");
+            emit_byte(OP_TENSOR_DOT);
+            return;
+        }
+        if (name.length == 13 && memcmp(name.start, "tensor_matmul", 13) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_COMMA, "Expect ',' after first tensor.");
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after tensor_matmul arguments.");
+            emit_byte(OP_TENSOR_MATMUL);
+            return;
+        }
+        if (name.length == 14 && memcmp(name.start, "tensor_reshape", 14) == 0) {
+            advance();
+            expression();  /* tensor */
+            consume(TOKEN_COMMA, "Expect ',' after tensor.");
+            expression();  /* new shape */
+            consume(TOKEN_RPAREN, "Expect ')' after tensor_reshape arguments.");
+            emit_byte(OP_TENSOR_RESHAPE);
+            return;
+        }
+        
+        /* ============ MATRIX OPERATIONS ============ */
+        if (name.length == 6 && memcmp(name.start, "matrix", 6) == 0) {
+            advance();
+            expression();  /* 2D array */
+            consume(TOKEN_RPAREN, "Expect ')' after matrix argument.");
+            emit_byte(OP_MATRIX);
+            return;
+        }
+        if (name.length == 12 && memcmp(name.start, "matrix_zeros", 12) == 0) {
+            advance();
+            expression();  /* rows */
+            consume(TOKEN_COMMA, "Expect ',' after rows.");
+            expression();  /* cols */
+            consume(TOKEN_RPAREN, "Expect ')' after matrix_zeros arguments.");
+            emit_byte(OP_MATRIX_ZEROS);
+            return;
+        }
+        if (name.length == 11 && memcmp(name.start, "matrix_ones", 11) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_COMMA, "Expect ',' after rows.");
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after matrix_ones arguments.");
+            emit_byte(OP_MATRIX_ONES);
+            return;
+        }
+        if (name.length == 10 && memcmp(name.start, "matrix_eye", 10) == 0) {
+            advance();
+            expression();  /* n */
+            consume(TOKEN_RPAREN, "Expect ')' after matrix_eye argument.");
+            emit_byte(OP_MATRIX_EYE);
+            return;
+        }
+        if (name.length == 11 && memcmp(name.start, "matrix_rand", 11) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_COMMA, "Expect ',' after rows.");
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after matrix_rand arguments.");
+            emit_byte(OP_MATRIX_RAND);
+            return;
+        }
+        if (name.length == 10 && memcmp(name.start, "matrix_add", 10) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_COMMA, "Expect ',' after first matrix.");
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after matrix_add arguments.");
+            emit_byte(OP_MATRIX_ADD);
+            return;
+        }
+        if (name.length == 10 && memcmp(name.start, "matrix_sub", 10) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_COMMA, "Expect ',' after first matrix.");
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after matrix_sub arguments.");
+            emit_byte(OP_MATRIX_SUB);
+            return;
+        }
+        if (name.length == 13 && memcmp(name.start, "matrix_matmul", 13) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_COMMA, "Expect ',' after first matrix.");
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after matrix_matmul arguments.");
+            emit_byte(OP_MATRIX_MATMUL);
+            return;
+        }
+        if (name.length == 8 && memcmp(name.start, "matrix_t", 8) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after matrix_t argument.");
+            emit_byte(OP_MATRIX_T);
+            return;
+        }
+        if (name.length == 10 && memcmp(name.start, "matrix_inv", 10) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after matrix_inv argument.");
+            emit_byte(OP_MATRIX_INV);
+            return;
+        }
+        if (name.length == 10 && memcmp(name.start, "matrix_det", 10) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after matrix_det argument.");
+            emit_byte(OP_MATRIX_DET);
+            return;
+        }
+        if (name.length == 12 && memcmp(name.start, "matrix_trace", 12) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after matrix_trace argument.");
+            emit_byte(OP_MATRIX_TRACE);
+            return;
+        }
+        if (name.length == 12 && memcmp(name.start, "matrix_solve", 12) == 0) {
+            advance();
+            expression();  /* A */
+            consume(TOKEN_COMMA, "Expect ',' after A.");
+            expression();  /* b */
+            consume(TOKEN_RPAREN, "Expect ')' after matrix_solve arguments.");
+            emit_byte(OP_MATRIX_SOLVE);
+            return;
+        }
+        
+        /* ============ NEURAL NETWORK ============ */
+        if (name.length == 4 && memcmp(name.start, "relu", 4) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after relu argument.");
+            emit_byte(OP_NN_RELU);
+            return;
+        }
+        if (name.length == 7 && memcmp(name.start, "sigmoid", 7) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after sigmoid argument.");
+            emit_byte(OP_NN_SIGMOID);
+            return;
+        }
+        if (name.length == 4 && memcmp(name.start, "tanh", 4) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after tanh argument.");
+            emit_byte(OP_NN_TANH);
+            return;
+        }
+        if (name.length == 7 && memcmp(name.start, "softmax", 7) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after softmax argument.");
+            emit_byte(OP_NN_SOFTMAX);
+            return;
+        }
+        if (name.length == 8 && memcmp(name.start, "mse_loss", 8) == 0) {
+            advance();
+            expression();  /* predictions */
+            consume(TOKEN_COMMA, "Expect ',' after predictions.");
+            expression();  /* targets */
+            consume(TOKEN_RPAREN, "Expect ')' after mse_loss arguments.");
+            emit_byte(OP_NN_MSE_LOSS);
+            return;
+        }
+        if (name.length == 7 && memcmp(name.start, "ce_loss", 7) == 0) {
+            advance();
+            expression();
+            consume(TOKEN_COMMA, "Expect ',' after predictions.");
+            expression();
+            consume(TOKEN_RPAREN, "Expect ')' after ce_loss arguments.");
+            emit_byte(OP_NN_CE_LOSS);
+            return;
+        }
+        
+        /* ============ AUTOGRAD ============ */
+        if (name.length == 9 && memcmp(name.start, "grad_tape", 9) == 0) {
+            advance();
+            consume(TOKEN_RPAREN, "Expect ')' after grad_tape.");
+            emit_byte(OP_GRAD_TAPE);
             return;
         }
     }

@@ -1,5 +1,8 @@
 /*
  * Pseudocode JIT Compiler Header
+ *
+ * Copyright (c) 2026 NagusameCS
+ * Licensed under the MIT License
  */
 
 #ifndef PSEUDO_JIT_H
