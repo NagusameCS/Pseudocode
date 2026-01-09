@@ -149,6 +149,7 @@ void jit_init(void)
 {
     memset(&jit_state, 0, sizeof(jit_state));
     jit_state.enabled = true;
+    jit_state.debug = true; // Enable debug output
 
     for (int i = 0; i < HOTLOOP_TABLE_SIZE; i++)
     {
@@ -494,6 +495,21 @@ int jit_compile_loop(uint8_t *loop_start, uint8_t *loop_end,
 
     uint8_t *body = loop_start + 6; /* Skip FOR_COUNT header */
     size_t body_len = loop_end - body;
+
+    /* Check for modulo/division opcodes - bail out to interpreter for correctness */
+    for (size_t i = 0; i < body_len; i++)
+    {
+        uint8_t op = body[i];
+        if (op == OP_MOD || op == OP_MOD_II || op == OP_DIV || op == OP_DIV_II)
+        {
+            /* Mark as uncompilable so we don't try again */
+            he->trace_idx = -2;
+#ifdef JIT_DEBUG
+            fprintf(stderr, "[JIT] Skipping loop with modulo/division - using interpreter\n");
+#endif
+            return -1;
+        }
+    }
 
 /* DEBUG: Print bytecode (only once) */
 #ifdef JIT_DEBUG
@@ -1154,6 +1170,10 @@ int jit_compile_loop(uint8_t *loop_start, uint8_t *loop_end,
                     {
                         ObjString *name = AS_STRING(name_val);
                         resolved_slot = jit_find_global_slot(jit_globals_keys, jit_globals_capacity, name);
+#ifdef JIT_DEBUG
+                        fprintf(stderr, "[JIT-GEN] GET_GLOBAL '%.*s' -> slot %u\n",
+                                (int)name->length, name->chars, resolved_slot);
+#endif
                     }
                 }
 
@@ -1336,16 +1356,12 @@ int jit_compile_loop(uint8_t *loop_start, uint8_t *loop_end,
             case OP_MOD:
             case OP_MOD_II:
             {
-                if (vstack_top >= 2)
-                {
-                    uint16_t b = vstack[--vstack_top];
-                    uint16_t a = vstack[--vstack_top];
-                    uint16_t r = next_vreg++;
-                    ir->ops[ir->nops++] = (IRIns){
-                        .op = IR_MOD_INT, .type = IR_TYPE_INT64, .dst = r, .src1 = a, .src2 = b};
-                    if (vstack_top < 32)
-                        vstack[vstack_top++] = r;
-                }
+                /* Division/modulo have complex register interactions.
+                 * Bail out to interpreter for correctness. */
+#ifdef JIT_DEBUG
+                fprintf(stderr, "[JIT-GEN] Bailing out: modulo not JIT-compiled\n");
+#endif
+                compile_ok = false;
                 break;
             }
 
@@ -1535,6 +1551,17 @@ int jit_compile_loop(uint8_t *loop_start, uint8_t *loop_end,
     return -1;
 
 compile_ir:
+#ifdef JIT_DEBUG
+{
+    fprintf(stderr, "[IR DUMP] %d operations, loop_start=%d\n", ir->nops, ir->loop_start);
+    for (uint32_t i = 0; i < ir->nops && i < 50; i++)
+    {
+        IRIns *ins = &ir->ops[i];
+        fprintf(stderr, "  [%2d] op=%2d dst=%d src1=%d src2=%d aux=%d imm=%ld\n",
+                i, ins->op, ins->dst, ins->src1, ins->src2, ins->aux, ins->imm.i64);
+    }
+}
+#endif
     /* Compile IR to native code */
     jit_state.total_compilations++;
 

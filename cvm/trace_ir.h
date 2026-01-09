@@ -310,6 +310,11 @@ typedef struct
     uint8_t *loop_header; /* Detected loop header */
     uint32_t loop_count;  /* Iterations seen */
 
+    /* FOR_COUNT loop tracking for increment at end */
+    uint8_t for_counter_slot;  /* Slot holding loop counter */
+    uint16_t for_counter_vreg; /* Vreg holding current counter value */
+    bool has_for_loop;         /* True if in a FOR_COUNT loop */
+
     /* Abort conditions */
     bool aborted;
     const char *abort_reason;

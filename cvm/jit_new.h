@@ -18,6 +18,7 @@
 #define PSEUDO_JIT_H
 
 #include <stdint.h>
+#include <stddef.h>
 #include <stdbool.h>
 #include "trace_ir.h"
 

@@ -53,13 +53,14 @@
 #define NUM_XMM_REGS 8
 #define NUM_PHYS_REGS 24
 
-/* Allocatable integer registers (excluding RSP, RBP, RDI for bp) */
+/* Allocatable integer registers (excluding RSP, RBP, RDI for bp)
+ * Also exclude RAX and RDX as they are clobbered by IDIV/IMUL */
 static const int ALLOC_INT_REGS[] = {
-    PHYS_RAX, PHYS_RCX, PHYS_RDX,
+    PHYS_RCX,
     PHYS_R8, PHYS_R9, PHYS_R10, PHYS_R11,
     PHYS_R14, PHYS_R15 /* Callee-saved, good for loop vars */
 };
-#define NUM_ALLOC_INT_REGS 9
+#define NUM_ALLOC_INT_REGS 7
 
 /* Allocatable SSE registers */
 static const int ALLOC_XMM_REGS[] = {
@@ -120,6 +121,65 @@ static void compute_liveness(TraceIR *ir, RegAlloc *ra)
             ra->vreg_last_use[ins->dst] = i;
         }
     }
+
+#ifdef JIT_DEBUG
+    fprintf(stderr, "[LIVENESS] Before loop extension:\n");
+    for (uint16_t v = 1; v < ir->next_vreg; v++)
+    {
+        if (ra->vreg_last_use[v] > 0)
+        {
+            fprintf(stderr, "  vreg%d: last_use=%d\n", v, ra->vreg_last_use[v]);
+        }
+    }
+#endif
+
+    /* Handle loops: vregs defined before loop_start but used inside
+     * the loop must stay live until the end of the trace (end of loop) */
+    if (ir->loop_start > 0)
+    {
+        uint32_t loop_end = ir->nops; /* IR_LOOP is at the end */
+
+        /* First, find where each vreg is defined */
+        uint32_t vreg_def_pos[IR_MAX_VREGS] = {0};
+        for (uint32_t i = 0; i < ir->nops; i++)
+        {
+            IRIns *ins = &ir->ops[i];
+            if (ins->dst > 0 && vreg_def_pos[ins->dst] == 0)
+            {
+                vreg_def_pos[ins->dst] = i + 1; /* 1-indexed */
+            }
+        }
+
+        /* For any vreg DEFINED BEFORE loop_start and used inside the loop,
+         * extend its liveness to the end of the trace */
+        for (uint16_t v = 1; v < ir->next_vreg; v++)
+        {
+            /* Only consider vregs defined before loop_start */
+            if (vreg_def_pos[v] == 0 || vreg_def_pos[v] > ir->loop_start)
+            {
+                continue; /* Defined inside loop - don't extend */
+            }
+
+            /* Check if this vreg is used inside the loop */
+            for (uint32_t i = ir->loop_start; i < ir->nops; i++)
+            {
+                IRIns *ins = &ir->ops[i];
+                if (ins->src1 == v || ins->src2 == v)
+                {
+                    /* Used in loop - extend liveness to end of trace */
+#ifdef JIT_DEBUG
+                    fprintf(stderr, "[LIVENESS] Extending vreg%d (def@%d) from %d to %d\n",
+                            v, vreg_def_pos[v], ra->vreg_last_use[v], loop_end);
+#endif
+                    if (ra->vreg_last_use[v] < loop_end)
+                    {
+                        ra->vreg_last_use[v] = loop_end;
+                    }
+                    break;
+                }
+            }
+        }
+    }
 }
 
 /* ============================================================
@@ -169,11 +229,29 @@ static int find_free_xmm_reg(RegAlloc *ra)
     return -1;
 }
 
-/* Evict the least recently used register */
+/* Evict a dead register (one whose last_use <= current_pos) */
 static int evict_int_reg(RegAlloc *ra, TraceIR *ir, uint32_t current_pos)
 {
     int best_reg = -1;
-    uint32_t best_dist = 0;
+    uint32_t best_dist = UINT32_MAX;
+
+#ifdef JIT_DEBUG
+    fprintf(stderr, "[EVICT-DBG] Looking for dead reg at pos %d:\n", current_pos);
+    for (int i = 0; i < NUM_ALLOC_INT_REGS; i++)
+    {
+        int reg = ALLOC_INT_REGS[i];
+        int vreg = ra->phys_to_vreg[reg];
+        if (vreg >= 0)
+        {
+            fprintf(stderr, "  phys%d: vreg%d (last_use=%d)\n",
+                    reg, vreg, ra->vreg_last_use[vreg]);
+        }
+        else
+        {
+            fprintf(stderr, "  phys%d: FREE\n", reg);
+        }
+    }
+#endif
 
     for (int i = 0; i < NUM_ALLOC_INT_REGS; i++)
     {
@@ -182,11 +260,16 @@ static int evict_int_reg(RegAlloc *ra, TraceIR *ir, uint32_t current_pos)
         if (vreg >= 0)
         {
             uint32_t last_use = ra->vreg_last_use[vreg];
-            uint32_t dist = (last_use > current_pos) ? last_use - current_pos : 0;
-            if (dist > best_dist || best_reg < 0)
+
+            /* Only evict if vreg is dead (last_use <= current_pos) */
+            if (last_use <= current_pos)
             {
-                best_dist = dist;
-                best_reg = reg;
+                /* Prefer the one with earliest last_use (most dead) */
+                if (last_use < best_dist || best_reg < 0)
+                {
+                    best_dist = last_use;
+                    best_reg = reg;
+                }
             }
         }
     }
@@ -194,10 +277,19 @@ static int evict_int_reg(RegAlloc *ra, TraceIR *ir, uint32_t current_pos)
     if (best_reg >= 0)
     {
         int vreg = ra->phys_to_vreg[best_reg];
-        /* Spill this vreg */
-        ra->vreg_to_spill[vreg] = ra->next_spill_slot++;
+        /* Free this vreg (it's dead, no need to spill) */
         ra->vreg_to_phys[vreg] = -1;
         ra->phys_to_vreg[best_reg] = -1;
+#ifdef JIT_DEBUG
+        fprintf(stderr, "[EVICT] vreg%d from phys%d (last_use=%d, pos=%d)\n",
+                vreg, best_reg, ra->vreg_last_use[vreg], current_pos);
+#endif
+    }
+    else
+    {
+#ifdef JIT_DEBUG
+        fprintf(stderr, "[EVICT] FAILED - no dead registers at pos %d\n", current_pos);
+#endif
     }
 
     return best_reg;
@@ -237,6 +329,15 @@ int regalloc_alloc(RegAlloc *ra, TraceIR *ir, uint16_t vreg, uint32_t pos)
         ra->vreg_to_phys[vreg] = phys;
         ra->phys_to_vreg[phys] = vreg;
         ir->vregs[vreg].phys_reg = phys;
+#ifdef JIT_DEBUG
+        fprintf(stderr, "[REGALLOC] vreg%d -> phys%d (at pos %d)\n", vreg, phys, pos);
+#endif
+    }
+    else
+    {
+#ifdef JIT_DEBUG
+        fprintf(stderr, "[REGALLOC] vreg%d FAILED allocation at pos %d\n", vreg, pos);
+#endif
     }
 
     return phys;

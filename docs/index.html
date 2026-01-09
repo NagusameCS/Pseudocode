@@ -278,7 +278,7 @@
             padding: 80px 0;
         }
 
-        section + section {
+        section+section {
             padding-top: 64px;
         }
 
@@ -577,10 +577,10 @@
         <div class="container header-inner">
             <a href="/" class="logo">
                 <svg width="28" height="28" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <rect width="100" height="100" rx="20" fill="#a78bfa"/>
-                    <path d="M30 25h30c8.284 0 15 6.716 15 15v0c0 8.284-6.716 15-15 15H30V25z" fill="#fff"/>
-                    <rect x="30" y="55" width="12" height="25" rx="2" fill="#fff"/>
-                    <circle cx="70" cy="70" r="8" fill="#fff" opacity="0.6"/>
+                    <rect width="100" height="100" rx="20" fill="#a78bfa" />
+                    <path d="M30 25h30c8.284 0 15 6.716 15 15v0c0 8.284-6.716 15-15 15H30V25z" fill="#fff" />
+                    <rect x="30" y="55" width="12" height="25" rx="2" fill="#fff" />
+                    <circle cx="70" cy="70" r="8" fill="#fff" opacity="0.6" />
                 </svg>
                 Pseudocode
             </a>
@@ -601,7 +601,8 @@
             <span class="version-badge animate-fadeInUp">v1.1 - Direct Codegen JIT • C-Level Performance</span>
             <h1 class="animate-fadeInUp animate-delay-1">Write Code Like You Think</h1>
             <p class="animate-fadeInUp animate-delay-2">A high-performance programming language with intuitive syntax.
-                Features an x86-64 JIT compiler that matches C speed for numeric loops, plus NumPy-like tensors with SIMD.</p>
+                Features an x86-64 JIT compiler that matches C speed for numeric loops, plus NumPy-like tensors with
+                SIMD.</p>
             <div class="hero-buttons">
                 <a href="#getting-started" class="btn btn-primary">Get Started</a>
                 <a href="reference.html" class="btn btn-secondary">Documentation</a>
@@ -671,7 +672,8 @@
                         </svg>
                     </div>
                     <h3>C-Level Performance</h3>
-                    <p>Direct codegen JIT achieves <strong>1.0x C speed</strong> for numeric loops. Loop variables stay in registers—no memory access in hot paths. Faster than C with volatile.</p>
+                    <p>Direct codegen JIT achieves <strong>1.0x C speed</strong> for numeric loops. Loop variables stay
+                        in registers—no memory access in hot paths. Faster than C with volatile.</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">
@@ -861,7 +863,8 @@
             <div class="benchmarks">
                 <div class="benchmark-header">
                     <h3>JIT Performance: Pseudocode vs C (100M iterations)</h3>
-                    <span class="benchmark-info">Direct codegen keeps accumulators in registers. Only one load before loop, one store after.</span>
+                    <span class="benchmark-info">Direct codegen keeps accumulators in registers. Only one load before
+                        loop, one store after.</span>
                 </div>
                 <table class="benchmark-table">
                     <thead>
@@ -875,14 +878,16 @@
                     </thead>
                     <tbody>
                         <tr>
-                            <td>x = x + 5<br><small style="color: var(--text-tertiary);">constant accumulation</small></td>
+                            <td>x = x + 5<br><small style="color: var(--text-tertiary);">constant accumulation</small>
+                            </td>
                             <td class="time-value" style="color: var(--success);">37ms</td>
                             <td class="time-value">68ms</td>
                             <td class="time-value">40ms</td>
                             <td class="speedup">1.8x faster</td>
                         </tr>
                         <tr>
-                            <td>x = x + i<br><small style="color: var(--text-tertiary);">variable accumulation</small></td>
+                            <td>x = x + i<br><small style="color: var(--text-tertiary);">variable accumulation</small>
+                            </td>
                             <td class="time-value" style="color: var(--success);">43ms</td>
                             <td class="time-value">72ms</td>
                             <td class="time-value">45ms</td>
@@ -896,7 +901,8 @@
                             <td class="speedup">1.6x faster</td>
                         </tr>
                         <tr>
-                            <td>x = x * 2<br><small style="color: var(--text-tertiary);">multiplication loop</small></td>
+                            <td>x = x * 2<br><small style="color: var(--text-tertiary);">multiplication loop</small>
+                            </td>
                             <td class="time-value" style="color: var(--success);">45ms</td>
                             <td class="time-value">75ms</td>
                             <td class="time-value">48ms</td>
@@ -905,7 +911,8 @@
                     </tbody>
                 </table>
                 <p style="font-size: 13px; color: var(--text-tertiary); margin-top: 12px; text-align: center;">
-                    Test environment: Ubuntu 24.04, GCC 13.2 -O3, Intel/AMD x86-64. "volatile" forces memory access every iteration.
+                    Test environment: Ubuntu 24.04, GCC 13.2 -O3, Intel/AMD x86-64. "volatile" forces memory access
+                    every iteration.
                 </p>
 
                 <div class="benchmark-header" style="margin-top: 48px;">
@@ -913,15 +920,19 @@
                     <span class="benchmark-info">Our JIT generates tighter code than C with memory operations.</span>
                 </div>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 16px;">
-                    <div style="background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; padding: 20px;">
-                        <h4 style="color: var(--accent); font-size: 14px; margin-bottom: 12px;">Pseudocode JIT (4 instructions/iter)</h4>
+                    <div
+                        style="background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; padding: 20px;">
+                        <h4 style="color: var(--accent); font-size: 14px; margin-bottom: 12px;">Pseudocode JIT (4
+                            instructions/iter)</h4>
                         <pre style="font-size: 12px; color: var(--text-secondary);"><code>add  rbx, r14    ; x += 5
 inc  r12         ; i++
 cmp  r12, r13    ; i < end?
 jl   loop        ; repeat</code></pre>
                     </div>
-                    <div style="background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; padding: 20px;">
-                        <h4 style="color: var(--warning); font-size: 14px; margin-bottom: 12px;">C volatile (6+ instructions/iter)</h4>
+                    <div
+                        style="background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; padding: 20px;">
+                        <h4 style="color: var(--warning); font-size: 14px; margin-bottom: 12px;">C volatile (6+
+                            instructions/iter)</h4>
                         <pre style="font-size: 12px; color: var(--text-secondary);"><code>mov  eax, [x]    ; load x
 add  eax, 5      ; x += 5
 mov  [x], eax    ; store x
@@ -933,7 +944,8 @@ jl   loop        ; repeat</code></pre>
 
                 <div class="benchmark-header" style="margin-top: 48px;">
                     <h3>Performance Spectrum</h3>
-                    <span class="benchmark-info">Where Pseudocode sits among popular programming languages. With JIT: C-level. Without JIT: between Go and Python.</span>
+                    <span class="benchmark-info">Where Pseudocode sits among popular programming languages. With JIT:
+                        C-level. Without JIT: between Go and Python.</span>
                 </div>
                 <div
                     style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 32px; margin-top: 16px;">
@@ -967,14 +979,17 @@ jl   loop        ; repeat</code></pre>
                         <span>Slowest (interpreted)</span>
                     </div>
                     <p style="font-size: 13px; color: var(--text-secondary); margin-top: 16px; text-align: center;">
-                        <strong style="color: #bd93f9;">JIT-compiled loops</strong> match C speed (~40ms for 100M iterations). 
+                        <strong style="color: #bd93f9;">JIT-compiled loops</strong> match C speed (~40ms for 100M
+                        iterations).
                         <strong>Interpreter fallback</strong> is 3-9x faster than Python.
                     </p>
                 </div>
 
                 <div class="benchmark-header" style="margin-top: 48px;">
                     <h3>Technical Achievements</h3>
-                    <span class="benchmark-info">Deep engineering decisions that enable C-level performance in a high-level scripting language. These techniques are rarely combined in practice due to implementation complexity.</span>
+                    <span class="benchmark-info">Deep engineering decisions that enable C-level performance in a
+                        high-level scripting language. These techniques are rarely combined in practice due to
+                        implementation complexity.</span>
                 </div>
                 <table class="benchmark-table">
                     <thead>
@@ -990,43 +1005,52 @@ jl   loop        ; repeat</code></pre>
                             <td><strong>Direct Codegen JIT</strong></td>
                             <td class="speedup">20x+</td>
                             <td style="color: var(--warning);">Very High</td>
-                            <td>Native x86-64 code generation using DynASM. Hot loops emit 4 machine instructions per iteration with values living entirely in CPU registers—no memory traffic. This is what makes us match C.</td>
+                            <td>Native x86-64 code generation using DynASM. Hot loops emit 4 machine instructions per
+                                iteration with values living entirely in CPU registers—no memory traffic. This is what
+                                makes us match C.</td>
                         </tr>
                         <tr>
                             <td><strong>NaN-boxing</strong></td>
                             <td class="speedup">~30%</td>
                             <td style="color: var(--accent);">High</td>
-                            <td>All values (numbers, booleans, pointers) encoded in a single 64-bit word using IEEE 754 NaN space. Eliminates heap allocations for primitives, removes pointer indirection, keeps everything in CPU cache.</td>
+                            <td>All values (numbers, booleans, pointers) encoded in a single 64-bit word using IEEE 754
+                                NaN space. Eliminates heap allocations for primitives, removes pointer indirection,
+                                keeps everything in CPU cache.</td>
                         </tr>
                         <tr>
                             <td><strong>Register-Cached VM State</strong></td>
                             <td class="speedup">~15%</td>
                             <td style="color: var(--accent);">High</td>
-                            <td>Stack pointer and base pointer stored in CPU registers using GCC's register variables. Avoids memory loads/stores on every stack operation—critical for tight loops.</td>
+                            <td>Stack pointer and base pointer stored in CPU registers using GCC's register variables.
+                                Avoids memory loads/stores on every stack operation—critical for tight loops.</td>
                         </tr>
                         <tr>
                             <td><strong>Computed Gotos</strong></td>
                             <td class="speedup">~20%</td>
                             <td style="color: var(--warning);">Medium</td>
-                            <td>Direct threaded dispatch using GCC's computed goto extension. Each opcode jumps directly to the next handler, reducing branch mispredictions from ~30% to near zero.</td>
+                            <td>Direct threaded dispatch using GCC's computed goto extension. Each opcode jumps directly
+                                to the next handler, reducing branch mispredictions from ~30% to near zero.</td>
                         </tr>
                         <tr>
                             <td><strong>SIMD Tensor Ops</strong></td>
                             <td class="speedup">4x</td>
                             <td style="color: var(--accent);">High</td>
-                            <td>Matrix and tensor operations use AVX2 intrinsics to process 4 doubles per instruction. Hand-tuned assembly for common patterns like matrix multiplication.</td>
+                            <td>Matrix and tensor operations use AVX2 intrinsics to process 4 doubles per instruction.
+                                Hand-tuned assembly for common patterns like matrix multiplication.</td>
                         </tr>
                         <tr>
                             <td><strong>Superinstructions</strong></td>
                             <td class="speedup">~10%</td>
                             <td style="color: var(--text-secondary);">Medium</td>
-                            <td>Common opcode sequences fused into single instructions. GET_LOCAL_0, ADD_INT, FOR_COUNT, and 15+ others reduce bytecode size and dispatch overhead for hot paths.</td>
+                            <td>Common opcode sequences fused into single instructions. GET_LOCAL_0, ADD_INT, FOR_COUNT,
+                                and 15+ others reduce bytecode size and dispatch overhead for hot paths.</td>
                         </tr>
                         <tr>
                             <td><strong>Profile-Guided Optimization</strong></td>
                             <td class="speedup">~25%</td>
                             <td style="color: var(--text-secondary);">Low</td>
-                            <td>The VM binary is compiled twice: first to collect profiling data, then again with that data to optimize branch prediction and function inlining for real workloads.</td>
+                            <td>The VM binary is compiled twice: first to collect profiling data, then again with that
+                                data to optimize branch prediction and function inlining for real workloads.</td>
                         </tr>
                     </tbody>
                 </table>
@@ -1034,7 +1058,8 @@ jl   loop        ; repeat</code></pre>
         </section>
         <section class="container" id="getting-started">
             <h2>Getting Started</h2>
-            <p style="text-align: center; color: var(--text-secondary); margin-bottom: 32px; max-width: 600px; margin-left: auto; margin-right: auto;">
+            <p
+                style="text-align: center; color: var(--text-secondary); margin-bottom: 32px; max-width: 600px; margin-left: auto; margin-right: auto;">
                 Get up and running in under 2 minutes. Requires GCC/Clang and a Linux/macOS system.
             </p>
             <div class="steps">
@@ -1044,7 +1069,7 @@ jl   loop        ; repeat</code></pre>
                         <h3>Clone & Build</h3>
                         <p>Get the source and build with PGO optimizations for best performance.</p>
                         <div class="step-code">git clone https://github.com/NagusameCS/Pseudocode.git
-cd Pseudocode/cvm && make pgo</div>
+                            cd Pseudocode/cvm && make pgo</div>
                     </div>
                 </div>
                 <div class="step">
@@ -1053,7 +1078,9 @@ cd Pseudocode/cvm && make pgo</div>
                         <h3>Run Hello World</h3>
                         <p>Test the installation with a simple example.</p>
                         <div class="step-code">./pseudo ../examples/hello.pseudo</div>
-                        <p style="font-size: 13px; color: var(--text-tertiary); margin-top: 8px;">Expected output: <code style="background: var(--code-bg); padding: 2px 6px; border-radius: 4px;">Hello, World!</code></p>
+                        <p style="font-size: 13px; color: var(--text-tertiary); margin-top: 8px;">Expected output: <code
+                                style="background: var(--code-bg); padding: 2px 6px; border-radius: 4px;">Hello, World!</code>
+                        </p>
                     </div>
                 </div>
                 <div class="step">
@@ -1062,36 +1089,47 @@ cd Pseudocode/cvm && make pgo</div>
                         <h3>Try the JIT</h3>
                         <p>Run a compute-intensive benchmark to see C-level performance in action.</p>
                         <div class="step-code">./pseudo -j ../benchmarks/bench_jit.pseudo</div>
-                        <p style="font-size: 13px; color: var(--text-tertiary); margin-top: 8px;">The <code style="background: var(--code-bg); padding: 2px 6px; border-radius: 4px;">-j</code> flag enables direct codegen JIT for hot loops.</p>
+                        <p style="font-size: 13px; color: var(--text-tertiary); margin-top: 8px;">The <code
+                                style="background: var(--code-bg); padding: 2px 6px; border-radius: 4px;">-j</code> flag
+                            enables direct codegen JIT for hot loops.</p>
                     </div>
                 </div>
                 <div class="step">
                     <div class="step-number">4</div>
                     <div class="step-content">
                         <h3>Write Your Own</h3>
-                        <p>Create a <code style="background: var(--code-bg); padding: 2px 6px; border-radius: 4px;">.pseudo</code> file and start coding.</p>
+                        <p>Create a <code
+                                style="background: var(--code-bg); padding: 2px 6px; border-radius: 4px;">.pseudo</code>
+                            file and start coding.</p>
                         <div class="step-code" style="white-space: pre;">// myprogram.pseudo
-x = 0
-for i in 1 to 1000000
-    x = x + i
-end
-print(x)</div>
-                        <p style="font-size: 13px; color: var(--text-tertiary); margin-top: 8px;">Run with: <code style="background: var(--code-bg); padding: 2px 6px; border-radius: 4px;">./pseudo -j myprogram.pseudo</code></p>
+                            x = 0
+                            for i in 1 to 1000000
+                            x = x + i
+                            end
+                            print(x)</div>
+                        <p style="font-size: 13px; color: var(--text-tertiary); margin-top: 8px;">Run with: <code
+                                style="background: var(--code-bg); padding: 2px 6px; border-radius: 4px;">./pseudo -j myprogram.pseudo</code>
+                        </p>
                     </div>
                 </div>
             </div>
-            
-            <div style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-top: 40px;">
+
+            <div
+                style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-top: 40px;">
                 <h3 style="margin-bottom: 16px; font-size: 18px;">VS Code Extension</h3>
-                <p style="color: var(--text-secondary); margin-bottom: 16px;">Get syntax highlighting, code snippets, and integrated commands for Pseudocode development.</p>
+                <p style="color: var(--text-secondary); margin-bottom: 16px;">Get syntax highlighting, code snippets,
+                    and integrated commands for Pseudocode development.</p>
                 <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-                    <a href="https://github.com/NagusameCS/Pseudocode/tree/main/vscode-extension" 
-                       style="display: inline-flex; align-items: center; gap: 8px; background: var(--accent); color: var(--bg-primary); padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 500;">
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+                    <a href="https://github.com/NagusameCS/Pseudocode/tree/main/vscode-extension"
+                        style="display: inline-flex; align-items: center; gap: 8px; background: var(--accent); color: var(--bg-primary); padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 500;">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                            <path
+                                d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
+                        </svg>
                         Get Extension
                     </a>
-                    <a href="reference.html" 
-                       style="display: inline-flex; align-items: center; gap: 8px; background: var(--bg-tertiary); color: var(--text-primary); padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 500; border: 1px solid var(--border);">
+                    <a href="reference.html"
+                        style="display: inline-flex; align-items: center; gap: 8px; background: var(--bg-tertiary); color: var(--text-primary); padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 500; border: 1px solid var(--border);">
                         📖 Read the Docs
                     </a>
                 </div>

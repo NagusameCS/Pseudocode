@@ -510,6 +510,120 @@ static void emit_idiv(MCode *mc, int reg)
     emit(mc, 0xf8 | (reg & 7));
 }
 
+/* Division helper: dst = dividend / divisor
+ * Saves/restores RDX and RAX as needed */
+static void emit_div_rr(MCode *mc, int dst, int dividend, int divisor)
+{
+    /* Handle the complex register allocation for division */
+    int saved_rax = -1, saved_rdx = -1;
+
+    /* Save RAX if needed */
+    if (dividend != RAX && dst != RAX)
+    {
+        emit_push(mc, RAX);
+        saved_rax = 1;
+    }
+    /* Save RDX if needed */
+    if (dividend != RDX && dst != RDX && divisor != RDX)
+    {
+        emit_push(mc, RDX);
+        saved_rdx = 1;
+    }
+
+    /* Move dividend to RAX if not already there */
+    if (dividend != RAX)
+    {
+        emit_mov_rr(mc, RAX, dividend);
+    }
+
+    /* Handle case where divisor is in RDX (CQO will clobber it) */
+    int actual_divisor = divisor;
+    if (divisor == RDX)
+    {
+        emit_mov_rr(mc, R11, RDX); /* Use R11 as temp */
+        actual_divisor = R11;
+    }
+
+    /* Sign extend RAX to RDX:RAX */
+    emit_cqo(mc);
+
+    /* Divide: RAX = RDX:RAX / divisor */
+    emit_idiv(mc, actual_divisor);
+
+    /* Move result to destination */
+    if (dst != RAX)
+    {
+        emit_mov_rr(mc, dst, RAX);
+    }
+
+    /* Restore RDX */
+    if (saved_rdx == 1)
+    {
+        emit_pop(mc, RDX);
+    }
+    /* Restore RAX */
+    if (saved_rax == 1)
+    {
+        emit_pop(mc, RAX);
+    }
+}
+
+/* Modulo helper: dst = dividend % divisor
+ * Result is in RDX after IDIV */
+static void emit_mod_rr(MCode *mc, int dst, int dividend, int divisor)
+{
+    int saved_rax = -1, saved_rdx = -1;
+
+    /* Save RAX if needed */
+    if (dividend != RAX && dst != RAX)
+    {
+        emit_push(mc, RAX);
+        saved_rax = 1;
+    }
+    /* Save RDX only if dst isn't RDX and divisor isn't RDX */
+    if (dst != RDX && dividend != RDX && divisor != RDX)
+    {
+        emit_push(mc, RDX);
+        saved_rdx = 1;
+    }
+
+    /* Move dividend to RAX */
+    if (dividend != RAX)
+    {
+        emit_mov_rr(mc, RAX, dividend);
+    }
+
+    /* Handle divisor in RDX */
+    int actual_divisor = divisor;
+    if (divisor == RDX)
+    {
+        emit_mov_rr(mc, R11, RDX);
+        actual_divisor = R11;
+    }
+
+    /* Sign extend */
+    emit_cqo(mc);
+
+    /* Divide */
+    emit_idiv(mc, actual_divisor);
+
+    /* Remainder is in RDX, move to dst */
+    if (dst != RDX)
+    {
+        emit_mov_rr(mc, dst, RDX);
+    }
+
+    /* Restore */
+    if (saved_rdx == 1)
+    {
+        emit_pop(mc, RDX);
+    }
+    if (saved_rax == 1)
+    {
+        emit_pop(mc, RAX);
+    }
+}
+
 /* ============================================================
  * NaN-boxing Helpers
  * ============================================================ */
@@ -664,6 +778,9 @@ static void compile_ir_op(MCode *mc, TraceIR *ir, IRIns *ins,
         break;
 
     case IR_CONST_INT:
+#ifdef JIT_DEBUG
+        fprintf(stderr, "[IR_CONST_INT] dst=%d, imm=%lld\n", dst, (long long)ins->imm.i64);
+#endif
         if (dst >= 0)
         {
             if (ins->imm.i64 >= INT32_MIN && ins->imm.i64 <= INT32_MAX)
@@ -678,6 +795,9 @@ static void compile_ir_op(MCode *mc, TraceIR *ir, IRIns *ins,
         break;
 
     case IR_CONST_INT64:
+#ifdef JIT_DEBUG
+        fprintf(stderr, "[IR_CONST_INT64] dst=%d, imm=%lld\n", dst, (long long)ins->imm.i64);
+#endif
         if (dst >= 0)
         {
             emit_mov_ri64(mc, dst, ins->imm.i64);
@@ -687,6 +807,9 @@ static void compile_ir_op(MCode *mc, TraceIR *ir, IRIns *ins,
     case IR_LOAD_LOCAL:
         if (dst >= 0)
         {
+#ifdef JIT_DEBUG
+            fprintf(stderr, "[IR_LOAD_LOCAL] dst=%d, slot=%d\n", dst, ins->aux);
+#endif
             /* Load boxed value from bp[slot] */
             emit_mov_rm(mc, dst, RDI, ins->aux * 8);
             /* Note: unboxing is now done via separate IR_UNBOX_INT op */
@@ -704,6 +827,9 @@ static void compile_ir_op(MCode *mc, TraceIR *ir, IRIns *ins,
     case IR_LOAD_GLOBAL:
         if (dst >= 0)
         {
+#ifdef JIT_DEBUG
+            fprintf(stderr, "[IR_LOAD_GLOBAL] dst=%d, slot=%d\n", dst, ins->aux);
+#endif
             /* Load boxed value from globals_values[slot]
              * RSI = globals_values pointer (passed in at runtime)
              * aux = resolved hash table slot index */
@@ -714,6 +840,9 @@ static void compile_ir_op(MCode *mc, TraceIR *ir, IRIns *ins,
     case IR_STORE_GLOBAL:
         if (src1 >= 0)
         {
+#ifdef JIT_DEBUG
+            fprintf(stderr, "[IR_STORE_GLOBAL] src1=%d, slot=%d\n", src1, ins->aux);
+#endif
             /* Store value to globals_values[slot]
              * RSI = globals_values pointer
              * aux = resolved hash table slot index */
@@ -731,6 +860,9 @@ static void compile_ir_op(MCode *mc, TraceIR *ir, IRIns *ins,
     case IR_ADD_INT:
         if (dst >= 0 && src1 >= 0 && src2 >= 0)
         {
+#ifdef JIT_DEBUG
+            fprintf(stderr, "[IR_ADD_INT] dst=%d, src1=%d, src2=%d\n", dst, src1, src2);
+#endif
             if (dst != src1)
                 emit_mov_rr(mc, dst, src1);
             emit_add_rr(mc, dst, src2);
@@ -758,23 +890,97 @@ static void compile_ir_op(MCode *mc, TraceIR *ir, IRIns *ins,
     case IR_DIV_INT:
         if (dst >= 0 && src1 >= 0 && src2 >= 0)
         {
-            /* IDIV uses RDX:RAX / divisor -> RAX=quotient, RDX=remainder */
-            emit_mov_rr(mc, RAX, src1);
-            emit_cqo(mc);
-            emit_idiv(mc, src2);
-            if (dst != RAX)
-                emit_mov_rr(mc, dst, RAX);
+            /* IDIV uses RDX:RAX / divisor -> RAX=quotient, RDX=remainder
+             * CQO sign-extends RAX into RDX, clobbering RDX!
+             * IDIV clobbers both RAX and RDX
+             *
+             * Critical register clobber cases:
+             * - src1 == R11: reading src2 into R11 would clobber src1
+             * - src2 == R10: reading src1 into R10 would clobber src2
+             * Solution: read to RAX first (safe), then move to scratch regs
+             */
+
+            /* Save all potentially clobbered registers */
+            emit_push(mc, RAX);
+            emit_push(mc, RDX);
+            emit_push(mc, R10);
+            emit_push(mc, R11);
+
+            /* Read both operands into RAX/RDX first (they're saved on stack)
+             * This avoids any src vs R10/R11 conflicts */
+            emit_mov_rr(mc, RAX, src1); /* dividend into RAX */
+            emit_mov_rr(mc, RDX, src2); /* divisor into RDX (temp) */
+
+            /* Now move to final positions - no conflict possible */
+            emit_mov_rr(mc, R11, RDX); /* divisor to R11 */
+            /* RAX already has dividend, no need to copy to R10 */
+
+            /* Sign-extend RAX to RDX:RAX */
+            emit_cqo(mc);       /* Sign-extend RAX into RDX:RAX */
+            emit_idiv(mc, R11); /* RDX:RAX / R11 -> RAX=quot, RDX=rem */
+
+            /* Save result (quotient) to R10 */
+            emit_mov_rr(mc, R10, RAX);
+
+            /* Restore scratch regs (we'll move result after) */
+            emit_pop(mc, R11);
+            /* Skip R10 restore - we need its value */
+            emit_add_ri(mc, RSP, 8); /* Discard R10 from stack */
+            emit_pop(mc, RDX);
+            emit_pop(mc, RAX);
+
+            /* Move result to destination */
+            emit_mov_rr(mc, dst, R10);
         }
         break;
 
     case IR_MOD_INT:
         if (dst >= 0 && src1 >= 0 && src2 >= 0)
         {
-            emit_mov_rr(mc, RAX, src1);
-            emit_cqo(mc);
-            emit_idiv(mc, src2);
-            if (dst != RDX)
-                emit_mov_rr(mc, dst, RDX);
+#ifdef JIT_DEBUG
+            fprintf(stderr, "[IR_MOD_INT] dst=%d, src1=%d, src2=%d\n", dst, src1, src2);
+#endif
+            /* IDIV uses RDX:RAX / divisor -> RAX=quotient, RDX=remainder
+             * CQO sign-extends RAX into RDX, clobbering RDX!
+             * IDIV clobbers both RAX and RDX
+             *
+             * Critical register clobber cases:
+             * - src1 == R11: reading src2 into R11 would clobber src1
+             * - src2 == R10: reading src1 into R10 would clobber src2
+             * Solution: read to RAX first (safe), then move to scratch regs
+             */
+
+            /* Save all potentially clobbered registers */
+            emit_push(mc, RAX);
+            emit_push(mc, RDX);
+            emit_push(mc, R10);
+            emit_push(mc, R11);
+
+            /* Read both operands into RAX/RDX first (they're saved on stack)
+             * This avoids any src vs R10/R11 conflicts */
+            emit_mov_rr(mc, RAX, src1); /* dividend into RAX */
+            emit_mov_rr(mc, RDX, src2); /* divisor into RDX (temp) */
+
+            /* Now move to final positions - no conflict possible */
+            emit_mov_rr(mc, R11, RDX); /* divisor to R11 */
+            emit_mov_rr(mc, R10, RAX); /* dividend stays in RAX, copy to R10 for clarity */
+
+            /* RAX already has dividend, sign-extend to RDX:RAX */
+            emit_cqo(mc);       /* Sign-extend RAX into RDX:RAX */
+            emit_idiv(mc, R11); /* RDX:RAX / R11 -> RAX=quot, RDX=rem */
+
+            /* Save result (remainder) to R10 */
+            emit_mov_rr(mc, R10, RDX);
+
+            /* Restore scratch regs (we'll move result after) */
+            emit_pop(mc, R11);
+            /* Skip R10 restore - we need its value */
+            emit_add_ri(mc, RSP, 8); /* Discard R10 from stack */
+            emit_pop(mc, RDX);
+            emit_pop(mc, RAX);
+
+            /* Move result to destination */
+            emit_mov_rr(mc, dst, R10);
         }
         break;
 
@@ -790,6 +996,9 @@ static void compile_ir_op(MCode *mc, TraceIR *ir, IRIns *ins,
     case IR_INC_INT:
         if (dst >= 0 && src1 >= 0)
         {
+#ifdef JIT_DEBUG
+            fprintf(stderr, "[IR_INC_INT] dst=%d, src1=%d\n", dst, src1);
+#endif
             if (dst != src1)
                 emit_mov_rr(mc, dst, src1);
             emit_inc(mc, dst);
@@ -809,6 +1018,9 @@ static void compile_ir_op(MCode *mc, TraceIR *ir, IRIns *ins,
     case IR_LT_INT:
         if (dst >= 0 && src1 >= 0 && src2 >= 0)
         {
+#ifdef JIT_DEBUG
+            fprintf(stderr, "[IR_LT_INT] dst=%d, src1=%d, src2=%d\n", dst, src1, src2);
+#endif
             emit_cmp_rr(mc, src1, src2);
             emit_setl(mc, dst);
             emit_movzx_rr8(mc, dst, dst);
@@ -956,6 +1168,9 @@ static void compile_ir_op(MCode *mc, TraceIR *ir, IRIns *ins,
     case IR_UNBOX_INT:
         if (dst >= 0 && src1 >= 0)
         {
+#ifdef JIT_DEBUG
+            fprintf(stderr, "[IR_UNBOX_INT] dst=%d, src1=%d\n", dst, src1);
+#endif
             emit_unbox_int(mc, dst, src1);
         }
         break;
@@ -963,6 +1178,9 @@ static void compile_ir_op(MCode *mc, TraceIR *ir, IRIns *ins,
     case IR_BOX_INT:
         if (dst >= 0 && src1 >= 0)
         {
+#ifdef JIT_DEBUG
+            fprintf(stderr, "[IR_BOX_INT] dst=%d, src1=%d\n", dst, src1);
+#endif
             emit_box_int(mc, dst, src1);
         }
         break;
@@ -1013,6 +1231,10 @@ bool trace_compile(TraceIR *ir, void **code_out, size_t *size_out,
             /* This is a loop back edge with condition */
             int cond_reg = (ins->src1 > 0) ? ir->vregs[ins->src1].phys_reg : -1;
 
+#ifdef JIT_DEBUG
+            fprintf(stderr, "[IR_LOOP] cond_reg=%d, loop_start=%zu, current=%zu\n",
+                    cond_reg, loop_start, mc.length);
+#endif
             if (cond_reg >= 0)
             {
                 /* Test condition and jump back if true */
@@ -1271,9 +1493,13 @@ void *codegen_direct_loop(
         case OP_ADD_II:
         case OP_SUB_II:
         case OP_MUL_II:
+        case OP_DIV_II:
+        case OP_MOD_II:
         case OP_ADD:
         case OP_SUB:
         case OP_MUL:
+        case OP_DIV:
+        case OP_MOD:
         {
             if (sp < 2)
             {
@@ -1544,6 +1770,50 @@ void *codegen_direct_loop(
             int a = expr_regs[--expr_sp];
             emit_imul_rr(&mc, a, b);
             expr_regs[expr_sp++] = a;
+            break;
+        }
+
+        case OP_DIV_II:
+        case OP_DIV:
+        {
+            if (expr_sp < 2)
+                break;
+            int b = expr_regs[--expr_sp];
+            int a = expr_regs[--expr_sp];
+            /* Division: need fresh register if a is R12 (counter) or R14 (accum) */
+            int dst;
+            if (a == R12 || a == R14)
+            {
+                dst = GET_TMP_REG();
+            }
+            else
+            {
+                dst = a;
+            }
+            emit_div_rr(&mc, dst, a, b);
+            expr_regs[expr_sp++] = dst;
+            break;
+        }
+
+        case OP_MOD_II:
+        case OP_MOD:
+        {
+            if (expr_sp < 2)
+                break;
+            int b = expr_regs[--expr_sp];
+            int a = expr_regs[--expr_sp];
+            /* Modulo: need fresh register if a is R12 (counter) or R14 (accum) */
+            int dst;
+            if (a == R12 || a == R14)
+            {
+                dst = GET_TMP_REG();
+            }
+            else
+            {
+                dst = a;
+            }
+            emit_mod_rr(&mc, dst, a, b);
+            expr_regs[expr_sp++] = dst;
             break;
         }
 

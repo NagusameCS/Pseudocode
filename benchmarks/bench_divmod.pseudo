@@ -1,0 +1,32 @@
+// Benchmark: Division and Modulo in JIT
+// Tests if JIT can handle DIV and MOD operations
+
+print("Testing JIT division and modulo...")
+
+// Test 1: Simple division accumulator
+x = 1000000000
+for i in 1..10000000 do
+    x = x / 2
+    if x < 1 then
+        x = 1000000000
+    end
+end
+print("Division result: " + x)
+
+// Test 2: Modulo (common in loops for conditional)
+count = 0
+for i in 1..10000000 do
+    if i % 2 == 0 then
+        count = count + 1
+    end
+end
+print("Even count: " + count)
+
+// Test 3: Combined arithmetic with modulo
+sum = 0
+for i in 1..5000000 do
+    sum = sum + (i % 100)
+end
+print("Modulo sum: " + sum)
+
+print("Done!")

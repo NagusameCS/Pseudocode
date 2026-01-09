@@ -1905,6 +1905,19 @@ static void binary(bool can_assign) {
                 track_int_result();
                 return;
             case TOKEN_PERCENT:
+                /* STRENGTH REDUCTION: x % 2^n -> x & (2^n - 1) for positive power-of-2 constants */
+                if (second_operand.is_constant && IS_INT(second_operand.value)) {
+                    int32_t divisor = as_int(second_operand.value);
+                    /* Check if divisor is a positive power of 2 */
+                    if (divisor > 0 && (divisor & (divisor - 1)) == 0) {
+                        /* Rewind to remove the constant, re-emit (divisor - 1), then emit BAND */
+                        chunk->count = second_operand.bytecode_pos;
+                        emit_constant(val_int(divisor - 1));
+                        emit_byte(OP_BAND);
+                        track_int_result();
+                        return;
+                    }
+                }
                 emit_byte(OP_MOD_II);
                 track_int_result();
                 return;

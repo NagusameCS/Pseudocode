@@ -565,25 +565,12 @@ bool recorder_step(TraceRecorder *rec, uint8_t *pc,
 
     case OP_DIV:
     case OP_DIV_II:
-    {
-        uint16_t b = rec_pop(rec);
-        uint16_t a = rec_pop(rec);
-        uint16_t dst = ir_vreg(ir, IR_TYPE_INT32);
-        ir_emit(ir, IR_DIV_INT, IR_TYPE_INT32, dst, a, b);
-        rec_push(rec, dst);
-        break;
-    }
-
     case OP_MOD:
     case OP_MOD_II:
-    {
-        uint16_t b = rec_pop(rec);
-        uint16_t a = rec_pop(rec);
-        uint16_t dst = ir_vreg(ir, IR_TYPE_INT32);
-        ir_emit(ir, IR_MOD_INT, IR_TYPE_INT32, dst, a, b);
-        rec_push(rec, dst);
-        break;
-    }
+        /* Division/modulo have complex register interactions in JIT.
+         * Bail out to interpreter for correctness. */
+        recorder_abort(rec, "division/modulo not JIT-compiled");
+        return false;
 
     case OP_NEG:
     case OP_NEG_II:
@@ -693,7 +680,22 @@ bool recorder_step(TraceRecorder *rec, uint8_t *pc,
     case OP_LOOP:
     {
         /* Backward jump - this is a loop back edge */
-        /* If we're recording, this ends the trace */
+
+        /* If this is a FOR_COUNT loop, emit the counter increment NOW */
+        if (rec->has_for_loop)
+        {
+            /* Increment counter at end of body, before back-edge */
+            uint16_t counter = rec->for_counter_vreg;
+            uint16_t new_counter = ir_vreg(ir, IR_TYPE_INT32);
+            ir_emit(ir, IR_INC_INT, IR_TYPE_INT32, new_counter, counter, 0);
+            ir_emit_store(ir, rec->for_counter_slot, new_counter);
+            rec_set_local(rec, rec->for_counter_slot, new_counter, IR_TYPE_INT32);
+
+            /* Update the vreg for next iteration */
+            rec->for_counter_vreg = new_counter;
+        }
+
+        /* Emit the loop back-edge */
         ir_emit(ir, IR_LOOP, IR_TYPE_UNKNOWN, 0, 0, 0);
         return false; /* Stop recording */
     }
@@ -748,16 +750,18 @@ bool recorder_step(TraceRecorder *rec, uint8_t *pc,
         /* Guard that we continue (counter < end) */
         ir_emit_guard(ir, IR_GUARD_TRUE, cmp_result, snap, pc - 1);
 
-        /* Set loop variable = counter */
+        /* Set loop variable = counter (BEFORE increment!) */
         ir_emit(ir, IR_MOV, IR_TYPE_INT32, var, counter, 0);
         ir_emit_store(ir, var_slot, var);
         rec_set_local(rec, var_slot, var, IR_TYPE_INT32);
 
-        /* Increment counter */
-        uint16_t new_counter = ir_vreg(ir, IR_TYPE_INT32);
-        ir_emit(ir, IR_INC_INT, IR_TYPE_INT32, new_counter, counter, 0);
-        ir_emit_store(ir, counter_slot, new_counter);
-        rec_set_local(rec, counter_slot, new_counter, IR_TYPE_INT32);
+        /* DON'T increment here - save info for OP_LOOP to do it */
+        rec->for_counter_slot = counter_slot;
+        rec->for_counter_vreg = counter;
+        rec->has_for_loop = true;
+
+        /* Track end value for reload at loop back edge */
+        rec_set_local(rec, counter_slot, counter, IR_TYPE_INT32);
         rec_set_local(rec, end_slot, end, IR_TYPE_INT32);
 
         break;
