@@ -208,11 +208,11 @@ export async function startRepl(vmPath: string | null): Promise<void> {
             fs.mkdirSync(tmpDir, { recursive: true });
         }
         const tmpFile = path.join(tmpDir, `repl_${Date.now()}.pseudo`);
-        
+
         // Wrap expression in print if it's a simple expression
         let wrappedCode = code;
         const trimmed = code.trim();
-        if (!trimmed.startsWith('let ') && 
+        if (!trimmed.startsWith('let ') &&
             !trimmed.startsWith('const ') &&
             !trimmed.startsWith('fn ') &&
             !trimmed.startsWith('if ') &&
@@ -228,7 +228,7 @@ export async function startRepl(vmPath: string | null): Promise<void> {
         fs.writeFileSync(tmpFile, wrappedCode);
 
         const proc = spawn(vmPath!, [tmpFile]);
-        
+
         proc.stdout.on('data', (data: Buffer) => {
             const output = data.toString();
             output.split('\n').forEach((line, i, arr) => {

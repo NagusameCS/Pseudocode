@@ -1,0 +1,33 @@
+// HTTP API Client - Fetch and process data from REST APIs
+// Demonstrates: HTTP requests, JSON parsing, dictionaries, string manipulation
+
+print("=== GitHub API Client ===")
+print("")
+
+// Fetch repository information
+let url = "https://api.github.com/repos/NagusameCS/Pseudocode"
+print("Fetching repository data...")
+
+let response = http_get(url)
+let repo = json_parse(response)
+
+// Display repository info
+print("Repository: " + dict_get(repo, "full_name"))
+print("Description: " + dict_get(repo, "description"))
+print("Stars: " + str(dict_get(repo, "stargazers_count")))
+print("Language: " + dict_get(repo, "language"))
+print("")
+
+// Fetch latest commits
+let commits_url = "https://api.github.com/repos/NagusameCS/Pseudocode/commits?per_page=5"
+let commits_response = http_get(commits_url)
+let commits = json_parse(commits_response)
+
+print("Recent commits:")
+for commit in commits do
+    let commit_data = dict_get(commit, "commit")
+    let message = dict_get(commit_data, "message")
+    // Get first line of commit message
+    let lines = split(message, "\n")
+    print("  - " + lines[0])
+end

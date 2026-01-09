@@ -1,0 +1,79 @@
+// Quick Sort Implementation  
+// Demonstrates: Recursion, array manipulation, in-place algorithms
+
+print("=== Quick Sort ===")
+print("")
+
+fn swap(arr, i, j)
+    let temp = arr[i]
+    arr[i] = arr[j]
+    arr[j] = temp
+end
+
+fn partition(arr, low, high)
+    let pivot = arr[high]
+    let i = low - 1
+    
+    for j in low..high do
+        if arr[j] <= pivot then
+            i = i + 1
+            swap(arr, i, j)
+        end
+    end
+    
+    swap(arr, i + 1, high)
+    return i + 1
+end
+
+fn quicksort(arr, low, high)
+    if low < high then
+        let pi = partition(arr, low, high)
+        quicksort(arr, low, pi - 1)
+        quicksort(arr, pi + 1, high)
+    end
+end
+
+fn sort(arr)
+    quicksort(arr, 0, len(arr) - 1)
+    return arr
+end
+
+// Test with random-ish array
+let numbers = [64, 34, 25, 12, 22, 11, 90, 45, 33, 21]
+
+print("Before: " + str(numbers))
+sort(numbers)
+print("After:  " + str(numbers))
+print("")
+
+// Verify sorted
+fn is_sorted(arr)
+    for i in 0..(len(arr) - 1) do
+        if arr[i] > arr[i + 1] then
+            return false
+        end
+    end
+    return true
+end
+
+print("Is sorted: " + str(is_sorted(numbers)))
+print("")
+
+// Performance benchmark
+print("=== Performance Benchmark ===")
+
+let sizes = [100, 1000, 5000]
+
+for size in sizes do
+    // Generate array with decreasing values (worst case for naive quicksort)
+    let arr = []
+    for i in 0..size do
+        push(arr, size - i)
+    end
+    
+    let start = time()
+    sort(arr)
+    let elapsed = (time() - start) / 1000000
+    
+    print("Sort " + str(size) + " elements: " + str(elapsed) + "ms")
+end

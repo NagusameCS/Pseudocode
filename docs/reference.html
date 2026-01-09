@@ -436,11 +436,7 @@
     <header>
         <div class="header-inner">
             <a href="index.html" class="logo">
-                <svg width="24" height="24" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <rect width="32" height="32" rx="6" fill="#a78bfa" />
-                    <path d="M10 8h8c2.2 0 4 1.8 4 4v2c0 2.2-1.8 4-4 4h-4v6h-4V8z" fill="#fff" />
-                    <rect x="14" y="12" width="3" height="3" rx="0.5" fill="#a78bfa" />
-                </svg>
+                <img src="favicon.svg" alt="Pseudocode" width="24" height="24" style="border-radius: 5px;">
                 Pseudocode
             </a>
             <nav>
@@ -449,6 +445,7 @@
                     <li><a href="#syntax">Syntax</a></li>
                     <li><a href="#types">Types</a></li>
                     <li><a href="#builtins">Built-ins</a></li>
+                    <li><a href="#examples">Examples</a></li>
                     <li><a href="https://github.com/NagusameCS/Pseudocode">GitHub</a></li>
                 </ul>
             </nav>
@@ -490,15 +487,29 @@
                 <a href="#tensors" class="sidebar-link">Neural Network</a>
                 <a href="#crypto" class="sidebar-link">Cryptography</a>
             </div>
+            <div class="sidebar-section">
+                <div class="sidebar-title">Examples</div>
+                <a href="#examples" class="sidebar-link">Overview</a>
+                <a href="https://github.com/NagusameCS/Pseudocode/blob/main/examples/quicksort.pseudo"
+                    class="sidebar-link">Quicksort</a>
+                <a href="https://github.com/NagusameCS/Pseudocode/blob/main/examples/binary_search.pseudo"
+                    class="sidebar-link">Binary Search</a>
+                <a href="https://github.com/NagusameCS/Pseudocode/blob/main/examples/http_client.pseudo"
+                    class="sidebar-link">HTTP Client</a>
+                <a href="https://github.com/NagusameCS/Pseudocode/blob/main/examples/neural_network.pseudo"
+                    class="sidebar-link">Neural Network</a>
+                <a href="https://github.com/NagusameCS/Pseudocode/blob/main/examples/dynamic_programming.pseudo"
+                    class="sidebar-link">Dynamic Programming</a>
+            </div>
         </aside>
 
         <main class="content">
             <div class="content-inner">
                 <h1>Pseudocode Reference</h1>
                 <p class="page-intro">
-                    Complete language reference for Pseudocode, a high-performance language with x86-64 JIT compilation.
-                    JIT intrinsics achieve C-like speeds (0.97x C). This document covers all language constructs and 80+
-                    built-in functions.
+                    Complete language reference for Pseudocode, a high-performance language with an x86-64 JIT compiler.
+                    This document covers all language constructs and 80+ built-in functions, with links to example
+                    programs.
                 </p>
 
                 <nav class="toc">
@@ -515,6 +526,7 @@
                         <li><a href="#builtins">Built-in Functions</a></li>
                         <li><a href="#tensors">Tensors and Matrices</a></li>
                         <li><a href="#crypto">Cryptography</a></li>
+                        <li><a href="#examples">Example Programs</a></li>
                     </ul>
                 </nav>
 
@@ -1829,6 +1841,157 @@ x = x + <span class="number">1</span></code></pre>
 <span class="keyword">let</span> encoded = <span class="function">encode_base64</span>(<span class="string">"Hello, World!"</span>)
 <span class="keyword">let</span> decoded = <span class="function">decode_base64</span>(encoded)
 <span class="function">print</span>(decoded)  <span class="comment">// Hello, World!</span></code></pre>
+
+                <!-- EXAMPLES -->
+                <h2 id="examples">Example Programs</h2>
+                <p>
+                    Explore complete example programs demonstrating Pseudocode's capabilities across different domains.
+                    All examples are available in the <a
+                        href="https://github.com/NagusameCS/Pseudocode/tree/main/examples">examples/</a> directory.
+                </p>
+
+                <h3>Algorithms</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Example</th>
+                            <th>Description</th>
+                            <th>Concepts</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><a
+                                    href="https://github.com/NagusameCS/Pseudocode/blob/main/examples/quicksort.pseudo">quicksort.pseudo</a>
+                            </td>
+                            <td>In-place quicksort with Lomuto partitioning</td>
+                            <td>Recursion, arrays, sorting</td>
+                        </tr>
+                        <tr>
+                            <td><a
+                                    href="https://github.com/NagusameCS/Pseudocode/blob/main/examples/binary_search.pseudo">binary_search.pseudo</a>
+                            </td>
+                            <td>Iterative and recursive binary search</td>
+                            <td>Search algorithms, arrays</td>
+                        </tr>
+                        <tr>
+                            <td><a
+                                    href="https://github.com/NagusameCS/Pseudocode/blob/main/examples/dynamic_programming.pseudo">dynamic_programming.pseudo</a>
+                            </td>
+                            <td>Fibonacci, knapsack, edit distance</td>
+                            <td>DP, memoization, arrays</td>
+                        </tr>
+                        <tr>
+                            <td><a
+                                    href="https://github.com/NagusameCS/Pseudocode/blob/main/examples/primes.pseudo">primes.pseudo</a>
+                            </td>
+                            <td>Sieve of Eratosthenes</td>
+                            <td>Number theory, loops</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>Networking & I/O</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Example</th>
+                            <th>Description</th>
+                            <th>Concepts</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><a
+                                    href="https://github.com/NagusameCS/Pseudocode/blob/main/examples/http_client.pseudo">http_client.pseudo</a>
+                            </td>
+                            <td>GitHub API client with JSON parsing</td>
+                            <td>HTTP requests, JSON, dictionaries</td>
+                        </tr>
+                        <tr>
+                            <td><a
+                                    href="https://github.com/NagusameCS/Pseudocode/blob/main/examples/text_analyzer.pseudo">text_analyzer.pseudo</a>
+                            </td>
+                            <td>Text statistics and word frequency</td>
+                            <td>Strings, dictionaries, file I/O</td>
+                        </tr>
+                        <tr>
+                            <td><a
+                                    href="https://github.com/NagusameCS/Pseudocode/blob/main/examples/password_generator.pseudo">password_generator.pseudo</a>
+                            </td>
+                            <td>Secure random password generator</td>
+                            <td>Crypto, strings, randomness</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>Machine Learning</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Example</th>
+                            <th>Description</th>
+                            <th>Concepts</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><a
+                                    href="https://github.com/NagusameCS/Pseudocode/blob/main/examples/neural_network.pseudo">neural_network.pseudo</a>
+                            </td>
+                            <td>Multi-layer perceptron from scratch</td>
+                            <td>Tensors, matrix ops, backprop</td>
+                        </tr>
+                        <tr>
+                            <td><a
+                                    href="https://github.com/NagusameCS/Pseudocode/blob/main/examples/tensor_example.pseudo">tensor_example.pseudo</a>
+                            </td>
+                            <td>Tensor operations and SIMD</td>
+                            <td>Tensors, vectors, matrices</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>Getting Started</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Example</th>
+                            <th>Description</th>
+                            <th>Concepts</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><a
+                                    href="https://github.com/NagusameCS/Pseudocode/blob/main/examples/hello.pseudo">hello.pseudo</a>
+                            </td>
+                            <td>Hello World</td>
+                            <td>Basic output</td>
+                        </tr>
+                        <tr>
+                            <td><a
+                                    href="https://github.com/NagusameCS/Pseudocode/blob/main/examples/fibonacci.pseudo">fibonacci.pseudo</a>
+                            </td>
+                            <td>Recursive Fibonacci</td>
+                            <td>Functions, recursion</td>
+                        </tr>
+                        <tr>
+                            <td><a
+                                    href="https://github.com/NagusameCS/Pseudocode/blob/main/examples/fizzbuzz.pseudo">fizzbuzz.pseudo</a>
+                            </td>
+                            <td>Classic FizzBuzz</td>
+                            <td>Loops, conditionals</td>
+                        </tr>
+                        <tr>
+                            <td><a
+                                    href="https://github.com/NagusameCS/Pseudocode/blob/main/examples/match.pseudo">match.pseudo</a>
+                            </td>
+                            <td>Pattern matching showcase</td>
+                            <td>Match expressions, guards</td>
+                        </tr>
+                    </tbody>
+                </table>
 
             </div>
         </main>

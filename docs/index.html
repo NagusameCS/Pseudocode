@@ -576,21 +576,16 @@
     <header>
         <div class="container header-inner">
             <a href="/" class="logo">
-                <svg width="28" height="28" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <rect width="100" height="100" rx="20" fill="#a78bfa" />
-                    <path d="M30 25h30c8.284 0 15 6.716 15 15v0c0 8.284-6.716 15-15 15H30V25z" fill="#fff" />
-                    <rect x="30" y="55" width="12" height="25" rx="2" fill="#fff" />
-                    <circle cx="70" cy="70" r="8" fill="#fff" opacity="0.6" />
-                </svg>
+                <img src="favicon.svg" alt="Pseudocode" width="28" height="28" style="border-radius: 6px;">
                 Pseudocode
             </a>
             <nav>
                 <ul>
-                    <li><a href="#purpose">About</a></li>
                     <li><a href="#features">Features</a></li>
+                    <li><a href="#examples">Examples</a></li>
                     <li><a href="#benchmarks">Benchmarks</a></li>
                     <li><a href="reference.html">Docs</a></li>
-                    <li><a href="https://github.com/NagusameCS/Pseudocode">GitHub</a></li>
+                    <li><a href="https://github.com/NagusameCS/Pseudocode" target="_blank">GitHub</a></li>
                 </ul>
             </nav>
         </div>
@@ -598,14 +593,27 @@
 
     <main>
         <section class="hero container">
-            <span class="version-badge animate-fadeInUp">v1.1 - Direct Codegen JIT • C-Level Performance</span>
+            <span class="version-badge animate-fadeInUp">v1.1 - x86-64 JIT Compiler • C-Level Performance</span>
             <h1 class="animate-fadeInUp animate-delay-1">Write Code Like You Think</h1>
-            <p class="animate-fadeInUp animate-delay-2">A high-performance programming language with intuitive syntax.
-                Features an x86-64 JIT compiler that matches C speed for numeric loops, plus NumPy-like tensors with
-                SIMD.</p>
+            <p class="animate-fadeInUp animate-delay-2">A high-performance programming language with intuitive, readable
+                syntax. Features an x86-64 JIT compiler that matches C speed, 80+ built-in functions, and first-class VS
+                Code support.</p>
             <div class="hero-buttons">
-                <a href="#getting-started" class="btn btn-primary">Get Started</a>
-                <a href="reference.html" class="btn btn-secondary">Documentation</a>
+                <a href="https://marketplace.visualstudio.com/items?itemName=NagusameCS.pseudocode-lang"
+                    class="btn btn-primary" target="_blank">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 6px;">
+                        <path
+                            d="M21.29 4.12l-4.58-2.36a1 1 0 00-1.12.12L2.66 13.12a.67.67 0 00.12 1.06l2.36 1.78a1 1 0 001.07.06l14.26-8.26a.67.67 0 00.82-1.06l-1-2.58zM2.66 10.88a.67.67 0 00-.12 1.06l2.36 1.78a1 1 0 001.07.06l14.26-8.26m-4.94-1.4L2.66 13.12" />
+                    </svg>
+                    Get VS Code Extension
+                </a>
+                <a href="https://github.com/NagusameCS/Pseudocode" class="btn btn-secondary" target="_blank">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style="margin-right: 6px;">
+                        <path
+                            d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
+                    </svg>
+                    GitHub Repository
+                </a>
             </div>
         </section>
 
@@ -622,12 +630,13 @@
                     style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; margin-top: 32px;">
                     <div
                         style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 24px;">
-                        <h3 style="color: var(--accent); font-size: 16px; margin-bottom: 12px;">Design Philosophy</h3>
+                        <h3 style="color: var(--accent); font-size: 16px; margin-bottom: 12px;">🎯 Design Philosophy
+                        </h3>
                         <ul
                             style="color: var(--text-secondary); font-size: 14px; line-height: 1.8; padding-left: 20px;">
                             <li>Syntax that reads like pseudocode from a textbook</li>
                             <li>No semicolons, braces, or cryptic symbols</li>
-                            <li>Keywords match natural language: <code>if/then/end</code>, <code>for/in</code></li>
+                            <li>Keywords match natural language: <code>if/then/end</code>, <code>for/in/do</code></li>
                             <li>Performance as close to C as possible</li>
                             <li>Batteries included: 80+ built-in functions</li>
                         </ul>
@@ -635,11 +644,11 @@
 
                     <div
                         style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 24px;">
-                        <h3 style="color: var(--accent); font-size: 16px; margin-bottom: 12px;">Ideal Use Cases</h3>
+                        <h3 style="color: var(--accent); font-size: 16px; margin-bottom: 12px;">💡 Ideal Use Cases</h3>
                         <ul
                             style="color: var(--text-secondary); font-size: 14px; line-height: 1.8; padding-left: 20px;">
                             <li><strong>Algorithm prototyping</strong> - Test ideas quickly with clean syntax</li>
-                            <li><strong>Teaching programming</strong> - Syntax matches textbook pseudocode</li>
+                            <li><strong>Learning to code</strong> - Syntax matches textbook pseudocode</li>
                             <li><strong>Scripting & automation</strong> - Fast startup, no compilation step</li>
                             <li><strong>Numerical computing</strong> - SIMD-accelerated tensor operations</li>
                             <li><strong>Competitive programming</strong> - When Python is too slow</li>
@@ -648,13 +657,13 @@
 
                     <div
                         style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 24px;">
-                        <h3 style="color: var(--accent); font-size: 16px; margin-bottom: 12px;">Not Designed For</h3>
+                        <h3 style="color: var(--accent); font-size: 16px; margin-bottom: 12px;">🛠️ Editor Support</h3>
                         <ul
                             style="color: var(--text-secondary); font-size: 14px; line-height: 1.8; padding-left: 20px;">
-                            <li>Large-scale production systems (use Go, Rust)</li>
-                            <li>Web development (use JavaScript, TypeScript)</li>
-                            <li>Mobile apps (use Swift, Kotlin)</li>
-                            <li>Systems programming (use C, Rust, Zig)</li>
+                            <li><strong>VS Code</strong> - Full IntelliSense, debugger, REPL</li>
+                            <li><strong>Vim/Neovim</strong> - Syntax highlighting & indentation</li>
+                            <li><strong>Sublime Text</strong> - Syntax highlighting</li>
+                            <li><strong>Emacs</strong> - Major mode with highlighting</li>
                         </ul>
                     </div>
                 </div>
@@ -672,8 +681,8 @@
                         </svg>
                     </div>
                     <h3>C-Level Performance</h3>
-                    <p>Direct codegen JIT achieves <strong>1.0x C speed</strong> for numeric loops. Loop variables stay
-                        in registers—no memory access in hot paths. Faster than C with volatile.</p>
+                    <p>x86-64 JIT compiler achieves <strong>1.0x C speed</strong> for numeric loops. Loop variables stay
+                        in registers—no memory access in hot paths.</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">
@@ -686,8 +695,8 @@
                         </svg>
                     </div>
                     <h3>Readable Syntax</h3>
-                    <p>Natural language-like constructs with clear keywords: fn, if/then/end, for/in, match/case. No
-                        cryptic symbols or complex syntax.</p>
+                    <p>Natural language-like constructs with clear keywords: <code>fn</code>, <code>if/then/end</code>,
+                        <code>for/in/do</code>, <code>match/case</code>. No cryptic symbols.</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">
@@ -698,9 +707,9 @@
                             <line x1="9" y1="21" x2="9" y2="9"></line>
                         </svg>
                     </div>
-                    <h3>Rich Built-ins</h3>
-                    <p>80+ built-in functions including file I/O, HTTP requests, JSON parsing, dictionaries, vector
-                        operations, and cryptographic hashing.</p>
+                    <h3>80+ Built-in Functions</h3>
+                    <p>File I/O, HTTP requests, JSON parsing, dictionaries, vector operations, cryptographic hashing,
+                        and more—all built in.</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">
@@ -710,9 +719,9 @@
                             <polyline points="12 6 12 12 16 14"></polyline>
                         </svg>
                     </div>
-                    <h3>Fast Compilation</h3>
-                    <p>Single-pass Pratt parser compiles source to bytecode in microseconds. No separate compilation
-                        step needed.</p>
+                    <h3>Instant Startup</h3>
+                    <p>Single-pass Pratt parser compiles source to bytecode in microseconds. Run scripts instantly with
+                        no compilation wait.</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">
@@ -1117,16 +1126,25 @@ jl   loop        ; repeat</code></pre>
             <div
                 style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-top: 40px;">
                 <h3 style="margin-bottom: 16px; font-size: 18px;">VS Code Extension</h3>
-                <p style="color: var(--text-secondary); margin-bottom: 16px;">Get syntax highlighting, code snippets,
-                    and integrated commands for Pseudocode development.</p>
+                <p style="color: var(--text-secondary); margin-bottom: 16px;">Full IntelliSense, autocomplete, hover
+                    documentation, real-time diagnostics, interactive REPL, and integrated debugger.</p>
                 <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-                    <a href="https://github.com/NagusameCS/Pseudocode/tree/main/vscode-extension"
+                    <a href="https://marketplace.visualstudio.com/items?itemName=NagusameCS.pseudocode-lang"
+                        target="_blank"
                         style="display: inline-flex; align-items: center; gap: 8px; background: var(--accent); color: var(--bg-primary); padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 500;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                            <path
+                                d="M21.29 4.12l-4.58-2.36a1 1 0 00-1.12.12L2.66 13.12a.67.67 0 00.12 1.06l2.36 1.78a1 1 0 001.07.06l14.26-8.26a.67.67 0 00.82-1.06l-1-2.58z" />
+                        </svg>
+                        Install from Marketplace
+                    </a>
+                    <a href="https://github.com/NagusameCS/Pseudocode" target="_blank"
+                        style="display: inline-flex; align-items: center; gap: 8px; background: var(--bg-tertiary); color: var(--text-primary); padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 500; border: 1px solid var(--border);">
                         <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                             <path
                                 d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
                         </svg>
-                        Get Extension
+                        View on GitHub
                     </a>
                     <a href="reference.html"
                         style="display: inline-flex; align-items: center; gap: 8px; background: var(--bg-tertiary); color: var(--text-primary); padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 500; border: 1px solid var(--border);">
@@ -1135,11 +1153,73 @@ jl   loop        ; repeat</code></pre>
                 </div>
             </div>
         </section>
+
+        <section class="container" id="examples">
+            <h2>Example Programs</h2>
+            <p
+                style="text-align: center; color: var(--text-secondary); margin-bottom: 32px; max-width: 600px; margin-left: auto; margin-right: auto;">
+                See Pseudocode in action across algorithms, networking, and machine learning.
+            </p>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+                <a href="https://github.com/NagusameCS/Pseudocode/blob/main/examples/quicksort.pseudo" target="_blank"
+                    style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 20px; text-decoration: none; transition: border-color 0.2s;">
+                    <h4 style="color: var(--accent); margin-bottom: 8px; font-size: 16px;">⚡ Quicksort</h4>
+                    <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px;">In-place quicksort
+                        with Lomuto partitioning</p>
+                    <span style="color: var(--text-tertiary); font-size: 12px;">Recursion • Arrays • Sorting</span>
+                </a>
+                <a href="https://github.com/NagusameCS/Pseudocode/blob/main/examples/http_client.pseudo" target="_blank"
+                    style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 20px; text-decoration: none; transition: border-color 0.2s;">
+                    <h4 style="color: var(--accent); margin-bottom: 8px; font-size: 16px;">🌐 HTTP Client</h4>
+                    <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px;">GitHub API client
+                        with JSON parsing</p>
+                    <span style="color: var(--text-tertiary); font-size: 12px;">HTTP • JSON • Dictionaries</span>
+                </a>
+                <a href="https://github.com/NagusameCS/Pseudocode/blob/main/examples/neural_network.pseudo"
+                    target="_blank"
+                    style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 20px; text-decoration: none; transition: border-color 0.2s;">
+                    <h4 style="color: var(--accent); margin-bottom: 8px; font-size: 16px;">🧠 Neural Network</h4>
+                    <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px;">Multi-layer
+                        perceptron from scratch</p>
+                    <span style="color: var(--text-tertiary); font-size: 12px;">Tensors • Matrix Ops • Backprop</span>
+                </a>
+                <a href="https://github.com/NagusameCS/Pseudocode/blob/main/examples/binary_search.pseudo"
+                    target="_blank"
+                    style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 20px; text-decoration: none; transition: border-color 0.2s;">
+                    <h4 style="color: var(--accent); margin-bottom: 8px; font-size: 16px;">🔍 Binary Search</h4>
+                    <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px;">Iterative and
+                        recursive implementations</p>
+                    <span style="color: var(--text-tertiary); font-size: 12px;">Search Algorithms • Arrays</span>
+                </a>
+                <a href="https://github.com/NagusameCS/Pseudocode/blob/main/examples/dynamic_programming.pseudo"
+                    target="_blank"
+                    style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 20px; text-decoration: none; transition: border-color 0.2s;">
+                    <h4 style="color: var(--accent); margin-bottom: 8px; font-size: 16px;">📊 Dynamic Programming</h4>
+                    <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px;">Fibonacci, knapsack,
+                        edit distance</p>
+                    <span style="color: var(--text-tertiary); font-size: 12px;">DP • Memoization • Arrays</span>
+                </a>
+                <a href="https://github.com/NagusameCS/Pseudocode/blob/main/examples/password_generator.pseudo"
+                    target="_blank"
+                    style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 20px; text-decoration: none; transition: border-color 0.2s;">
+                    <h4 style="color: var(--accent); margin-bottom: 8px; font-size: 16px;">🔐 Password Generator</h4>
+                    <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px;">Secure random
+                        password with crypto hashing</p>
+                    <span style="color: var(--text-tertiary); font-size: 12px;">Crypto • Strings • Randomness</span>
+                </a>
+            </div>
+            <p style="text-align: center; margin-top: 24px;">
+                <a href="https://github.com/NagusameCS/Pseudocode/tree/main/examples" target="_blank"
+                    style="color: var(--accent);">
+                    View all examples →
+                </a>
+            </p>
+        </section>
     </main>
 
     <footer>
         <div class="container">
-            <p>Pseudocode is open source under the MIT License. Copyright 2025 NagusameCS.</p>
+            <p>Pseudocode is open source under the MIT License. Copyright 2026 NagusameCS.</p>
             <div class="footer-links">
                 <a href="https://github.com/NagusameCS/Pseudocode">
                     <svg height="16" width="16" viewBox="0 0 16 16" fill="currentColor">

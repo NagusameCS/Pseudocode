@@ -41,12 +41,18 @@
     ],
     "capabilities": {
         "completionProvider": {
-            "triggerCharacters": [".", "("]
+            "triggerCharacters": [
+                ".",
+                "("
+            ]
         },
         "hoverProvider": true,
         "documentSymbolProvider": true,
         "signatureHelpProvider": {
-            "triggerCharacters": ["(", ","]
+            "triggerCharacters": [
+                "(",
+                ","
+            ]
         },
         "documentFormattingProvider": true
     },
@@ -170,10 +176,14 @@
             {
                 "type": "pseudocode",
                 "label": "Pseudocode Debug",
-                "languages": ["pseudocode"],
+                "languages": [
+                    "pseudocode"
+                ],
                 "configurationAttributes": {
                     "launch": {
-                        "required": ["program"],
+                        "required": [
+                            "program"
+                        ],
                         "properties": {
                             "program": {
                                 "type": "string",
@@ -193,7 +203,9 @@
                             "args": {
                                 "type": "array",
                                 "description": "Command line arguments",
-                                "items": { "type": "string" },
+                                "items": {
+                                    "type": "string"
+                                },
                                 "default": []
                             },
                             "stopOnEntry": {

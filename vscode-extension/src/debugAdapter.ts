@@ -146,7 +146,7 @@ class InlinePseudocodeDebugAdapter implements vscode.DebugAdapter {
         const args = request.arguments.args || [];
 
         this.currentFile = program;
-        
+
         // Read source for line tracking
         try {
             const content = fs.readFileSync(program, 'utf8');
@@ -161,7 +161,7 @@ class InlinePseudocodeDebugAdapter implements vscode.DebugAdapter {
         // For now, we'll run in "simulated debug" mode
         // A full implementation would require VM support for debug protocol
         this.sendResponse(request);
-        
+
         // Start the process
         this.process = spawn(vmPath, ['--debug', program, ...args], {
             cwd,
@@ -170,7 +170,7 @@ class InlinePseudocodeDebugAdapter implements vscode.DebugAdapter {
 
         this.process.stdout?.on('data', (data: Buffer) => {
             const output = data.toString();
-            
+
             // Parse debug output from VM
             const lineMatch = output.match(/\[DEBUG:LINE:(\d+)\]/);
             if (lineMatch) {
@@ -214,10 +214,10 @@ class InlinePseudocodeDebugAdapter implements vscode.DebugAdapter {
     private handleSetBreakpoints(request: any): void {
         const source = request.arguments.source;
         const breakpointRequests = request.arguments.breakpoints || [];
-        
+
         const filePath = source.path;
         const lines = breakpointRequests.map((bp: any) => bp.line);
-        
+
         this.breakpoints.set(filePath, lines);
 
         const breakpoints = lines.map((line: number) => ({
@@ -277,7 +277,7 @@ class InlinePseudocodeDebugAdapter implements vscode.DebugAdapter {
     private handleVariables(request: any): void {
         // Simulated variables for now
         const vars: any[] = [];
-        
+
         this.variables.forEach((value, name) => {
             vars.push({
                 name,

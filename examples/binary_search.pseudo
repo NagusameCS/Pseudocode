@@ -1,0 +1,80 @@
+// Binary Search Implementation
+// Demonstrates: Functions, recursion, arrays, clean algorithmic code
+
+print("=== Binary Search ===")
+print("")
+
+// Iterative binary search
+fn binary_search(arr, target)
+    let left = 0
+    let right = len(arr) - 1
+    
+    while left <= right do
+        let mid = (left + right) / 2
+        
+        if arr[mid] == target then
+            return mid
+        elif arr[mid] < target then
+            left = mid + 1
+        else
+            right = mid - 1
+        end
+    end
+    
+    return -1  // Not found
+end
+
+// Recursive binary search
+fn binary_search_recursive(arr, target, left, right)
+    if left > right then
+        return -1
+    end
+    
+    let mid = (left + right) / 2
+    
+    match arr[mid]
+        case target then
+            return mid
+        else
+            if arr[mid] < target then
+                return binary_search_recursive(arr, target, mid + 1, right)
+            else
+                return binary_search_recursive(arr, target, left, mid - 1)
+            end
+    end
+end
+
+// Test with sorted array
+let numbers = [2, 5, 8, 12, 16, 23, 38, 45, 56, 72, 91]
+
+print("Array: " + str(numbers))
+print("")
+
+// Test searches
+let targets = [23, 91, 2, 50, 56]
+
+for target in targets do
+    let idx = binary_search(numbers, target)
+    if idx >= 0 then
+        print("Found " + str(target) + " at index " + str(idx))
+    else
+        print(str(target) + " not found")
+    end
+end
+
+print("")
+print("=== Performance Test ===")
+
+// Generate large sorted array
+let large = []
+for i in 0..10000 do
+    push(large, i * 2)
+end
+
+let start = time()
+for i in 0..1000 do
+    binary_search(large, 9998)  // Search for element near end
+end
+let elapsed = (time() - start) / 1000000
+
+print("1000 searches in " + str(elapsed) + "ms")

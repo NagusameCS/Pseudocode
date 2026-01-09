@@ -1,0 +1,116 @@
+// Text Statistics Analyzer
+// Demonstrates: File I/O, string processing, dictionaries, data analysis
+
+print("=== Text Statistics Analyzer ===")
+print("")
+
+// Sample text (normally you'd read from a file)
+let text = "The quick brown fox jumps over the lazy dog. The dog was not amused. The fox ran away quickly."
+
+print("Input text:")
+print(text)
+print("")
+
+// Convert to lowercase for analysis
+let lower_text = lower(text)
+
+// Count characters (excluding spaces)
+let char_count = 0
+for i in 0..len(text) do
+    if char_at(text, i) != " " then
+        char_count = char_count + 1
+    end
+end
+
+// Count words
+let words = split(lower_text, " ")
+let word_count = len(words)
+
+// Count sentences (simple: count periods, !, ?)
+let sentence_count = 0
+for i in 0..len(text) do
+    let c = char_at(text, i)
+    if c == "." or c == "!" or c == "?" then
+        sentence_count = sentence_count + 1
+    end
+end
+
+print("=== Basic Statistics ===")
+print("Characters (no spaces): " + str(char_count))
+print("Words: " + str(word_count))
+print("Sentences: " + str(sentence_count))
+print("Avg words per sentence: " + str(word_count / sentence_count))
+print("")
+
+// Word frequency analysis
+print("=== Word Frequency ===")
+let word_freq = dict()
+
+for word in words do
+    // Remove punctuation
+    let clean = replace(word, ".", "")
+    clean = replace(clean, ",", "")
+    clean = replace(clean, "!", "")
+    clean = replace(clean, "?", "")
+    
+    if len(clean) > 0 then
+        if dict_has(word_freq, clean) then
+            let count = dict_get(word_freq, clean)
+            dict_set(word_freq, clean, count + 1)
+        else
+            dict_set(word_freq, clean, 1)
+        end
+    end
+end
+
+// Print word frequencies
+let unique_words = dict_keys(word_freq)
+print("Unique words: " + str(len(unique_words)))
+print("")
+
+print("Word counts:")
+for word in unique_words do
+    let count = dict_get(word_freq, word)
+    if count > 1 then
+        print("  '" + word + "': " + str(count) + " times")
+    end
+end
+
+print("")
+print("=== Character Frequency ===")
+
+// Count letter frequency
+let letter_freq = dict()
+let alphabet = "abcdefghijklmnopqrstuvwxyz"
+
+for i in 0..len(lower_text) do
+    let c = char_at(lower_text, i)
+    if contains(alphabet, c) then
+        if dict_has(letter_freq, c) then
+            dict_set(letter_freq, c, dict_get(letter_freq, c) + 1)
+        else
+            dict_set(letter_freq, c, 1)
+        end
+    end
+end
+
+// Find most common letters
+print("Most common letters:")
+let letters = dict_keys(letter_freq)
+// Simple bubble sort by frequency
+for i in 0..(len(letters) - 1) do
+    for j in 0..(len(letters) - i - 1) do
+        if dict_get(letter_freq, letters[j]) < dict_get(letter_freq, letters[j + 1]) then
+            let temp = letters[j]
+            letters[j] = letters[j + 1]
+            letters[j + 1] = temp
+        end
+    end
+end
+
+for i in 0..5 do
+    if i < len(letters) then
+        let letter = letters[i]
+        print("  '" + letter + "': " + str(dict_get(letter_freq, letter)))
+    end
+end
