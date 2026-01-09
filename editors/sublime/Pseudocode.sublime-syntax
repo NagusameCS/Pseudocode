@@ -1,0 +1,89 @@
+%YAML 1.2
+---
+# Sublime Text syntax definition for Pseudocode
+# Language: Pseudocode
+# Maintainer: NagusameCS
+# License: MIT
+
+name: Pseudocode
+file_extensions:
+  - pseudo
+  - psc
+scope: source.pseudocode
+
+contexts:
+  main:
+    # Comments
+    - match: //.*$
+      scope: comment.line.double-slash.pseudocode
+    - match: /\*
+      push: block_comment
+
+    # Strings
+    - match: '"'
+      push: double_string
+    - match: "'"
+      push: single_string
+
+    # Numbers
+    - match: \b0x[0-9a-fA-F]+\b
+      scope: constant.numeric.hex.pseudocode
+    - match: \b0b[01]+\b
+      scope: constant.numeric.binary.pseudocode
+    - match: \b\d+\.\d*\b
+      scope: constant.numeric.float.pseudocode
+    - match: \b\d*\.\d+\b
+      scope: constant.numeric.float.pseudocode
+    - match: \b\d+\b
+      scope: constant.numeric.integer.pseudocode
+
+    # Keywords
+    - match: \b(let|const|fn|return|if|then|elif|else|end|while|for|in|do|match|case)\b
+      scope: keyword.control.pseudocode
+
+    # Operators
+    - match: \b(and|or|not)\b
+      scope: keyword.operator.logical.pseudocode
+
+    # Constants
+    - match: \b(true|false|nil)\b
+      scope: constant.language.pseudocode
+
+    # Built-in functions
+    - match: \b(print|input|len|str|int|float|type|push|pop|shift|unshift|slice|concat|sort|reverse|range|map|filter|reduce|find|every|some|split|join|replace|upper|lower|trim|contains|starts_with|ends_with|substr|char_at|index_of|abs|min|max|floor|ceil|round|sqrt|pow|sin|cos|tan|log|exp|random|randint|read_file|write_file|http_get|http_post|json_parse|json_stringify|time|time_ms|sleep|is_nil|is_int|is_float|is_string|is_array|is_function|md5|sha256|base64_encode|base64_decode|assert|error|exit)\b
+      scope: support.function.builtin.pseudocode
+
+    # Function definition
+    - match: \b(fn)\s+([a-zA-Z_][a-zA-Z0-9_]*)
+      captures:
+        1: keyword.control.pseudocode
+        2: entity.name.function.pseudocode
+
+    # Operators
+    - match: '[-+*/%=<>!&|^~]'
+      scope: keyword.operator.pseudocode
+    - match: '==|!=|<=|>=|&&|\|\||->'
+      scope: keyword.operator.pseudocode
+
+    # Delimiters
+    - match: '[(),\[\]{}:]'
+      scope: punctuation.pseudocode
+
+  block_comment:
+    - meta_scope: comment.block.pseudocode
+    - match: \*/
+      pop: true
+
+  double_string:
+    - meta_scope: string.quoted.double.pseudocode
+    - match: \\.
+      scope: constant.character.escape.pseudocode
+    - match: '"'
+      pop: true
+
+  single_string:
+    - meta_scope: string.quoted.single.pseudocode
+    - match: \\.
+      scope: constant.character.escape.pseudocode
+    - match: "'"
+      pop: true

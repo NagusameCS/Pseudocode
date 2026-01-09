@@ -4,8 +4,20 @@ A VS Code extension for **Pseudocode** - a blazingly fast programming language w
 
 ## Features
 
+### IntelliSense & Productivity
+- **Autocomplete** - Smart suggestions for keywords, built-in functions, and your own variables/functions
+- **Hover Documentation** - Detailed documentation for all built-in functions on hover
+- **Signature Help** - Function parameter hints as you type
+- **Document Outline** - Navigate functions and variables in the Outline view
+- **Real-time Diagnostics** - Error detection as you type with helpful suggestions
+- **Code Formatting** - Auto-indent your code with Format Document (`Shift+Alt+F`)
+
+### Language Support
 - **Syntax Highlighting** - Full grammar support for `.pseudo` and `.psc` files
 - **Code Snippets** - Quick templates for functions, loops, control flow, and more
+- **Bracket Matching** - Automatic bracket pairing and matching
+
+### Execution
 - **Run Command** - Execute Pseudocode files directly with `Ctrl+Shift+R` / `Cmd+Shift+R`
 - **Build Support** - Build the Pseudocode VM from source
 
@@ -21,9 +33,9 @@ Pseudocode runs **2.5x faster than Python**. The recursive Fibonacci benchmark (
 
 ```pseudo
 // Hello World
-fn greet(name) {
-    println("Hello, " + name + "!")
-}
+fn greet(name)
+    print("Hello, " + name + "!")
+end
 
 greet("World")
 ```
@@ -47,19 +59,19 @@ greet("World")
 ## Built-in Functions
 
 ### Core
-`print`, `println`, `input`, `len`, `str`, `int`, `float`, `type`
+`print`, `input`, `len`, `str`, `int`, `float`, `type`
 
 ### Arrays
-`push`, `pop`, `slice`, `concat`, `sort`, `reverse`, `range`
+`push`, `pop`, `shift`, `unshift`, `slice`, `concat`, `sort`, `reverse`, `range`, `map`, `filter`, `reduce`, `find`, `every`, `some`
 
 ### Strings
-`split`, `join`, `replace`, `upper`, `lower`, `trim`, `contains`
+`split`, `join`, `replace`, `upper`, `lower`, `trim`, `contains`, `starts_with`, `ends_with`, `substr`, `char_at`, `index_of`
 
 ### Math
-`abs`, `min`, `max`, `floor`, `ceil`, `round`, `sqrt`, `pow`, `sin`, `cos`, `tan`, `log`, `exp`
+`abs`, `min`, `max`, `floor`, `ceil`, `round`, `sqrt`, `pow`, `sin`, `cos`, `tan`, `log`, `exp`, `random`, `randint`
 
 ### File I/O
-`read_file`, `write_file`, `append_file`, `file_exists`, `list_dir`, `delete_file`, `mkdir`
+`read_file`, `write_file`
 
 ### HTTP
 `http_get`, `http_post`
@@ -67,14 +79,14 @@ greet("World")
 ### JSON
 `json_parse`, `json_stringify`
 
-### Dictionaries
-`dict`, `dict_get`, `dict_set`, `dict_has`, `dict_keys`, `dict_values`
+### Time
+`time`, `time_ms`, `sleep`
 
-### Vectors
-`vec_add`, `vec_sub`, `vec_mul`, `vec_dot`, `vec_sum`, `vec_mean`, `vec_sort`
+### Type Checking
+`is_nil`, `is_int`, `is_float`, `is_string`, `is_array`, `is_function`
 
-### Binary & Encoding
-`bytes`, `encode_base64`, `decode_base64`, `hash`
+### Crypto
+`md5`, `sha256`, `base64_encode`, `base64_decode`
 
 ## Settings
 
@@ -82,6 +94,8 @@ greet("World")
 |---------|-------------|---------|
 | `pseudocode.vmPath` | Path to the Pseudocode VM executable | Auto-detected |
 | `pseudocode.showExecutionTime` | Show execution time after running | `true` |
+| `pseudocode.enableDiagnostics` | Enable real-time error diagnostics | `true` |
+| `pseudocode.formatOnSave` | Auto-format on save | `false` |
 
 ## Commands
 
@@ -92,6 +106,15 @@ greet("World")
 
 - The Pseudocode VM (`pseudo`) executable
 - For building from source: GCC/Clang and Make
+
+## What's New in v1.1.0
+
+- ✨ **IntelliSense** - Full autocomplete for keywords, builtins, and local symbols
+- 📚 **Hover Documentation** - Rich documentation for all built-in functions
+- 🔍 **Real-time Diagnostics** - Catch errors as you type
+- 📐 **Document Formatting** - Auto-indent and format your code
+- 🧭 **Document Symbols** - Quick navigation via Outline view
+- ✍️ **Signature Help** - Parameter hints for function calls
 
 ## Links
 

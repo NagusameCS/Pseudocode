@@ -1,8 +1,8 @@
 {
     "name": "pseudocode-lang",
     "displayName": "Pseudocode Language",
-    "description": "Language support for Pseudocode - a blazingly fast programming language with intuitive syntax",
-    "version": "1.0.0",
+    "description": "Full language support for Pseudocode - IntelliSense, autocomplete, diagnostics, formatting, and a blazingly fast runtime",
+    "version": "1.1.0",
     "publisher": "NagusameCS",
     "author": {
         "name": "NagusameCS"
@@ -17,14 +17,18 @@
     },
     "categories": [
         "Programming Languages",
-        "Snippets"
+        "Snippets",
+        "Formatters",
+        "Linters"
     ],
     "keywords": [
         "pseudocode",
         "pseudo",
         "fast",
         "scripting",
-        "programming language"
+        "programming language",
+        "jit",
+        "intellisense"
     ],
     "icon": "images/icon.png",
     "galleryBanner": {
@@ -35,6 +39,17 @@
     "activationEvents": [
         "onLanguage:pseudocode"
     ],
+    "capabilities": {
+        "completionProvider": {
+            "triggerCharacters": [".", "("]
+        },
+        "hoverProvider": true,
+        "documentSymbolProvider": true,
+        "signatureHelpProvider": {
+            "triggerCharacters": ["(", ","]
+        },
+        "documentFormattingProvider": true
+    },
     "contributes": {
         "languages": [
             {
@@ -78,6 +93,12 @@
                 "command": "pseudocode.build",
                 "title": "Build Pseudocode VM",
                 "category": "Pseudocode"
+            },
+            {
+                "command": "pseudocode.repl",
+                "title": "Open REPL",
+                "category": "Pseudocode",
+                "icon": "$(terminal)"
             }
         ],
         "menus": {
@@ -109,6 +130,16 @@
                     "type": "boolean",
                     "default": true,
                     "description": "Show execution time after running a file."
+                },
+                "pseudocode.enableDiagnostics": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Enable real-time error diagnostics."
+                },
+                "pseudocode.formatOnSave": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Automatically format code on save."
                 }
             }
         },
@@ -128,6 +159,73 @@
                         "description": "The file to run"
                     }
                 }
+            }
+        ],
+        "breakpoints": [
+            {
+                "language": "pseudocode"
+            }
+        ],
+        "debuggers": [
+            {
+                "type": "pseudocode",
+                "label": "Pseudocode Debug",
+                "languages": ["pseudocode"],
+                "configurationAttributes": {
+                    "launch": {
+                        "required": ["program"],
+                        "properties": {
+                            "program": {
+                                "type": "string",
+                                "description": "Path to the Pseudocode file to debug",
+                                "default": "${file}"
+                            },
+                            "cwd": {
+                                "type": "string",
+                                "description": "Working directory",
+                                "default": "${workspaceFolder}"
+                            },
+                            "vmPath": {
+                                "type": "string",
+                                "description": "Path to the Pseudocode VM executable",
+                                "default": ""
+                            },
+                            "args": {
+                                "type": "array",
+                                "description": "Command line arguments",
+                                "items": { "type": "string" },
+                                "default": []
+                            },
+                            "stopOnEntry": {
+                                "type": "boolean",
+                                "description": "Stop on program entry",
+                                "default": false
+                            }
+                        }
+                    }
+                },
+                "initialConfigurations": [
+                    {
+                        "type": "pseudocode",
+                        "request": "launch",
+                        "name": "Debug Pseudocode",
+                        "program": "${file}",
+                        "cwd": "${workspaceFolder}"
+                    }
+                ],
+                "configurationSnippets": [
+                    {
+                        "label": "Pseudocode: Launch",
+                        "description": "Launch and debug a Pseudocode file",
+                        "body": {
+                            "type": "pseudocode",
+                            "request": "launch",
+                            "name": "Debug ${1:file.pseudo}",
+                            "program": "^\"\\${workspaceFolder}/${1:file.pseudo}\"",
+                            "cwd": "^\"\\${workspaceFolder}\""
+                        }
+                    }
+                ]
             }
         ]
     },

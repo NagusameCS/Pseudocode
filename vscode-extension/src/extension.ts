@@ -9,11 +9,95 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import { exec, spawn } from 'child_process';
+import {
+    PseudocodeCompletionProvider,
+    PseudocodeHoverProvider,
+    PseudocodeDocumentSymbolProvider,
+    PseudocodeSignatureHelpProvider,
+    PseudocodeDocumentFormatter,
+    createDiagnostics
+} from './languageFeatures';
+import { registerDebugger } from './debugAdapter';
+import { registerRepl } from './repl';
 
 let outputChannel: vscode.OutputChannel;
+let diagnosticCollection: vscode.DiagnosticCollection;
 
 export function activate(context: vscode.ExtensionContext) {
     outputChannel = vscode.window.createOutputChannel('Pseudocode');
+    diagnosticCollection = vscode.languages.createDiagnosticCollection('pseudocode');
+
+    const selector: vscode.DocumentSelector = { language: 'pseudocode', scheme: 'file' };
+
+    // ============ Language Features ============
+
+    // Autocomplete
+    const completionProvider = vscode.languages.registerCompletionItemProvider(
+        selector,
+        new PseudocodeCompletionProvider(),
+        '.', '(' // Trigger characters
+    );
+
+    // Hover documentation
+    const hoverProvider = vscode.languages.registerHoverProvider(
+        selector,
+        new PseudocodeHoverProvider()
+    );
+
+    // Document outline (symbols)
+    const symbolProvider = vscode.languages.registerDocumentSymbolProvider(
+        selector,
+        new PseudocodeDocumentSymbolProvider()
+    );
+
+    // Signature help (function parameters)
+    const signatureProvider = vscode.languages.registerSignatureHelpProvider(
+        selector,
+        new PseudocodeSignatureHelpProvider(),
+        '(', ','
+    );
+
+    // Document formatter
+    const formatterProvider = vscode.languages.registerDocumentFormattingEditProvider(
+        selector,
+        new PseudocodeDocumentFormatter()
+    );
+
+    // Real-time diagnostics
+    const updateDiagnostics = (document: vscode.TextDocument) => {
+        if (document.languageId === 'pseudocode') {
+            createDiagnostics(document, diagnosticCollection);
+        }
+    };
+
+    // Update diagnostics on document change
+    vscode.workspace.onDidChangeTextDocument(event => {
+        updateDiagnostics(event.document);
+    }, null, context.subscriptions);
+
+    // Update diagnostics on document open
+    vscode.workspace.onDidOpenTextDocument(document => {
+        updateDiagnostics(document);
+    }, null, context.subscriptions);
+
+    // Update diagnostics for all open pseudocode files
+    vscode.workspace.textDocuments.forEach(updateDiagnostics);
+
+    // Clear diagnostics on close
+    vscode.workspace.onDidCloseTextDocument(document => {
+        diagnosticCollection.delete(document.uri);
+    }, null, context.subscriptions);
+
+    context.subscriptions.push(
+        completionProvider,
+        hoverProvider,
+        symbolProvider,
+        signatureProvider,
+        formatterProvider,
+        diagnosticCollection
+    );
+
+    // ============ Commands ============
 
     // Register run command
     const runCommand = vscode.commands.registerCommand('pseudocode.run', async () => {
@@ -72,6 +156,15 @@ export function activate(context: vscode.ExtensionContext) {
     });
 
     context.subscriptions.push(taskProvider);
+
+    // Register debugger
+    registerDebugger(context);
+
+    // Register REPL
+    registerRepl(context, findVmPath);
+
+    // Show activation message
+    console.log('Pseudocode extension activated');
 }
 
 async function findVmPath(): Promise<string | null> {
