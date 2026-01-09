@@ -5,11 +5,14 @@ CC = gcc
 CFLAGS = -O3 -march=native -flto -fomit-frame-pointer -DNDEBUG
 CFLAGS += -Wall -Wextra
 CFLAGS += -std=gnu11  # Use gnu11 to allow computed gotos
+CFLAGS += -U_FORTIFY_SOURCE  # Disable FORTIFY for now (pre-existing issue)
 
 # Debug build
 DEBUG_FLAGS = -O0 -g -DDEBUG -fsanitize=address,undefined
 
-SOURCES = main.c lexer.c compiler.c vm.c memory.c jit.c tensor.c
+# JIT sources - trace-based JIT compiler
+JIT_SOURCES = jit_trace.c trace_recorder.c trace_regalloc.c trace_codegen.c
+SOURCES = main.c lexer.c compiler.c vm.c memory.c $(JIT_SOURCES) tensor.c
 OBJECTS = $(SOURCES:.c=.o)
 TARGET = pseudo
 

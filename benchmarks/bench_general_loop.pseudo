@@ -1,0 +1,42 @@
+// Benchmark: General loop compilation (not strength-reducible patterns)
+
+fn bench_add_i()
+    // x = x + i pattern - not strength reducible
+    let start = time()
+    let x = 0
+    for i in 0..10000000 do
+        x = x + i
+    end
+    let elapsed = time() - start
+    print("Local x=x+i (10M): " + str(elapsed / 1000000) + " ms, result=" + str(x))
+end
+
+fn bench_mult_add()
+    // x = x * 2 + 1 pattern 
+    let start = time()
+    let x = 1
+    for i in 0..30 do
+        x = x * 2 + 1
+    end
+    let elapsed = time() - start
+    print("x=x*2+1 (30): " + str(elapsed / 1000000) + " ms, result=" + str(x))
+end
+
+fn bench_conditional()
+    // Conditional increment
+    let start = time()
+    let x = 0
+    for i in 0..1000000 do
+        if i < 500000 then
+            x = x + 1
+        end
+    end
+    let elapsed = time() - start
+    print("if i<500K then x++ (1M): " + str(elapsed / 1000000) + " ms, result=" + str(x))
+end
+
+print("=== General Loop Benchmark ===")
+bench_add_i()
+bench_mult_add()
+bench_conditional()
+print("=== Done ===")

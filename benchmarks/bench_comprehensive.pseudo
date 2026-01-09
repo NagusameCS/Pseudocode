@@ -1,0 +1,68 @@
+// Comprehensive JIT Benchmark
+
+print("=== Comprehensive JIT Benchmark ===")
+print("")
+
+// 1. Strength-reducible patterns (should be O(1))
+fn bench_inc()
+    let start = time()
+    let x = 0
+    for i in 0..100000000 do
+        x = x + 1
+    end
+    let elapsed = time() - start
+    print("1. x=x+1 (100M): " + str(elapsed / 1000000) + " ms, x=" + str(x))
+end
+
+fn bench_inc_by_const()
+    let start = time()
+    let x = 0
+    for i in 0..100000000 do
+        x = x + 5
+    end
+    let elapsed = time() - start
+    print("2. x=x+5 (100M): " + str(elapsed / 1000000) + " ms, x=" + str(x))
+end
+
+// 2. General loops (require loop execution)
+fn bench_add_i()
+    let start = time()
+    let x = 0
+    for i in 0..10000000 do
+        x = x + i
+    end
+    let elapsed = time() - start
+    print("3. x=x+i (10M): " + str(elapsed / 1000000) + " ms, x=" + str(x))
+end
+
+fn bench_arith()
+    let start = time()
+    let x = 1
+    for i in 0..10000000 do
+        x = x + i * 2 - 1
+    end
+    let elapsed = time() - start
+    print("4. x=x+i*2-1 (10M): " + str(elapsed / 1000000) + " ms, x=" + str(x))
+end
+
+// 3. Conditionals
+fn bench_conditional()
+    let start = time()
+    let x = 0
+    for i in 0..10000000 do
+        if i < 5000000 then
+            x = x + 1
+        end
+    end
+    let elapsed = time() - start
+    print("5. if i<5M then x++ (10M): " + str(elapsed / 1000000) + " ms, x=" + str(x))
+end
+
+bench_inc()
+bench_inc_by_const()
+bench_add_i()
+bench_arith()
+bench_conditional()
+
+print("")
+print("=== Done ===")

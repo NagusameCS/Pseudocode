@@ -1,0 +1,17 @@
+// Benchmark: Global variables in loop
+
+fn bench_global_loop()
+    // Main loop with global variable (10M iterations)
+    // Note: this uses LOCAL variables inside function
+    let start = time()
+    let x = 0
+    for i in 0..10000000 do
+        x = x + 1
+    end
+    let elapsed = time() - start
+    print("Local x=x+1 (10M): " + str(elapsed / 1000000) + " ms, result=" + str(x))
+end
+
+print("=== Globals Benchmark ===")
+bench_global_loop()
+print("=== Done ===")

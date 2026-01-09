@@ -72,9 +72,21 @@ typedef struct {
     Precedence precedence;
 } ParseRule;
 
+/* Forward declaration of CompileTimeType */
+typedef enum {
+    CTYPE_UNKNOWN,      /* Type not known at compile time */
+    CTYPE_INT,          /* Definitely an integer */
+    CTYPE_NUM,          /* Definitely a float */
+    CTYPE_BOOL,         /* Definitely a boolean */
+    CTYPE_STRING,       /* Definitely a string */
+    CTYPE_NIL,          /* Definitely nil */
+    CTYPE_ARRAY,        /* Definitely an array */
+} CompileTimeType;
+
 typedef struct {
     Token name;
     int depth;
+    CompileTimeType inferred_type;  /* Inferred type for specialization */
 } Local;
 
 typedef enum {
@@ -99,6 +111,60 @@ static VM* compiling_vm;
 
 static Chunk* current_chunk(void) {
     return compiling_chunk;
+}
+
+/* ============ Compile-Time Optimization State ============ */
+
+/* Track the last emitted value for constant folding and type inference */
+typedef struct {
+    bool is_constant;       /* Was last emit a constant? */
+    Value value;            /* The constant value */
+    size_t bytecode_pos;    /* Position in bytecode (to remove if folded) */
+    uint8_t const_idx;      /* Constant pool index */
+    CompileTimeType type;   /* Inferred type (for type specialization) */
+} LastEmit;
+
+static LastEmit last_emit = {false, 0, 0, 0, CTYPE_UNKNOWN};
+static LastEmit second_last_emit = {false, 0, 0, 0, CTYPE_UNKNOWN};
+
+static void reset_last_emit(void) {
+    second_last_emit = last_emit;
+    last_emit.is_constant = false;
+    last_emit.type = CTYPE_UNKNOWN;
+}
+
+static void track_constant(Value value, uint8_t idx) {
+    second_last_emit = last_emit;
+    last_emit.is_constant = true;
+    last_emit.value = value;
+    last_emit.bytecode_pos = current_chunk()->count - 2;  /* OP_CONST + idx */
+    last_emit.const_idx = idx;
+    /* Infer type from constant value */
+    if (IS_INT(value)) {
+        last_emit.type = CTYPE_INT;
+    } else if (IS_NUM(value)) {
+        last_emit.type = CTYPE_NUM;
+    } else if (IS_BOOL(value)) {
+        last_emit.type = CTYPE_BOOL;
+    } else if (IS_NIL(value)) {
+        last_emit.type = CTYPE_NIL;
+    } else {
+        last_emit.type = CTYPE_UNKNOWN;
+    }
+}
+
+/* Track a non-constant integer value (e.g., result of integer operation) */
+static void track_int_result(void) {
+    second_last_emit = last_emit;
+    last_emit.is_constant = false;
+    last_emit.type = CTYPE_INT;
+}
+
+/* Track a non-constant boolean value */
+static void track_bool_result(void) {
+    second_last_emit = last_emit;
+    last_emit.is_constant = false;
+    last_emit.type = CTYPE_BOOL;
 }
 
 /* ============ Error Handling ============ */
@@ -265,7 +331,15 @@ static uint8_t make_constant(Value value) {
 }
 
 static void emit_constant(Value value) {
+    uint8_t idx = make_constant(value);
+    emit_bytes(OP_CONST, idx);
+    track_constant(value, idx);
+}
+
+/* Emit constant without tracking (used for folded results) */
+static void emit_constant_untracked(Value value) {
     emit_bytes(OP_CONST, make_constant(value));
+    reset_last_emit();
 }
 
 static void emit_return(void) {
@@ -339,6 +413,7 @@ static void add_local(Token name) {
     Local* local = &current->locals[current->local_count++];
     local->name = name;
     local->depth = -1; /* Mark uninitialized */
+    local->inferred_type = CTYPE_UNKNOWN;  /* Will be set on first assignment */
 }
 
 static void declare_variable(void) {
@@ -412,10 +487,29 @@ static void number(bool can_assign) {
             /* SUPERINSTRUCTION: Use specialized opcodes for small constants */
             if (v == 0) {
                 emit_byte(OP_CONST_0);
+                /* Track for constant folding and type inference */
+                second_last_emit = last_emit;
+                last_emit.is_constant = true;
+                last_emit.value = val_int(0);
+                last_emit.bytecode_pos = current_chunk()->count - 1;
+                last_emit.const_idx = 0;
+                last_emit.type = CTYPE_INT;
             } else if (v == 1) {
                 emit_byte(OP_CONST_1);
+                second_last_emit = last_emit;
+                last_emit.is_constant = true;
+                last_emit.value = val_int(1);
+                last_emit.bytecode_pos = current_chunk()->count - 1;
+                last_emit.const_idx = 0;
+                last_emit.type = CTYPE_INT;
             } else if (v == 2) {
                 emit_byte(OP_CONST_2);
+                second_last_emit = last_emit;
+                last_emit.is_constant = true;
+                last_emit.value = val_int(2);
+                last_emit.bytecode_pos = current_chunk()->count - 1;
+                last_emit.const_idx = 0;
+                last_emit.type = CTYPE_INT;
             } else {
                 emit_constant(val_int(v));
             }
@@ -478,7 +572,12 @@ static void named_variable(Token name, bool can_assign) {
     if (can_assign && match(TOKEN_ASSIGN)) {
         /* Parse RHS and emit assignment */
         expression();
+        /* Update local's inferred type from the RHS */
+        if (arg != -1 && get_op == OP_SET_LOCAL) {
+            current->locals[arg].inferred_type = last_emit.type;
+        }
         emit_bytes(set_op, (uint8_t)arg);
+        reset_last_emit();  /* Assignment result is not a constant */
     } else {
         /* SUPERINSTRUCTION: Use specialized opcodes for common local slots */
         if (get_op == OP_GET_LOCAL && arg <= 3) {
@@ -490,6 +589,14 @@ static void named_variable(Token name, bool can_assign) {
             }
         } else {
             emit_bytes(get_op, (uint8_t)arg);
+        }
+        /* Propagate local's inferred type */
+        if (arg != -1 && get_op == OP_GET_LOCAL) {
+            second_last_emit = last_emit;
+            last_emit.is_constant = false;
+            last_emit.type = current->locals[arg].inferred_type;
+        } else {
+            reset_last_emit();  /* Global variable or unknown - type unknown */
         }
     }
 }
@@ -1606,8 +1713,21 @@ static void variable(bool can_assign) {
 static void literal(bool can_assign) {
     (void)can_assign;
     switch (parser.previous.type) {
-        case TOKEN_FALSE: emit_byte(OP_FALSE); break;
-        case TOKEN_TRUE: emit_byte(OP_TRUE); break;
+        case TOKEN_FALSE: 
+            emit_byte(OP_FALSE); 
+            /* Track for constant folding */
+            second_last_emit = last_emit;
+            last_emit.is_constant = true;
+            last_emit.value = VAL_FALSE;
+            last_emit.bytecode_pos = current_chunk()->count - 1;
+            break;
+        case TOKEN_TRUE: 
+            emit_byte(OP_TRUE); 
+            second_last_emit = last_emit;
+            last_emit.is_constant = true;
+            last_emit.value = VAL_TRUE;
+            last_emit.bytecode_pos = current_chunk()->count - 1;
+            break;
         default: return;
     }
 }
@@ -1617,6 +1737,42 @@ static void unary(bool can_assign) {
     TokenType op_type = parser.previous.type;
     
     parse_precedence(PREC_UNARY);
+    
+    /* ============ Constant Folding for Unary ============ */
+    if (last_emit.is_constant) {
+        Value v = last_emit.value;
+        
+        if (op_type == TOKEN_MINUS && (IS_NUM(v) || IS_INT(v))) {
+            double n = IS_INT(v) ? (double)as_int(v) : as_num(v);
+            double result = -n;
+            
+            /* Remove the constant instruction */
+            current_chunk()->count = last_emit.bytecode_pos;
+            
+            /* Emit negated value */
+            if (result == (double)(int32_t)result && result >= INT32_MIN && result <= INT32_MAX) {
+                emit_constant(val_int((int32_t)result));
+            } else {
+                emit_constant(val_num(result));
+            }
+            return;
+        }
+        
+        if (op_type == TOKEN_NOT) {
+            bool result = !is_truthy(v);
+            
+            /* Remove the constant instruction */
+            current_chunk()->count = last_emit.bytecode_pos;
+            
+            /* Emit boolean result */
+            emit_byte(result ? OP_TRUE : OP_FALSE);
+            reset_last_emit();
+            return;
+        }
+    }
+    
+    /* Normal emission */
+    reset_last_emit();
     
     switch (op_type) {
         case TOKEN_MINUS: emit_byte(OP_NEG); break;
@@ -1629,9 +1785,160 @@ static void binary(bool can_assign) {
     (void)can_assign;
     TokenType op_type = parser.previous.type;
     ParseRule* rule = get_rule(op_type);
+    
+    /* Save the state of the first operand before parsing the second */
+    LastEmit first_operand = last_emit;
+    size_t first_bytecode_pos = first_operand.bytecode_pos;
+    
     parse_precedence((Precedence)(rule->precedence + 1));
     
+    /* After parsing second operand, check if both operands are constants */
+    LastEmit second_operand = last_emit;
+    
     Chunk* chunk = current_chunk();
+    
+    /* ============ Constant Folding ============ */
+    /* Fold CONST a CONST b OP -> CONST (a op b) at compile time */
+    if (first_operand.is_constant && second_operand.is_constant) {
+        Value v1 = first_operand.value;
+        Value v2 = second_operand.value;
+        
+        /* Only fold numeric constants */
+        bool is_num1 = IS_NUM(v1) || IS_INT(v1);
+        bool is_num2 = IS_NUM(v2) || IS_INT(v2);
+        
+        if (is_num1 && is_num2) {
+            double n1 = IS_INT(v1) ? (double)as_int(v1) : as_num(v1);
+            double n2 = IS_INT(v2) ? (double)as_int(v2) : as_num(v2);
+            double result = 0;
+            bool can_fold = true;
+            bool is_bool = false;
+            bool bool_result = false;
+            
+            switch (op_type) {
+                case TOKEN_PLUS:  result = n1 + n2; break;
+                case TOKEN_MINUS: result = n1 - n2; break;
+                case TOKEN_STAR:  result = n1 * n2; break;
+                case TOKEN_SLASH:
+                    if (n2 != 0) result = n1 / n2;
+                    else can_fold = false;
+                    break;
+                case TOKEN_PERCENT:
+                    if (n2 != 0) result = (double)((int64_t)n1 % (int64_t)n2);
+                    else can_fold = false;
+                    break;
+                case TOKEN_LT:  is_bool = true; bool_result = n1 < n2; break;
+                case TOKEN_GT:  is_bool = true; bool_result = n1 > n2; break;
+                case TOKEN_LTE: is_bool = true; bool_result = n1 <= n2; break;
+                case TOKEN_GTE: is_bool = true; bool_result = n1 >= n2; break;
+                case TOKEN_EQ:  is_bool = true; bool_result = n1 == n2; break;
+                case TOKEN_NEQ: is_bool = true; bool_result = n1 != n2; break;
+                case TOKEN_BAND: {
+                    int64_t i1 = (int64_t)n1, i2 = (int64_t)n2;
+                    result = (double)(i1 & i2);
+                    break;
+                }
+                case TOKEN_BOR: {
+                    int64_t i1 = (int64_t)n1, i2 = (int64_t)n2;
+                    result = (double)(i1 | i2);
+                    break;
+                }
+                case TOKEN_BXOR: {
+                    int64_t i1 = (int64_t)n1, i2 = (int64_t)n2;
+                    result = (double)(i1 ^ i2);
+                    break;
+                }
+                case TOKEN_SHL: {
+                    int64_t i1 = (int64_t)n1, i2 = (int64_t)n2;
+                    result = (double)(i1 << i2);
+                    break;
+                }
+                case TOKEN_SHR: {
+                    int64_t i1 = (int64_t)n1, i2 = (int64_t)n2;
+                    result = (double)(i1 >> i2);
+                    break;
+                }
+                default: can_fold = false; break;
+            }
+            
+            if (can_fold && first_bytecode_pos <= chunk->count) {
+                /* Rewind to before both constants were emitted */
+                chunk->count = first_bytecode_pos;
+                
+                /* Emit the folded result */
+                if (is_bool) {
+                    emit_byte(bool_result ? OP_TRUE : OP_FALSE);
+                    reset_last_emit();
+                } else {
+                    /* Try to keep as integer if possible */
+                    if (result == (double)(int32_t)result && result >= INT32_MIN && result <= INT32_MAX) {
+                        emit_constant(val_int((int32_t)result));
+                    } else {
+                        emit_constant(val_num(result));
+                    }
+                }
+                return;
+            }
+        }
+    }
+    
+    /* ============ Type Specialization ============ */
+    /* Emit integer-specialized opcodes when both operands are known integers */
+    bool both_int = (first_operand.type == CTYPE_INT && second_operand.type == CTYPE_INT);
+    
+    if (both_int) {
+        switch (op_type) {
+            case TOKEN_PLUS:
+                emit_byte(OP_ADD_II);
+                track_int_result();
+                return;
+            case TOKEN_MINUS:
+                emit_byte(OP_SUB_II);
+                track_int_result();
+                return;
+            case TOKEN_STAR:
+                emit_byte(OP_MUL_II);
+                track_int_result();
+                return;
+            case TOKEN_SLASH:
+                emit_byte(OP_DIV_II);
+                track_int_result();
+                return;
+            case TOKEN_PERCENT:
+                emit_byte(OP_MOD_II);
+                track_int_result();
+                return;
+            case TOKEN_LT:
+                emit_byte(OP_LT_II);
+                track_bool_result();
+                return;
+            case TOKEN_GT:
+                emit_byte(OP_GT_II);
+                track_bool_result();
+                return;
+            case TOKEN_LTE:
+                emit_byte(OP_LTE_II);
+                track_bool_result();
+                return;
+            case TOKEN_GTE:
+                emit_byte(OP_GTE_II);
+                track_bool_result();
+                return;
+            case TOKEN_EQ:
+                emit_byte(OP_EQ_II);
+                track_bool_result();
+                return;
+            case TOKEN_NEQ:
+                emit_byte(OP_NEQ_II);
+                track_bool_result();
+                return;
+            default:
+                break;  /* Fall through to generic opcodes */
+        }
+    }
+    
+    /* ============ Normal code emission (no folding or specialization) ============ */
+    reset_last_emit();  /* After binary op, result is not a constant */
     
     switch (op_type) {
         case TOKEN_PLUS:
@@ -1776,7 +2083,7 @@ ParseRule rules[] = {
     [TOKEN_NOT]       = {unary,       NULL,    PREC_NONE},
     [TOKEN_TRUE]      = {literal,     NULL,    PREC_NONE},
     [TOKEN_FALSE]     = {literal,     NULL,    PREC_NONE},
-    [TOKEN_RANGE]     = {NULL,        range_expr, PREC_TERM},
+    [TOKEN_RANGE]     = {NULL,        range_expr, PREC_COMPARISON},
     [TOKEN_LET]       = {NULL,        NULL,    PREC_NONE},
     [TOKEN_CONST]     = {NULL,        NULL,    PREC_NONE},
     [TOKEN_FN]        = {NULL,        NULL,    PREC_NONE},
@@ -1912,7 +2219,7 @@ static void for_statement(void) {
     consume(TOKEN_IN, "Expect 'in' after variable.");
     
     /* Parse the start expression (before ..) */
-    parse_precedence(PREC_TERM);  /* Parse up to but not including .. */
+    parse_precedence(PREC_SHIFT);  /* Parse up to but not including .. */
     
     /* Check if this is a range expression for the fast path */
     if (match(TOKEN_RANGE)) {
@@ -2114,6 +2421,9 @@ static void statement(void) {
 static void var_declaration(void) {
     uint8_t global = parse_variable("Expect variable name.");
     
+    /* Track which local we're defining (before expression parsing) */
+    int local_slot = current->scope_depth > 0 ? current->local_count - 1 : -1;
+    
     /* Optional type annotation */
     if (match(TOKEN_COLON)) {
         consume(TOKEN_IDENT, "Expect type name.");
@@ -2121,6 +2431,11 @@ static void var_declaration(void) {
     
     consume(TOKEN_ASSIGN, "Expect '=' after variable name.");
     expression();
+    
+    /* Infer local type from initializer expression */
+    if (local_slot >= 0) {
+        current->locals[local_slot].inferred_type = last_emit.type;
+    }
     
     define_variable(global);
 }
@@ -2387,6 +2702,13 @@ bool compile(const char* source, Chunk* chunk, VM* vm) {
     
     parser.had_error = false;
     parser.panic_mode = false;
+    
+    /* Reset constant folding state */
+    last_emit.is_constant = false;
+    last_emit.value = 0;
+    last_emit.bytecode_pos = 0;
+    last_emit.const_idx = 0;
+    second_last_emit.is_constant = false;
     
     advance();
     

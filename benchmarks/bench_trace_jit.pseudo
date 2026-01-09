@@ -1,0 +1,86 @@
+// Tracing JIT Benchmark
+// These loops should be JIT compiled by the tracing JIT
+// Note: Wrapped in functions so variables are locals (not globals)
+
+print("=== Tracing JIT Benchmark ===")
+print("(All loops should trigger JIT compilation)")
+print("")
+
+// Benchmark 1: Empty loop (x = x + 1)
+fn bench_empty()
+    let x = 0
+    for i in 0..100000000 do
+        x = x + 1
+    end
+    return x
+end
+
+let start = time()
+let result1 = bench_empty()
+let elapsed = (time() - start) / 1000000
+print("1. Empty loop (x=x+1): " + str(elapsed) + " ms, x=" + str(result1))
+// C baseline: ~2ms
+
+print("")
+
+// Benchmark 2: Arithmetic (x = x * 3 + 7)
+fn bench_arith()
+    let x = 1
+    for i in 0..100000000 do
+        x = x * 3 + 7
+    end
+    return x
+end
+
+start = time()
+let result2 = bench_arith()
+elapsed = (time() - start) / 1000000
+print("2. Arithmetic loop (x=x*3+7): " + str(elapsed) + " ms")
+// C baseline: ~200ms
+
+print("")
+
+// Benchmark 3: Function call (x = add_one(x))
+fn add_one(n)
+    return n + 1
+end
+
+fn bench_func()
+    let x = 0
+    for i in 0..10000000 do
+        x = add_one(x)
+    end
+    return x
+end
+
+start = time()
+let result3 = bench_func()
+elapsed = (time() - start) / 1000000
+print("3. Function call (x=add_one(x)): " + str(elapsed) + " ms, x=" + str(result3))
+// C baseline: ~2ms
+
+print("")
+
+// Benchmark 4: Branching (if i%2==0 then x=x+1 else x=x-1)
+fn bench_branch()
+    let x = 0
+    for i in 0..100000000 do
+        if i % 2 == 0 then
+            x = x + 1
+        else
+            x = x - 1
+        end
+    end
+    return x
+end
+
+start = time()
+let result4 = bench_branch()
+elapsed = (time() - start) / 1000000
+print("4. Branching loop: " + str(elapsed) + " ms, x=" + str(result4))
+// C baseline: ~65ms
+
+print("")
+print("=== Done ===")
+print("C baselines: 1=2ms, 2=200ms, 3=2ms, 4=65ms")
+print("Target: within 2x of C for full JIT")

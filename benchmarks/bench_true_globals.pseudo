@@ -1,0 +1,9 @@
+// Benchmark: True global variables (not inside function)
+
+x = 0
+start = time()
+for i in 0..10000000 do
+    x = x + 1
+end
+elapsed = time() - start
+print("True global x=x+1 (10M): " + str(elapsed / 1000000) + " ms, result=" + str(x))

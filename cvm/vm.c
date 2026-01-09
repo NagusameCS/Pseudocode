@@ -6,7 +6,7 @@
  * Licensed under the MIT License
  */
 
-#define _POSIX_C_SOURCE 200809L  /* For clock_gettime, popen, etc */
+#define _POSIX_C_SOURCE 200809L /* For clock_gettime, popen, etc */
 #define _GNU_SOURCE
 
 #include "pseudo.h"
@@ -26,359 +26,451 @@
 
 /* Use computed gotos if available (GCC/Clang) */
 #if defined(__GNUC__) || defined(__clang__)
-    #define USE_COMPUTED_GOTO 1
+#define USE_COMPUTED_GOTO 1
 #else
-    #define USE_COMPUTED_GOTO 0
+#define USE_COMPUTED_GOTO 0
 #endif
 
 /* ============ VM Initialization ============ */
 
-void vm_init(VM* vm) {
+void vm_init(VM *vm)
+{
     vm->sp = vm->stack;
     vm->frame_count = 0;
     vm->objects = NULL;
     vm->bytes_allocated = 0;
     vm->next_gc = 1024 * 1024;
-    
+
     vm->globals.keys = NULL;
     vm->globals.values = NULL;
     vm->globals.count = 0;
     vm->globals.capacity = 0;
-    
+
     chunk_init(&vm->chunk);
 }
 
-void vm_free(VM* vm) {
+void vm_free(VM *vm)
+{
     /* Free all objects */
-    Obj* object = vm->objects;
-    while (object != NULL) {
-        Obj* next = object->next;
+    Obj *object = vm->objects;
+    while (object != NULL)
+    {
+        Obj *next = object->next;
         free_object(vm, object);
         object = next;
     }
-    
+
     /* Free globals table */
-    if (vm->globals.keys) free(vm->globals.keys);
-    if (vm->globals.values) free(vm->globals.values);
-    
+    if (vm->globals.keys)
+        free(vm->globals.keys);
+    if (vm->globals.values)
+        free(vm->globals.values);
+
     chunk_free(&vm->chunk);
 }
 
 /* ============ Globals Hash Table ============ */
 
-static uint32_t find_entry(ObjString** keys, uint32_t capacity, ObjString* key) {
+static uint32_t find_entry(ObjString **keys, uint32_t capacity, ObjString *key)
+{
     uint32_t index = key->hash & (capacity - 1);
-    
-    for (;;) {
-        ObjString* entry = keys[index];
-        
-        if (entry == NULL || entry == key) {
+
+    for (;;)
+    {
+        ObjString *entry = keys[index];
+
+        if (entry == NULL || entry == key)
+        {
             return index;
         }
-        
+
         /* Check string equality for hash collision */
-        if (entry->length == key->length && 
+        if (entry->length == key->length &&
             entry->hash == key->hash &&
-            memcmp(entry->chars, key->chars, key->length) == 0) {
+            memcmp(entry->chars, key->chars, key->length) == 0)
+        {
             return index;
         }
-        
+
         index = (index + 1) & (capacity - 1);
     }
 }
 
-static void adjust_capacity(VM* vm, uint32_t new_capacity) {
-    ObjString** new_keys = (ObjString**)calloc(new_capacity, sizeof(ObjString*));
-    Value* new_values = (Value*)malloc(new_capacity * sizeof(Value));
-    
+static void adjust_capacity(VM *vm, uint32_t new_capacity)
+{
+    ObjString **new_keys = (ObjString **)calloc(new_capacity, sizeof(ObjString *));
+    Value *new_values = (Value *)malloc(new_capacity * sizeof(Value));
+
     /* Rehash existing entries */
-    for (uint32_t i = 0; i < vm->globals.capacity; i++) {
-        ObjString* key = vm->globals.keys[i];
-        if (key == NULL) continue;
-        
+    for (uint32_t i = 0; i < vm->globals.capacity; i++)
+    {
+        ObjString *key = vm->globals.keys[i];
+        if (key == NULL)
+            continue;
+
         uint32_t index = find_entry(new_keys, new_capacity, key);
         new_keys[index] = key;
         new_values[index] = vm->globals.values[i];
     }
-    
+
     free(vm->globals.keys);
     free(vm->globals.values);
-    
+
     vm->globals.keys = new_keys;
     vm->globals.values = new_values;
     vm->globals.capacity = new_capacity;
 }
 
-static bool table_get(VM* vm, ObjString* key, Value* value) {
-    if (vm->globals.count == 0) return false;
-    
+static bool table_get(VM *vm, ObjString *key, Value *value)
+{
+    if (vm->globals.count == 0)
+        return false;
+
     uint32_t index = find_entry(vm->globals.keys, vm->globals.capacity, key);
-    if (vm->globals.keys[index] == NULL) return false;
-    
+    if (vm->globals.keys[index] == NULL)
+        return false;
+
     *value = vm->globals.values[index];
     return true;
 }
 
-static void table_set(VM* vm, ObjString* key, Value value) {
-    if (vm->globals.count + 1 > vm->globals.capacity * 0.75) {
+static void table_set(VM *vm, ObjString *key, Value value)
+{
+    if (vm->globals.count + 1 > vm->globals.capacity * 0.75)
+    {
         uint32_t new_cap = vm->globals.capacity < 8 ? 8 : vm->globals.capacity * 2;
         adjust_capacity(vm, new_cap);
     }
-    
+
     uint32_t index = find_entry(vm->globals.keys, vm->globals.capacity, key);
     bool is_new = (vm->globals.keys[index] == NULL);
-    
+
     vm->globals.keys[index] = key;
     vm->globals.values[index] = value;
-    
-    if (is_new) vm->globals.count++;
+
+    if (is_new)
+        vm->globals.count++;
 }
 
 /* ============ Runtime Error ============ */
 
-static void runtime_error(VM* vm, const char* format, ...) {
+static void runtime_error(VM *vm, const char *format, ...)
+{
     va_list args;
     va_start(args, format);
     vfprintf(stderr, format, args);
     va_end(args);
     fputs("\n", stderr);
-    
+
     /* Print stack trace */
-    for (int i = vm->frame_count - 1; i >= 0; i--) {
-        CallFrame* frame = &vm->frames[i];
-        ObjFunction* function = frame->function;
+    for (int i = vm->frame_count - 1; i >= 0; i--)
+    {
+        CallFrame *frame = &vm->frames[i];
+        ObjFunction *function = frame->function;
         size_t instruction = frame->ip - vm->chunk.code - 1;
         fprintf(stderr, "[line %d] in ", vm->chunk.lines[instruction]);
-        if (function->name == NULL) {
+        if (function->name == NULL)
+        {
             fprintf(stderr, "script\n");
-        } else {
+        }
+        else
+        {
             fprintf(stderr, "%s()\n", function->name->chars);
         }
     }
-    
+
     vm->sp = vm->stack;
     vm->frame_count = 0;
 }
 
 /* ============ JSON Parser ============ */
 
-static void json_skip_whitespace(const char** json, const char* end) {
-    while (*json < end && (**json == ' ' || **json == '\t' || **json == '\n' || **json == '\r')) {
+static void json_skip_whitespace(const char **json, const char *end)
+{
+    while (*json < end && (**json == ' ' || **json == '\t' || **json == '\n' || **json == '\r'))
+    {
         (*json)++;
     }
 }
 
-static Value json_parse_value(VM* vm, const char** json, const char* end);
+static Value json_parse_value(VM *vm, const char **json, const char *end);
 
-static Value json_parse_string(VM* vm, const char** json, const char* end) {
-    if (*json >= end || **json != '"') return VAL_NIL;
-    (*json)++;  /* Skip opening quote */
-    
-    const char* start = *json;
+static Value json_parse_string(VM *vm, const char **json, const char *end)
+{
+    if (*json >= end || **json != '"')
+        return VAL_NIL;
+    (*json)++; /* Skip opening quote */
+
+    const char *start = *json;
     size_t len = 0;
-    
+
     /* First pass: count length (handling escapes) */
-    while (*json < end && **json != '"') {
-        if (**json == '\\' && *json + 1 < end) {
+    while (*json < end && **json != '"')
+    {
+        if (**json == '\\' && *json + 1 < end)
+        {
             (*json)++;
         }
         (*json)++;
         len++;
     }
-    
+
     /* Allocate and copy */
-    char* buffer = malloc(len + 1);
-    const char* src = start;
+    char *buffer = malloc(len + 1);
+    const char *src = start;
     size_t dst_idx = 0;
-    
-    while (src < *json) {
-        if (*src == '\\' && src + 1 < *json) {
+
+    while (src < *json)
+    {
+        if (*src == '\\' && src + 1 < *json)
+        {
             src++;
-            switch (*src) {
-                case 'n': buffer[dst_idx++] = '\n'; break;
-                case 't': buffer[dst_idx++] = '\t'; break;
-                case 'r': buffer[dst_idx++] = '\r'; break;
-                case '"': buffer[dst_idx++] = '"'; break;
-                case '\\': buffer[dst_idx++] = '\\'; break;
-                default: buffer[dst_idx++] = *src; break;
+            switch (*src)
+            {
+            case 'n':
+                buffer[dst_idx++] = '\n';
+                break;
+            case 't':
+                buffer[dst_idx++] = '\t';
+                break;
+            case 'r':
+                buffer[dst_idx++] = '\r';
+                break;
+            case '"':
+                buffer[dst_idx++] = '"';
+                break;
+            case '\\':
+                buffer[dst_idx++] = '\\';
+                break;
+            default:
+                buffer[dst_idx++] = *src;
+                break;
             }
-        } else {
+        }
+        else
+        {
             buffer[dst_idx++] = *src;
         }
         src++;
     }
     buffer[dst_idx] = '\0';
-    
-    if (*json < end && **json == '"') (*json)++;  /* Skip closing quote */
-    
-    ObjString* str = copy_string(vm, buffer, dst_idx);
+
+    if (*json < end && **json == '"')
+        (*json)++; /* Skip closing quote */
+
+    ObjString *str = copy_string(vm, buffer, dst_idx);
     free(buffer);
     return val_obj(str);
 }
 
-static Value json_parse_number(VM* vm, const char** json, const char* end) {
+static Value json_parse_number(VM *vm, const char **json, const char *end)
+{
     (void)vm;
-    const char* start = *json;
+    const char *start = *json;
     bool is_float = false;
-    
-    if (**json == '-') (*json)++;
-    while (*json < end && (**json >= '0' && **json <= '9')) (*json)++;
-    
-    if (*json < end && **json == '.') {
+
+    if (**json == '-')
+        (*json)++;
+    while (*json < end && (**json >= '0' && **json <= '9'))
+        (*json)++;
+
+    if (*json < end && **json == '.')
+    {
         is_float = true;
         (*json)++;
-        while (*json < end && (**json >= '0' && **json <= '9')) (*json)++;
+        while (*json < end && (**json >= '0' && **json <= '9'))
+            (*json)++;
     }
-    
-    if (*json < end && (**json == 'e' || **json == 'E')) {
+
+    if (*json < end && (**json == 'e' || **json == 'E'))
+    {
         is_float = true;
         (*json)++;
-        if (*json < end && (**json == '+' || **json == '-')) (*json)++;
-        while (*json < end && (**json >= '0' && **json <= '9')) (*json)++;
+        if (*json < end && (**json == '+' || **json == '-'))
+            (*json)++;
+        while (*json < end && (**json >= '0' && **json <= '9'))
+            (*json)++;
     }
-    
-    char* num_str = malloc(*json - start + 1);
+
+    char *num_str = malloc(*json - start + 1);
     memcpy(num_str, start, *json - start);
     num_str[*json - start] = '\0';
-    
+
     double val = atof(num_str);
     free(num_str);
-    
-    if (!is_float && val == (int32_t)val) {
+
+    if (!is_float && val == (int32_t)val)
+    {
         return val_int((int32_t)val);
     }
     return val_num(val);
 }
 
-static Value json_parse_array(VM* vm, const char** json, const char* end) {
-    if (*json >= end || **json != '[') return VAL_NIL;
-    (*json)++;  /* Skip '[' */
-    
-    ObjArray* arr = (ObjArray*)pseudo_realloc(vm, NULL, 0, sizeof(ObjArray));
+static Value json_parse_array(VM *vm, const char **json, const char *end)
+{
+    if (*json >= end || **json != '[')
+        return VAL_NIL;
+    (*json)++; /* Skip '[' */
+
+    ObjArray *arr = (ObjArray *)pseudo_realloc(vm, NULL, 0, sizeof(ObjArray));
     arr->obj.type = OBJ_ARRAY;
     arr->obj.next = vm->objects;
     arr->obj.marked = false;
-    vm->objects = (Obj*)arr;
+    vm->objects = (Obj *)arr;
     arr->values = NULL;
     arr->count = 0;
     arr->capacity = 0;
-    
+
     json_skip_whitespace(json, end);
-    
-    if (*json < end && **json == ']') {
+
+    if (*json < end && **json == ']')
+    {
         (*json)++;
         return val_obj(arr);
     }
-    
-    while (*json < end) {
+
+    while (*json < end)
+    {
         json_skip_whitespace(json, end);
         Value item = json_parse_value(vm, json, end);
-        
+
         /* Add to array */
-        if (arr->count >= arr->capacity) {
+        if (arr->count >= arr->capacity)
+        {
             uint32_t new_cap = arr->capacity < 8 ? 8 : arr->capacity * 2;
             arr->values = realloc(arr->values, sizeof(Value) * new_cap);
             arr->capacity = new_cap;
         }
         arr->values[arr->count++] = item;
-        
+
         json_skip_whitespace(json, end);
-        if (*json >= end) break;
-        if (**json == ']') { (*json)++; break; }
-        if (**json == ',') (*json)++;
+        if (*json >= end)
+            break;
+        if (**json == ']')
+        {
+            (*json)++;
+            break;
+        }
+        if (**json == ',')
+            (*json)++;
     }
-    
+
     return val_obj(arr);
 }
 
-static Value json_parse_object(VM* vm, const char** json, const char* end) {
-    if (*json >= end || **json != '{') return VAL_NIL;
-    (*json)++;  /* Skip '{' */
-    
-    ObjDict* dict = (ObjDict*)pseudo_realloc(vm, NULL, 0, sizeof(ObjDict));
+static Value json_parse_object(VM *vm, const char **json, const char *end)
+{
+    if (*json >= end || **json != '{')
+        return VAL_NIL;
+    (*json)++; /* Skip '{' */
+
+    ObjDict *dict = (ObjDict *)pseudo_realloc(vm, NULL, 0, sizeof(ObjDict));
     dict->obj.type = OBJ_DICT;
     dict->obj.next = vm->objects;
     dict->obj.marked = false;
-    vm->objects = (Obj*)dict;
+    vm->objects = (Obj *)dict;
     dict->keys = NULL;
     dict->values = NULL;
     dict->count = 0;
     dict->capacity = 0;
-    
+
     json_skip_whitespace(json, end);
-    
-    if (*json < end && **json == '}') {
+
+    if (*json < end && **json == '}')
+    {
         (*json)++;
         return val_obj(dict);
     }
-    
-    while (*json < end) {
+
+    while (*json < end)
+    {
         json_skip_whitespace(json, end);
-        
+
         /* Parse key (must be string) */
-        if (*json >= end || **json != '"') break;
+        if (*json >= end || **json != '"')
+            break;
         Value key = json_parse_string(vm, json, end);
-        if (!IS_STRING(key)) break;
-        
+        if (!IS_STRING(key))
+            break;
+
         json_skip_whitespace(json, end);
-        if (*json >= end || **json != ':') break;
-        (*json)++;  /* Skip ':' */
-        
+        if (*json >= end || **json != ':')
+            break;
+        (*json)++; /* Skip ':' */
+
         json_skip_whitespace(json, end);
         Value value = json_parse_value(vm, json, end);
-        
+
         /* Add to dict */
-        if (dict->count >= dict->capacity) {
+        if (dict->count >= dict->capacity)
+        {
             uint32_t new_cap = dict->capacity < 8 ? 8 : dict->capacity * 2;
-            dict->keys = realloc(dict->keys, sizeof(ObjString*) * new_cap);
+            dict->keys = realloc(dict->keys, sizeof(ObjString *) * new_cap);
             dict->values = realloc(dict->values, sizeof(Value) * new_cap);
             dict->capacity = new_cap;
         }
         dict->keys[dict->count] = AS_STRING(key);
         dict->values[dict->count] = value;
         dict->count++;
-        
+
         json_skip_whitespace(json, end);
-        if (*json >= end) break;
-        if (**json == '}') { (*json)++; break; }
-        if (**json == ',') (*json)++;
+        if (*json >= end)
+            break;
+        if (**json == '}')
+        {
+            (*json)++;
+            break;
+        }
+        if (**json == ',')
+            (*json)++;
     }
-    
+
     return val_obj(dict);
 }
 
-static Value json_parse_value(VM* vm, const char** json, const char* end) {
+static Value json_parse_value(VM *vm, const char **json, const char *end)
+{
     json_skip_whitespace(json, end);
-    if (*json >= end) return VAL_NIL;
-    
+    if (*json >= end)
+        return VAL_NIL;
+
     char c = **json;
-    
-    if (c == '"') return json_parse_string(vm, json, end);
-    if (c == '[') return json_parse_array(vm, json, end);
-    if (c == '{') return json_parse_object(vm, json, end);
-    if (c == '-' || (c >= '0' && c <= '9')) return json_parse_number(vm, json, end);
-    
+
+    if (c == '"')
+        return json_parse_string(vm, json, end);
+    if (c == '[')
+        return json_parse_array(vm, json, end);
+    if (c == '{')
+        return json_parse_object(vm, json, end);
+    if (c == '-' || (c >= '0' && c <= '9'))
+        return json_parse_number(vm, json, end);
+
     /* Keywords */
-    if (end - *json >= 4 && memcmp(*json, "true", 4) == 0) {
+    if (end - *json >= 4 && memcmp(*json, "true", 4) == 0)
+    {
         *json += 4;
         return VAL_TRUE;
     }
-    if (end - *json >= 5 && memcmp(*json, "false", 5) == 0) {
+    if (end - *json >= 5 && memcmp(*json, "false", 5) == 0)
+    {
         *json += 5;
         return VAL_FALSE;
     }
-    if (end - *json >= 4 && memcmp(*json, "null", 4) == 0) {
+    if (end - *json >= 4 && memcmp(*json, "null", 4) == 0)
+    {
         *json += 4;
         return VAL_NIL;
     }
-    
+
     return VAL_NIL;
 }
 
 /* ============ JSON Stringify ============ */
 
-static void json_stringify_append(char** buf, size_t* len, size_t* cap, const char* str, size_t slen) {
-    while (*len + slen + 1 > *cap) {
+static void json_stringify_append(char **buf, size_t *len, size_t *cap, const char *str, size_t slen)
+{
+    while (*len + slen + 1 > *cap)
+    {
         *cap = *cap < 64 ? 64 : *cap * 2;
         *buf = realloc(*buf, *cap);
     }
@@ -387,136 +479,190 @@ static void json_stringify_append(char** buf, size_t* len, size_t* cap, const ch
     (*buf)[*len] = '\0';
 }
 
-static void json_stringify_value_impl(VM* vm, Value val, char** buf, size_t* len, size_t* cap) {
-    if (IS_NIL(val)) {
+static void json_stringify_value_impl(VM *vm, Value val, char **buf, size_t *len, size_t *cap)
+{
+    if (IS_NIL(val))
+    {
         json_stringify_append(buf, len, cap, "null", 4);
-    } else if (IS_BOOL(val)) {
-        if (IS_TRUE(val)) {
+    }
+    else if (IS_BOOL(val))
+    {
+        if (IS_TRUE(val))
+        {
             json_stringify_append(buf, len, cap, "true", 4);
-        } else {
+        }
+        else
+        {
             json_stringify_append(buf, len, cap, "false", 5);
         }
-    } else if (IS_INT(val)) {
+    }
+    else if (IS_INT(val))
+    {
         char num[32];
         int n = snprintf(num, sizeof(num), "%d", as_int(val));
         json_stringify_append(buf, len, cap, num, n);
-    } else if (IS_NUM(val)) {
+    }
+    else if (IS_NUM(val))
+    {
         char num[32];
         int n = snprintf(num, sizeof(num), "%g", as_num(val));
         json_stringify_append(buf, len, cap, num, n);
-    } else if (IS_STRING(val)) {
-        ObjString* str = AS_STRING(val);
+    }
+    else if (IS_STRING(val))
+    {
+        ObjString *str = AS_STRING(val);
         json_stringify_append(buf, len, cap, "\"", 1);
-        for (size_t i = 0; i < str->length; i++) {
+        for (size_t i = 0; i < str->length; i++)
+        {
             char c = str->chars[i];
-            if (c == '"') json_stringify_append(buf, len, cap, "\\\"", 2);
-            else if (c == '\\') json_stringify_append(buf, len, cap, "\\\\", 2);
-            else if (c == '\n') json_stringify_append(buf, len, cap, "\\n", 2);
-            else if (c == '\r') json_stringify_append(buf, len, cap, "\\r", 2);
-            else if (c == '\t') json_stringify_append(buf, len, cap, "\\t", 2);
-            else json_stringify_append(buf, len, cap, &c, 1);
+            if (c == '"')
+                json_stringify_append(buf, len, cap, "\\\"", 2);
+            else if (c == '\\')
+                json_stringify_append(buf, len, cap, "\\\\", 2);
+            else if (c == '\n')
+                json_stringify_append(buf, len, cap, "\\n", 2);
+            else if (c == '\r')
+                json_stringify_append(buf, len, cap, "\\r", 2);
+            else if (c == '\t')
+                json_stringify_append(buf, len, cap, "\\t", 2);
+            else
+                json_stringify_append(buf, len, cap, &c, 1);
         }
         json_stringify_append(buf, len, cap, "\"", 1);
-    } else if (IS_ARRAY(val)) {
-        ObjArray* arr = AS_ARRAY(val);
+    }
+    else if (IS_ARRAY(val))
+    {
+        ObjArray *arr = AS_ARRAY(val);
         json_stringify_append(buf, len, cap, "[", 1);
-        for (uint32_t i = 0; i < arr->count; i++) {
-            if (i > 0) json_stringify_append(buf, len, cap, ",", 1);
+        for (uint32_t i = 0; i < arr->count; i++)
+        {
+            if (i > 0)
+                json_stringify_append(buf, len, cap, ",", 1);
             json_stringify_value_impl(vm, arr->values[i], buf, len, cap);
         }
         json_stringify_append(buf, len, cap, "]", 1);
-    } else if (IS_DICT(val)) {
-        ObjDict* dict = AS_DICT(val);
+    }
+    else if (IS_DICT(val))
+    {
+        ObjDict *dict = AS_DICT(val);
         json_stringify_append(buf, len, cap, "{", 1);
-        for (uint32_t i = 0; i < dict->count; i++) {
-            if (i > 0) json_stringify_append(buf, len, cap, ",", 1);
+        for (uint32_t i = 0; i < dict->count; i++)
+        {
+            if (i > 0)
+                json_stringify_append(buf, len, cap, ",", 1);
             json_stringify_append(buf, len, cap, "\"", 1);
             json_stringify_append(buf, len, cap, dict->keys[i]->chars, dict->keys[i]->length);
             json_stringify_append(buf, len, cap, "\":", 2);
             json_stringify_value_impl(vm, dict->values[i], buf, len, cap);
         }
         json_stringify_append(buf, len, cap, "}", 1);
-    } else {
+    }
+    else
+    {
         json_stringify_append(buf, len, cap, "null", 4);
     }
 }
 
-static ObjString* json_stringify_value(VM* vm, Value val) {
-    char* buf = NULL;
+static ObjString *json_stringify_value(VM *vm, Value val)
+{
+    char *buf = NULL;
     size_t len = 0, cap = 0;
     json_stringify_value_impl(vm, val, &buf, &len, &cap);
-    ObjString* result = copy_string(vm, buf ? buf : "null", buf ? len : 4);
+    ObjString *result = copy_string(vm, buf ? buf : "null", buf ? len : 4);
     free(buf);
     return result;
 }
 
 /* ============ Value Operations ============ */
 
-static void print_value(Value value) {
-    if (IS_NUM(value)) {
+static void print_value(Value value)
+{
+    if (IS_NUM(value))
+    {
         double d = as_num(value);
-        if (d == (int64_t)d) {
+        if (d == (int64_t)d)
+        {
             printf("%lld", (long long)(int64_t)d);
-        } else {
+        }
+        else
+        {
             printf("%g", d);
         }
-    } else if (IS_INT(value)) {
+    }
+    else if (IS_INT(value))
+    {
         printf("%d", as_int(value));
-    } else if (IS_NIL(value)) {
+    }
+    else if (IS_NIL(value))
+    {
         printf("nil");
-    } else if (IS_BOOL(value)) {
+    }
+    else if (IS_BOOL(value))
+    {
         printf("%s", IS_TRUE(value) ? "true" : "false");
-    } else if (IS_OBJ(value)) {
-        Obj* obj = as_obj(value);
-        switch (obj->type) {
-            case OBJ_STRING:
-                printf("%s", ((ObjString*)obj)->chars);
-                break;
-            case OBJ_ARRAY: {
-                ObjArray* arr = (ObjArray*)obj;
-                printf("[");
-                for (uint32_t i = 0; i < arr->count; i++) {
-                    if (i > 0) printf(", ");
-                    print_value(arr->values[i]);
-                }
-                printf("]");
-                break;
+    }
+    else if (IS_OBJ(value))
+    {
+        Obj *obj = as_obj(value);
+        switch (obj->type)
+        {
+        case OBJ_STRING:
+            printf("%s", ((ObjString *)obj)->chars);
+            break;
+        case OBJ_ARRAY:
+        {
+            ObjArray *arr = (ObjArray *)obj;
+            printf("[");
+            for (uint32_t i = 0; i < arr->count; i++)
+            {
+                if (i > 0)
+                    printf(", ");
+                print_value(arr->values[i]);
             }
-            case OBJ_FUNCTION:
-                printf("<fn %s>", ((ObjFunction*)obj)->name ? 
-                    ((ObjFunction*)obj)->name->chars : "script");
-                break;
-            case OBJ_RANGE:
-                printf("%d..%d", ((ObjRange*)obj)->start, ((ObjRange*)obj)->end);
-                break;
-            case OBJ_TENSOR: {
-                ObjTensor* t = (ObjTensor*)obj;
-                printf("Tensor(shape=[");
-                for (uint32_t i = 0; i < t->ndim; i++) {
-                    if (i > 0) printf(", ");
-                    printf("%u", t->shape[i]);
-                }
-                printf("], data=[");
-                uint32_t max_print = t->size > 10 ? 10 : t->size;
-                for (uint32_t i = 0; i < max_print; i++) {
-                    if (i > 0) printf(", ");
-                    printf("%g", t->data[i]);
-                }
-                if (t->size > max_print) printf(", ...");
-                printf("])");
-                break;
+            printf("]");
+            break;
+        }
+        case OBJ_FUNCTION:
+            printf("<fn %s>", ((ObjFunction *)obj)->name ? ((ObjFunction *)obj)->name->chars : "script");
+            break;
+        case OBJ_RANGE:
+            printf("%d..%d", ((ObjRange *)obj)->start, ((ObjRange *)obj)->end);
+            break;
+        case OBJ_TENSOR:
+        {
+            ObjTensor *t = (ObjTensor *)obj;
+            printf("Tensor(shape=[");
+            for (uint32_t i = 0; i < t->ndim; i++)
+            {
+                if (i > 0)
+                    printf(", ");
+                printf("%u", t->shape[i]);
             }
-            case OBJ_MATRIX: {
-                ObjMatrix* m = (ObjMatrix*)obj;
-                printf("Matrix(%ux%u)", m->rows, m->cols);
-                break;
+            printf("], data=[");
+            uint32_t max_print = t->size > 10 ? 10 : t->size;
+            for (uint32_t i = 0; i < max_print; i++)
+            {
+                if (i > 0)
+                    printf(", ");
+                printf("%g", t->data[i]);
             }
-            case OBJ_GRAD_TAPE:
-                printf("<GradTape>");
-                break;
-            default:
-                printf("<object>");
-                break;
+            if (t->size > max_print)
+                printf(", ...");
+            printf("])");
+            break;
+        }
+        case OBJ_MATRIX:
+        {
+            ObjMatrix *m = (ObjMatrix *)obj;
+            printf("Matrix(%ux%u)", m->rows, m->cols);
+            break;
+        }
+        case OBJ_GRAD_TAPE:
+            printf("<GradTape>");
+            break;
+        default:
+            printf("<object>");
+            break;
         }
     }
 }
@@ -527,63 +673,72 @@ static void print_value(Value value) {
  * Performance-critical macros with register-cached stack pointer
  * Using 'sp' as a register variable for the hot path
  */
-#define PUSH(v)    (*sp++ = (v))
-#define POP()      (*--sp)
-#define PEEK(n)    (sp[-1 - (n)])
+#define PUSH(v) (*sp++ = (v))
+#define POP() (*--sp)
+#define PEEK(n) (sp[-1 - (n)])
 #define READ_BYTE() (*ip++)
 #define READ_SHORT() (ip += 2, (uint16_t)((ip[-2] << 8) | ip[-1]))
 #define READ_CONST() (vm->chunk.constants[READ_BYTE()])
 
 /* Fast integer check and extract - avoids function call overhead */
-#define FAST_INT(v, out) (((v) & (QNAN | 0x7)) == (QNAN | TAG_INT) ? \
-    ((out) = (int32_t)(((v) >> 3) & 0xFFFFFFFF), 1) : 0)
+#define FAST_INT(v, out) (((v) & (QNAN | 0x7)) == (QNAN | TAG_INT) ? ((out) = (int32_t)(((v) >> 3) & 0xFFFFFFFF), 1) : 0)
 
 /* Binary operations on numbers with fast integer path */
-#define BINARY_OP(op) \
-    do { \
-        Value b = POP(); \
-        Value a = POP(); \
-        int32_t ia, ib; \
-        if (FAST_INT(a, ia) && FAST_INT(b, ib)) { \
-            PUSH(val_int(ia op ib)); \
-        } else { \
+#define BINARY_OP(op)                                      \
+    do                                                     \
+    {                                                      \
+        Value b = POP();                                   \
+        Value a = POP();                                   \
+        int32_t ia, ib;                                    \
+        if (FAST_INT(a, ia) && FAST_INT(b, ib))            \
+        {                                                  \
+            PUSH(val_int(ia op ib));                       \
+        }                                                  \
+        else                                               \
+        {                                                  \
             double da = IS_INT(a) ? as_int(a) : as_num(a); \
             double db = IS_INT(b) ? as_int(b) : as_num(b); \
-            PUSH(val_num(da op db)); \
-        } \
+            PUSH(val_num(da op db));                       \
+        }                                                  \
     } while (0)
 
-#define BINARY_OP_INT(op) \
-    do { \
-        Value b = POP(); \
-        Value a = POP(); \
+#define BINARY_OP_INT(op)                                        \
+    do                                                           \
+    {                                                            \
+        Value b = POP();                                         \
+        Value a = POP();                                         \
         int32_t ia = IS_INT(a) ? as_int(a) : (int32_t)as_num(a); \
         int32_t ib = IS_INT(b) ? as_int(b) : (int32_t)as_num(b); \
-        PUSH(val_int(ia op ib)); \
+        PUSH(val_int(ia op ib));                                 \
     } while (0)
 
-#define COMPARE_OP(op) \
-    do { \
-        Value b = POP(); \
-        Value a = POP(); \
-        int32_t ia, ib; \
-        if (FAST_INT(a, ia) && FAST_INT(b, ib)) { \
-            PUSH(val_bool(ia op ib)); \
-        } else { \
+#define COMPARE_OP(op)                                     \
+    do                                                     \
+    {                                                      \
+        Value b = POP();                                   \
+        Value a = POP();                                   \
+        int32_t ia, ib;                                    \
+        if (FAST_INT(a, ia) && FAST_INT(b, ib))            \
+        {                                                  \
+            PUSH(val_bool(ia op ib));                      \
+        }                                                  \
+        else                                               \
+        {                                                  \
             double da = IS_INT(a) ? as_int(a) : as_num(a); \
             double db = IS_INT(b) ? as_int(b) : as_num(b); \
-            PUSH(val_bool(da op db)); \
-        } \
+            PUSH(val_bool(da op db));                      \
+        }                                                  \
     } while (0)
 
-InterpretResult vm_run(VM* vm) {
-    register uint8_t* ip = vm->chunk.code;
-    register Value* sp = vm->sp;  /* Cache stack pointer in register */
-    register Value* bp = vm->stack;  /* Cache base pointer for locals */
-    
+InterpretResult vm_run(VM *vm)
+{
+    register uint8_t *ip = vm->chunk.code;
+    register Value *sp = vm->sp;    /* Cache stack pointer in register */
+    register Value *bp = vm->stack; /* Cache base pointer for locals */
+
 #if USE_COMPUTED_GOTO
     /* Dispatch table for computed gotos - must match OpCode enum order */
-    static void* dispatch_table[] = {
+    static void *dispatch_table[] = {
         [OP_CONST] = &&op_const,
         [OP_CONST_LONG] = &&op_const_long,
         [OP_NIL] = &&op_nil,
@@ -694,6 +849,12 @@ InterpretResult vm_run(VM* vm) {
         [OP_FOR_COUNT] = &&op_for_count,
         [OP_ADD_LOCAL_INT] = &&op_add_local_int,
         [OP_LOCAL_LT_LOOP] = &&op_local_lt_loop,
+        /* Fused local arithmetic */
+        [OP_INC_LOCAL_I] = &&op_inc_local_i,
+        [OP_DEC_LOCAL_I] = &&op_dec_local_i,
+        [OP_LOCAL_ADD_LOCAL] = &&op_local_add_local,
+        [OP_LOCAL_MUL_CONST] = &&op_local_mul_const,
+        [OP_LOCAL_ADD_CONST] = &&op_local_add_const,
         [OP_JIT_INC_LOOP] = &&op_jit_inc_loop,
         [OP_JIT_ARITH_LOOP] = &&op_jit_arith_loop,
         [OP_JIT_BRANCH_LOOP] = &&op_jit_branch_loop,
@@ -701,6 +862,25 @@ InterpretResult vm_run(VM* vm) {
         [OP_CONST_0] = &&op_const_0,
         [OP_CONST_1] = &&op_const_1,
         [OP_CONST_2] = &&op_const_2,
+        /* Integer-specialized opcodes */
+        [OP_ADD_II] = &&op_add_ii,
+        [OP_SUB_II] = &&op_sub_ii,
+        [OP_MUL_II] = &&op_mul_ii,
+        [OP_DIV_II] = &&op_div_ii,
+        [OP_MOD_II] = &&op_mod_ii,
+        [OP_LT_II] = &&op_lt_ii,
+        [OP_GT_II] = &&op_gt_ii,
+        [OP_LTE_II] = &&op_lte_ii,
+        [OP_GTE_II] = &&op_gte_ii,
+        [OP_EQ_II] = &&op_eq_ii,
+        [OP_NEQ_II] = &&op_neq_ii,
+        [OP_INC_II] = &&op_inc_ii,
+        [OP_DEC_II] = &&op_dec_ii,
+        [OP_NEG_II] = &&op_neg_ii,
+        [OP_LT_II_JMP_FALSE] = &&op_lt_ii_jmp_false,
+        [OP_LTE_II_JMP_FALSE] = &&op_lte_ii_jmp_false,
+        [OP_GT_II_JMP_FALSE] = &&op_gt_ii_jmp_false,
+        [OP_GTE_II_JMP_FALSE] = &&op_gte_ii_jmp_false,
         /* Infrastructure */
         [OP_READ_FILE] = &&op_read_file,
         [OP_WRITE_FILE] = &&op_write_file,
@@ -837,169 +1017,210 @@ InterpretResult vm_run(VM* vm) {
         [OP_NN_MSE_LOSS] = &&op_nn_mse_loss,
         [OP_NN_CE_LOSS] = &&op_nn_ce_loss,
     };
-    
-    #define DISPATCH() goto *dispatch_table[*ip++]
-    #define CASE(name) op_##name
-    
+
+#define DISPATCH() goto *dispatch_table[*ip++]
+#define CASE(name) op_##name
+
     DISPATCH();
-    
+
 #else
-    /* Traditional switch dispatch */
-    #define DISPATCH() continue
-    #define CASE(name) case OP_##name
-    
-    for (;;) {
-        switch (*ip++) {
+/* Traditional switch dispatch */
+#define DISPATCH() continue
+#define CASE(name) case OP_##name
+
+    for (;;)
+    {
+        switch (*ip++)
+        {
 #endif
 
-    CASE(const): {
+    CASE(const) :
+    {
         PUSH(READ_CONST());
         DISPATCH();
     }
-    
-    CASE(const_long): {
+
+    CASE(const_long) :
+    {
         uint16_t idx = READ_SHORT();
         PUSH(vm->chunk.constants[idx]);
         DISPATCH();
     }
-    
-    CASE(nil): {
+
+    CASE(nil) :
+    {
         PUSH(VAL_NIL);
         DISPATCH();
     }
-    
-    CASE(true): {
+
+    CASE(true) :
+    {
         PUSH(VAL_TRUE);
         DISPATCH();
     }
-    
-    CASE(false): {
+
+    CASE(false) :
+    {
         PUSH(VAL_FALSE);
         DISPATCH();
     }
-    
-    CASE(pop): {
+
+    CASE(pop) :
+    {
         POP();
         DISPATCH();
     }
-    
-    CASE(popn): {
+
+    CASE(popn) :
+    {
         uint8_t n = READ_BYTE();
         sp -= n;
         DISPATCH();
     }
-    
-    CASE(dup): {
-        Value v = PEEK(0);  /* Read BEFORE modifying sp to avoid UB */
+
+    CASE(dup) :
+    {
+        Value v = PEEK(0); /* Read BEFORE modifying sp to avoid UB */
         PUSH(v);
         DISPATCH();
     }
-    
-    CASE(get_local): {
+
+    CASE(get_local) :
+    {
         uint8_t slot = READ_BYTE();
         PUSH(bp[slot]);
         DISPATCH();
     }
-    
-    CASE(set_local): {
+
+    CASE(set_local) :
+    {
         uint8_t slot = READ_BYTE();
         bp[slot] = PEEK(0);
         DISPATCH();
     }
-    
-    CASE(get_global): {
-        ObjString* name = AS_STRING(READ_CONST());
+
+    CASE(get_global) :
+    {
+        ObjString *name = AS_STRING(READ_CONST());
         Value value;
-        vm->sp = sp;  /* Sync before potential error */
-        if (!table_get(vm, name, &value)) {
+        vm->sp = sp; /* Sync before potential error */
+        if (!table_get(vm, name, &value))
+        {
             runtime_error(vm, "Undefined variable '%s'.", name->chars);
             return INTERPRET_RUNTIME_ERROR;
         }
         PUSH(value);
         DISPATCH();
     }
-    
-    CASE(set_global): {
-        ObjString* name = AS_STRING(READ_CONST());
+
+    CASE(set_global) :
+    {
+        ObjString *name = AS_STRING(READ_CONST());
         table_set(vm, name, PEEK(0));
         DISPATCH();
     }
-    
-    CASE(add): {
+
+    CASE(add) :
+    {
         Value b = POP();
         Value a = POP();
-        
-        if (IS_STRING(a) && IS_STRING(b)) {
+
+        if (IS_STRING(a) && IS_STRING(b))
+        {
             /* String concatenation */
-            ObjString* as = AS_STRING(a);
-            ObjString* bs = AS_STRING(b);
+            ObjString *as = AS_STRING(a);
+            ObjString *bs = AS_STRING(b);
             int length = as->length + bs->length;
-            char* chars = ALLOCATE(vm, char, length + 1);
+            char *chars = ALLOCATE(vm, char, length + 1);
             memcpy(chars, as->chars, as->length);
             memcpy(chars + as->length, bs->chars, bs->length);
             chars[length] = '\0';
-            ObjString* result = copy_string(vm, chars, length);
+            ObjString *result = copy_string(vm, chars, length);
             FREE_ARRAY(vm, char, chars, length + 1);
             PUSH(val_obj(result));
-        } else if (IS_INT(a) && IS_INT(b)) {
+        }
+        else if (IS_INT(a) && IS_INT(b))
+        {
             PUSH(val_int(as_int(a) + as_int(b)));
-        } else {
+        }
+        else
+        {
             double da = IS_INT(a) ? as_int(a) : as_num(a);
             double db = IS_INT(b) ? as_int(b) : as_num(b);
             PUSH(val_num(da + db));
         }
         DISPATCH();
     }
-    
-    CASE(sub): BINARY_OP(-); DISPATCH();
-    CASE(mul): BINARY_OP(*); DISPATCH();
-    
-    CASE(div): {
+
+    CASE(sub) : BINARY_OP(-);
+    DISPATCH();
+    CASE(mul) : BINARY_OP(*);
+    DISPATCH();
+
+    CASE(div) :
+    {
         Value b = POP();
         Value a = POP();
-        if (IS_INT(a) && IS_INT(b)) {
+        if (IS_INT(a) && IS_INT(b))
+        {
             PUSH(val_int(as_int(a) / as_int(b)));
-        } else {
+        }
+        else
+        {
             double da = IS_INT(a) ? as_int(a) : as_num(a);
             double db = IS_INT(b) ? as_int(b) : as_num(b);
             PUSH(val_num(da / db));
         }
         DISPATCH();
     }
-    
-    CASE(mod): BINARY_OP_INT(%); DISPATCH();
-    
-    CASE(neg): {
+
+    CASE(mod) : BINARY_OP_INT(%);
+    DISPATCH();
+
+    CASE(neg) :
+    {
         Value v = POP();
-        if (IS_INT(v)) {
+        if (IS_INT(v))
+        {
             PUSH(val_int(-as_int(v)));
-        } else {
+        }
+        else
+        {
             PUSH(val_num(-as_num(v)));
         }
         DISPATCH();
     }
-    
-    CASE(inc): {
+
+    CASE(inc) :
+    {
         Value v = POP();
-        if (IS_INT(v)) {
+        if (IS_INT(v))
+        {
             PUSH(val_int(as_int(v) + 1));
-        } else {
+        }
+        else
+        {
             PUSH(val_num(as_num(v) + 1));
         }
         DISPATCH();
     }
-    
-    CASE(dec): {
+
+    CASE(dec) :
+    {
         Value v = POP();
-        if (IS_INT(v)) {
+        if (IS_INT(v))
+        {
             PUSH(val_int(as_int(v) - 1));
-        } else {
+        }
+        else
+        {
             PUSH(val_num(as_num(v) - 1));
         }
         DISPATCH();
     }
-    
-    CASE(pow): {
+
+    CASE(pow) :
+    {
         Value b = POP();
         Value a = POP();
         double da = IS_INT(a) ? as_int(a) : as_num(a);
@@ -1007,17 +1228,20 @@ InterpretResult vm_run(VM* vm) {
         PUSH(val_num(pow(da, db)));
         DISPATCH();
     }
-    
-    CASE(eq): {
+
+    CASE(eq) :
+    {
         Value b = POP();
         Value a = POP();
         /* Handle string comparison by value */
-        if (IS_OBJ(a) && IS_OBJ(b)) {
-            Obj* obj_a = (Obj*)as_obj(a);
-            Obj* obj_b = (Obj*)as_obj(b);
-            if (obj_a->type == OBJ_STRING && obj_b->type == OBJ_STRING) {
-                ObjString* str_a = (ObjString*)obj_a;
-                ObjString* str_b = (ObjString*)obj_b;
+        if (IS_OBJ(a) && IS_OBJ(b))
+        {
+            Obj *obj_a = (Obj *)as_obj(a);
+            Obj *obj_b = (Obj *)as_obj(b);
+            if (obj_a->type == OBJ_STRING && obj_b->type == OBJ_STRING)
+            {
+                ObjString *str_a = (ObjString *)obj_a;
+                ObjString *str_b = (ObjString *)obj_b;
                 bool equal = str_a->length == str_b->length &&
                              memcmp(str_a->chars, str_b->chars, str_a->length) == 0;
                 PUSH(val_bool(equal));
@@ -1027,17 +1251,20 @@ InterpretResult vm_run(VM* vm) {
         PUSH(val_bool(a == b));
         DISPATCH();
     }
-    
-    CASE(neq): {
+
+    CASE(neq) :
+    {
         Value b = POP();
         Value a = POP();
         /* Handle string comparison by value */
-        if (IS_OBJ(a) && IS_OBJ(b)) {
-            Obj* obj_a = (Obj*)as_obj(a);
-            Obj* obj_b = (Obj*)as_obj(b);
-            if (obj_a->type == OBJ_STRING && obj_b->type == OBJ_STRING) {
-                ObjString* str_a = (ObjString*)obj_a;
-                ObjString* str_b = (ObjString*)obj_b;
+        if (IS_OBJ(a) && IS_OBJ(b))
+        {
+            Obj *obj_a = (Obj *)as_obj(a);
+            Obj *obj_b = (Obj *)as_obj(b);
+            if (obj_a->type == OBJ_STRING && obj_b->type == OBJ_STRING)
+            {
+                ObjString *str_a = (ObjString *)obj_a;
+                ObjString *str_b = (ObjString *)obj_b;
                 bool equal = str_a->length == str_b->length &&
                              memcmp(str_a->chars, str_b->chars, str_a->length) == 0;
                 PUSH(val_bool(!equal));
@@ -1047,473 +1274,609 @@ InterpretResult vm_run(VM* vm) {
         PUSH(val_bool(a != b));
         DISPATCH();
     }
-    
-    CASE(lt): COMPARE_OP(<); DISPATCH();
-    CASE(gt): COMPARE_OP(>); DISPATCH();
-    CASE(lte): COMPARE_OP(<=); DISPATCH();
-    CASE(gte): COMPARE_OP(>=); DISPATCH();
-    
-    CASE(not): {
+
+    CASE(lt) : COMPARE_OP(<);
+    DISPATCH();
+    CASE(gt) : COMPARE_OP(>);
+    DISPATCH();
+    CASE(lte) : COMPARE_OP(<=);
+    DISPATCH();
+    CASE(gte) : COMPARE_OP(>=);
+    DISPATCH();
+
+    CASE(not) :
+    {
         PUSH(val_bool(!is_truthy(POP())));
         DISPATCH();
     }
-    
-    CASE(and): {
+
+    CASE(and) :
+    {
         uint16_t offset = READ_SHORT();
-        if (!is_truthy(PEEK(0))) {
+        if (!is_truthy(PEEK(0)))
+        {
             ip += offset;
-        } else {
+        }
+        else
+        {
             POP();
         }
         DISPATCH();
     }
-    
-    CASE(or): {
+
+    CASE(or) :
+    {
         uint16_t offset = READ_SHORT();
-        if (is_truthy(PEEK(0))) {
+        if (is_truthy(PEEK(0)))
+        {
             ip += offset;
-        } else {
+        }
+        else
+        {
             POP();
         }
         DISPATCH();
     }
-    
-    CASE(band): BINARY_OP_INT(&); DISPATCH();
-    CASE(bor): BINARY_OP_INT(|); DISPATCH();
-    CASE(bxor): BINARY_OP_INT(^); DISPATCH();
-    CASE(bnot): {
+
+    CASE(band) : BINARY_OP_INT(&);
+    DISPATCH();
+    CASE(bor) : BINARY_OP_INT(|);
+    DISPATCH();
+    CASE(bxor) : BINARY_OP_INT(^);
+    DISPATCH();
+    CASE(bnot) :
+    {
         Value v = POP();
         int32_t i = IS_INT(v) ? as_int(v) : (int32_t)as_num(v);
         PUSH(val_int(~i));
         DISPATCH();
     }
-    CASE(shl): BINARY_OP_INT(<<); DISPATCH();
-    CASE(shr): BINARY_OP_INT(>>); DISPATCH();
-    
-    CASE(jmp): {
+    CASE(shl) : BINARY_OP_INT(<<);
+    DISPATCH();
+    CASE(shr) : BINARY_OP_INT(>>);
+    DISPATCH();
+
+    CASE(jmp) :
+    {
         uint16_t offset = READ_SHORT();
         ip += offset;
         DISPATCH();
     }
-    
-    CASE(jmp_false): {
+
+    CASE(jmp_false) :
+    {
         uint16_t offset = READ_SHORT();
         Value v = PEEK(0);
         /* Fast path for booleans */
-        if (v == VAL_FALSE || v == VAL_NIL) {
+        if (v == VAL_FALSE || v == VAL_NIL)
+        {
             ip += offset;
-        } else if (v != VAL_TRUE && !is_truthy(v)) {
+        }
+        else if (v != VAL_TRUE && !is_truthy(v))
+        {
             ip += offset;
         }
         DISPATCH();
     }
-    
-    CASE(jmp_true): {
+
+    CASE(jmp_true) :
+    {
         uint16_t offset = READ_SHORT();
         Value v = PEEK(0);
         /* Fast path for booleans */
-        if (v == VAL_TRUE) {
+        if (v == VAL_TRUE)
+        {
             ip += offset;
-        } else if (v != VAL_FALSE && v != VAL_NIL && is_truthy(v)) {
+        }
+        else if (v != VAL_FALSE && v != VAL_NIL && is_truthy(v))
+        {
             ip += offset;
         }
         DISPATCH();
     }
-    
-    CASE(loop): {
+
+    CASE(loop) :
+    {
         uint16_t offset = READ_SHORT();
         ip -= offset;
         DISPATCH();
     }
-    
-    CASE(call): {
+
+    CASE(call) :
+    {
         uint8_t arg_count = READ_BYTE();
         Value callee = PEEK(arg_count);
-        
-        if (!IS_FUNCTION(callee)) {
+
+        if (!IS_FUNCTION(callee))
+        {
             vm->sp = sp;
             runtime_error(vm, "Can only call functions.");
             return INTERPRET_RUNTIME_ERROR;
         }
-        
-        ObjFunction* function = AS_FUNCTION(callee);
-        if (arg_count != function->arity) {
+
+        ObjFunction *function = AS_FUNCTION(callee);
+        if (arg_count != function->arity)
+        {
             vm->sp = sp;
             runtime_error(vm, "Expected %d arguments but got %d.",
-                function->arity, arg_count);
+                          function->arity, arg_count);
             return INTERPRET_RUNTIME_ERROR;
         }
-        
-        if (vm->frame_count == FRAMES_MAX) {
+
+        if (vm->frame_count == FRAMES_MAX)
+        {
             vm->sp = sp;
             runtime_error(vm, "Stack overflow.");
             return INTERPRET_RUNTIME_ERROR;
         }
-        
-        CallFrame* frame = &vm->frames[vm->frame_count++];
+
+        CallFrame *frame = &vm->frames[vm->frame_count++];
         frame->function = function;
         frame->ip = ip;
         frame->slots = sp - arg_count - 1;
-        bp = frame->slots;  /* Update cached base pointer */
-        
+        bp = frame->slots; /* Update cached base pointer */
+
         ip = vm->chunk.code + function->code_start;
         DISPATCH();
     }
-    
-    CASE(return): {
+
+    CASE(return) :
+    {
         Value result = POP();
-        
-        if (vm->frame_count == 0) {
+
+        if (vm->frame_count == 0)
+        {
             /* Returning from top-level - shouldn't happen normally */
             vm->sp = sp;
             return INTERPRET_OK;
         }
-        
+
         vm->frame_count--;
-        CallFrame* frame = &vm->frames[vm->frame_count];
+        CallFrame *frame = &vm->frames[vm->frame_count];
         sp = frame->slots;
         ip = frame->ip;
         /* Restore bp to previous frame or stack base */
-        bp = (vm->frame_count > 0) 
-            ? vm->frames[vm->frame_count - 1].slots 
-            : vm->stack;
+        bp = (vm->frame_count > 0)
+                 ? vm->frames[vm->frame_count - 1].slots
+                 : vm->stack;
         PUSH(result);
         DISPATCH();
     }
-    
-    CASE(array): {
+
+    CASE(array) :
+    {
         uint8_t count = READ_BYTE();
-        vm->sp = sp;  /* Sync before allocation */
-        ObjArray* array = new_array(vm, count);
-        
+        vm->sp = sp; /* Sync before allocation */
+        ObjArray *array = new_array(vm, count);
+
         /* Pop elements in reverse order */
         sp -= count;
-        for (int i = 0; i < count; i++) {
+        for (int i = 0; i < count; i++)
+        {
             array->values[i] = sp[i];
         }
         array->count = count;
-        
+
         PUSH(val_obj(array));
         DISPATCH();
     }
-    
-    CASE(index): {
+
+    CASE(index) :
+    {
         Value index_val = POP();
         Value obj_val = POP();
-        
-        if (IS_ARRAY(obj_val)) {
-            ObjArray* array = AS_ARRAY(obj_val);
+
+        if (IS_ARRAY(obj_val))
+        {
+            ObjArray *array = AS_ARRAY(obj_val);
             int32_t index = IS_INT(index_val) ? as_int(index_val) : (int32_t)as_num(index_val);
-            if (index < 0 || index >= (int32_t)array->count) {
+            if (index < 0 || index >= (int32_t)array->count)
+            {
                 runtime_error(vm, "Array index out of bounds.");
                 return INTERPRET_RUNTIME_ERROR;
             }
             PUSH(array->values[index]);
-        } else if (IS_STRING(obj_val)) {
-            ObjString* str = AS_STRING(obj_val);
+        }
+        else if (IS_STRING(obj_val))
+        {
+            ObjString *str = AS_STRING(obj_val);
             int32_t index = IS_INT(index_val) ? as_int(index_val) : (int32_t)as_num(index_val);
-            if (index < 0 || index >= (int32_t)str->length) {
+            if (index < 0 || index >= (int32_t)str->length)
+            {
                 runtime_error(vm, "String index out of bounds.");
                 return INTERPRET_RUNTIME_ERROR;
             }
-            ObjString* ch = copy_string(vm, str->chars + index, 1);
+            ObjString *ch = copy_string(vm, str->chars + index, 1);
             PUSH(val_obj(ch));
-        } else {
+        }
+        else
+        {
             runtime_error(vm, "Only arrays and strings can be indexed.");
             return INTERPRET_RUNTIME_ERROR;
         }
         DISPATCH();
     }
-    
-    CASE(index_set): {
+
+    CASE(index_set) :
+    {
         Value value = POP();
         Value index_val = POP();
         Value obj_val = POP();
-        
-        if (!IS_ARRAY(obj_val)) {
+
+        if (!IS_ARRAY(obj_val))
+        {
             runtime_error(vm, "Only arrays support index assignment.");
             return INTERPRET_RUNTIME_ERROR;
         }
-        
-        ObjArray* array = AS_ARRAY(obj_val);
+
+        ObjArray *array = AS_ARRAY(obj_val);
         int32_t index = IS_INT(index_val) ? as_int(index_val) : (int32_t)as_num(index_val);
-        if (index < 0 || index >= (int32_t)array->count) {
+        if (index < 0 || index >= (int32_t)array->count)
+        {
             runtime_error(vm, "Array index out of bounds.");
             return INTERPRET_RUNTIME_ERROR;
         }
-        
+
         array->values[index] = value;
         PUSH(value);
         DISPATCH();
     }
-    
-    CASE(len): {
+
+    CASE(len) :
+    {
         Value v = POP();
-        if (IS_ARRAY(v)) {
+        if (IS_ARRAY(v))
+        {
             PUSH(val_int(AS_ARRAY(v)->count));
-        } else if (IS_STRING(v)) {
+        }
+        else if (IS_STRING(v))
+        {
             PUSH(val_int(AS_STRING(v)->length));
-        } else {
+        }
+        else
+        {
             runtime_error(vm, "Operand must be an array or string.");
             return INTERPRET_RUNTIME_ERROR;
         }
         DISPATCH();
     }
-    
-    CASE(push): {
+
+    CASE(push) :
+    {
         Value value = POP();
         Value arr_val = POP();
-        
-        if (!IS_ARRAY(arr_val)) {
+
+        if (!IS_ARRAY(arr_val))
+        {
             runtime_error(vm, "Can only push to arrays.");
             return INTERPRET_RUNTIME_ERROR;
         }
-        
-        ObjArray* array = AS_ARRAY(arr_val);
-        if (array->count >= array->capacity) {
+
+        ObjArray *array = AS_ARRAY(arr_val);
+        if (array->count >= array->capacity)
+        {
             uint32_t new_cap = GROW_CAPACITY(array->capacity);
-            array->values = GROW_ARRAY(vm, Value, array->values, 
-                array->capacity, new_cap);
+            array->values = GROW_ARRAY(vm, Value, array->values,
+                                       array->capacity, new_cap);
             array->capacity = new_cap;
         }
         array->values[array->count++] = value;
         PUSH(arr_val);
         DISPATCH();
     }
-    
-    CASE(pop_array): {
+
+    CASE(pop_array) :
+    {
         Value arr_val = POP();
-        
-        if (!IS_ARRAY(arr_val)) {
+
+        if (!IS_ARRAY(arr_val))
+        {
             runtime_error(vm, "Can only pop from arrays.");
             return INTERPRET_RUNTIME_ERROR;
         }
-        
-        ObjArray* array = AS_ARRAY(arr_val);
-        if (array->count == 0) {
+
+        ObjArray *array = AS_ARRAY(arr_val);
+        if (array->count == 0)
+        {
             runtime_error(vm, "Cannot pop from empty array.");
             return INTERPRET_RUNTIME_ERROR;
         }
-        
+
         PUSH(array->values[--array->count]);
         DISPATCH();
     }
-    
-    CASE(slice): {
+
+    CASE(slice) :
+    {
         Value end_val = POP();
         Value start_val = POP();
         Value obj_val = POP();
-        
+
         int32_t start = IS_INT(start_val) ? as_int(start_val) : (int32_t)as_num(start_val);
         int32_t end = IS_INT(end_val) ? as_int(end_val) : (int32_t)as_num(end_val);
-        
-        if (IS_ARRAY(obj_val)) {
-            ObjArray* arr = AS_ARRAY(obj_val);
-            if (start < 0) start += arr->count;
-            if (end < 0) end += arr->count;
-            if (start < 0) start = 0;
-            if ((uint32_t)end > arr->count) end = arr->count;
-            
+
+        if (IS_ARRAY(obj_val))
+        {
+            ObjArray *arr = AS_ARRAY(obj_val);
+            if (start < 0)
+                start += arr->count;
+            if (end < 0)
+                end += arr->count;
+            if (start < 0)
+                start = 0;
+            if ((uint32_t)end > arr->count)
+                end = arr->count;
+
             uint32_t len = (end > start) ? end - start : 0;
-            ObjArray* result = new_array(vm, len);
-            for (uint32_t i = 0; i < len; i++) {
+            ObjArray *result = new_array(vm, len);
+            for (uint32_t i = 0; i < len; i++)
+            {
                 result->values[i] = arr->values[start + i];
             }
             result->count = len;
             PUSH(val_obj(result));
-        } else if (IS_STRING(obj_val)) {
-            ObjString* str = AS_STRING(obj_val);
-            if (start < 0) start += str->length;
-            if (end < 0) end += str->length;
-            if (start < 0) start = 0;
-            if (end > str->length) end = str->length;
-            
+        }
+        else if (IS_STRING(obj_val))
+        {
+            ObjString *str = AS_STRING(obj_val);
+            if (start < 0)
+                start += str->length;
+            if (end < 0)
+                end += str->length;
+            if (start < 0)
+                start = 0;
+            if (end > str->length)
+                end = str->length;
+
             int len = (end > start) ? end - start : 0;
             PUSH(val_obj(copy_string(vm, str->chars + start, len)));
-        } else {
+        }
+        else
+        {
             runtime_error(vm, "Can only slice arrays and strings.");
             return INTERPRET_RUNTIME_ERROR;
         }
         DISPATCH();
     }
-    
-    CASE(concat): {
+
+    CASE(concat) :
+    {
         Value b = POP();
         Value a = POP();
-        
-        if (IS_ARRAY(a) && IS_ARRAY(b)) {
-            ObjArray* aa = AS_ARRAY(a);
-            ObjArray* ab = AS_ARRAY(b);
-            ObjArray* result = new_array(vm, aa->count + ab->count);
+
+        if (IS_ARRAY(a) && IS_ARRAY(b))
+        {
+            ObjArray *aa = AS_ARRAY(a);
+            ObjArray *ab = AS_ARRAY(b);
+            ObjArray *result = new_array(vm, aa->count + ab->count);
             memcpy(result->values, aa->values, aa->count * sizeof(Value));
             memcpy(result->values + aa->count, ab->values, ab->count * sizeof(Value));
             result->count = aa->count + ab->count;
             PUSH(val_obj(result));
-        } else {
+        }
+        else
+        {
             runtime_error(vm, "Can only concatenate arrays.");
             return INTERPRET_RUNTIME_ERROR;
         }
         DISPATCH();
     }
-    
-    CASE(range): {
+
+    CASE(range) :
+    {
         Value end_val = POP();
         Value start_val = POP();
-        
+
         int32_t start = IS_INT(start_val) ? as_int(start_val) : (int32_t)as_num(start_val);
         int32_t end = IS_INT(end_val) ? as_int(end_val) : (int32_t)as_num(end_val);
-        
-        ObjRange* range = new_range(vm, start, end);
+
+        ObjRange *range = new_range(vm, start, end);
         PUSH(val_obj(range));
         DISPATCH();
     }
-    
-    CASE(iter_next): {
+
+    CASE(iter_next) :
+    {
         uint16_t offset = READ_SHORT();
         Value iter_val = PEEK(0);
-        
-        if (IS_RANGE(iter_val)) {
-            ObjRange* range = AS_RANGE(iter_val);
-            if (range->current >= range->end) {
-                POP();  /* Remove iterator */
+
+        if (IS_RANGE(iter_val))
+        {
+            ObjRange *range = AS_RANGE(iter_val);
+            if (range->current >= range->end)
+            {
+                POP(); /* Remove iterator */
                 ip += offset;
-            } else {
+            }
+            else
+            {
                 PUSH(val_int(range->current++));
             }
-        } else {
+        }
+        else
+        {
             runtime_error(vm, "Cannot iterate over this type.");
             return INTERPRET_RUNTIME_ERROR;
         }
         DISPATCH();
     }
-    
-    CASE(iter_array): {
+
+    CASE(iter_array) :
+    {
         /* Array iteration with internal index tracking */
         uint16_t offset = READ_SHORT();
-        Value arr_val = PEEK(1);  /* Array below index */
-        Value idx_val = PEEK(0);  /* Current index */
-        
-        if (IS_ARRAY(arr_val)) {
-            ObjArray* arr = AS_ARRAY(arr_val);
+        Value arr_val = PEEK(1); /* Array below index */
+        Value idx_val = PEEK(0); /* Current index */
+
+        if (IS_ARRAY(arr_val))
+        {
+            ObjArray *arr = AS_ARRAY(arr_val);
             int32_t idx = as_int(idx_val);
-            if ((uint32_t)idx >= arr->count) {
-                sp -= 2;  /* Remove array and index */
+            if ((uint32_t)idx >= arr->count)
+            {
+                sp -= 2; /* Remove array and index */
                 ip += offset;
-            } else {
-                sp[-1] = val_int(idx + 1);  /* Increment index */
-                PUSH(arr->values[idx]);  /* Push current element */
             }
-        } else {
+            else
+            {
+                sp[-1] = val_int(idx + 1); /* Increment index */
+                PUSH(arr->values[idx]);    /* Push current element */
+            }
+        }
+        else
+        {
             vm->sp = sp;
             runtime_error(vm, "Expected array for iteration.");
             return INTERPRET_RUNTIME_ERROR;
         }
         DISPATCH();
     }
-    
-    CASE(print): {
+
+    CASE(print) :
+    {
         print_value(POP());
         printf("\n");
         DISPATCH();
     }
-    
-    CASE(println): {
+
+    CASE(println) :
+    {
         print_value(POP());
         printf("\n");
         DISPATCH();
     }
-    
-    CASE(time): {
+
+    CASE(time) :
+    {
         struct timespec ts;
         clock_gettime(CLOCK_MONOTONIC, &ts);
         int64_t ns = ts.tv_sec * 1000000000LL + ts.tv_nsec;
         PUSH(val_num((double)ns));
         DISPATCH();
     }
-    
-    CASE(input): {
+
+    CASE(input) :
+    {
         char buffer[1024];
-        if (fgets(buffer, sizeof(buffer), stdin)) {
+        if (fgets(buffer, sizeof(buffer), stdin))
+        {
             size_t len = strlen(buffer);
-            if (len > 0 && buffer[len-1] == '\n') buffer[--len] = '\0';
-            ObjString* str = copy_string(vm, buffer, len);
+            if (len > 0 && buffer[len - 1] == '\n')
+                buffer[--len] = '\0';
+            ObjString *str = copy_string(vm, buffer, len);
             PUSH(val_obj(str));
-        } else {
+        }
+        else
+        {
             PUSH(VAL_NIL);
         }
         DISPATCH();
     }
-    
-    CASE(int): {
+
+    CASE(int) :
+    {
         Value v = POP();
-        if (IS_INT(v)) {
+        if (IS_INT(v))
+        {
             PUSH(v);
-        } else if (IS_NUM(v)) {
+        }
+        else if (IS_NUM(v))
+        {
             PUSH(val_int((int32_t)as_num(v)));
-        } else if (IS_STRING(v)) {
+        }
+        else if (IS_STRING(v))
+        {
             PUSH(val_int(atoi(AS_STRING(v)->chars)));
-        } else {
+        }
+        else
+        {
             PUSH(val_int(0));
         }
         DISPATCH();
     }
-    
-    CASE(float): {
+
+    CASE(float) :
+    {
         Value v = POP();
-        double d = IS_INT(v) ? (double)as_int(v) : 
-                   IS_NUM(v) ? as_num(v) :
-                   IS_STRING(v) ? atof(AS_STRING(v)->chars) : 0.0;
+        double d = IS_INT(v) ? (double)as_int(v) : IS_NUM(v)  ? as_num(v)
+                                               : IS_STRING(v) ? atof(AS_STRING(v)->chars)
+                                                              : 0.0;
         PUSH(val_num(d));
         DISPATCH();
     }
-    
-    CASE(str): {
+
+    CASE(str) :
+    {
         Value v = POP();
         char buffer[64];
-        if (IS_INT(v)) {
+        if (IS_INT(v))
+        {
             snprintf(buffer, sizeof(buffer), "%d", as_int(v));
-        } else if (IS_NUM(v)) {
+        }
+        else if (IS_NUM(v))
+        {
             snprintf(buffer, sizeof(buffer), "%g", as_num(v));
-        } else if (IS_BOOL(v)) {
+        }
+        else if (IS_BOOL(v))
+        {
             snprintf(buffer, sizeof(buffer), "%s", IS_TRUE(v) ? "true" : "false");
-        } else if (IS_NIL(v)) {
+        }
+        else if (IS_NIL(v))
+        {
             snprintf(buffer, sizeof(buffer), "nil");
-        } else if (IS_STRING(v)) {
+        }
+        else if (IS_STRING(v))
+        {
             PUSH(v);
             DISPATCH();
-        } else {
+        }
+        else
+        {
             snprintf(buffer, sizeof(buffer), "<object>");
         }
         PUSH(val_obj(copy_string(vm, buffer, strlen(buffer))));
         DISPATCH();
     }
-    
-    CASE(type): {
+
+    CASE(type) :
+    {
         Value v = POP();
-        const char* type_name;
-        if (IS_INT(v) || IS_NUM(v)) type_name = "number";
-        else if (IS_BOOL(v)) type_name = "bool";
-        else if (IS_NIL(v)) type_name = "nil";
-        else if (IS_STRING(v)) type_name = "string";
-        else if (IS_ARRAY(v)) type_name = "array";
-        else if (IS_FUNCTION(v)) type_name = "function";
-        else type_name = "object";
+        const char *type_name;
+        if (IS_INT(v) || IS_NUM(v))
+            type_name = "number";
+        else if (IS_BOOL(v))
+            type_name = "bool";
+        else if (IS_NIL(v))
+            type_name = "nil";
+        else if (IS_STRING(v))
+            type_name = "string";
+        else if (IS_ARRAY(v))
+            type_name = "array";
+        else if (IS_FUNCTION(v))
+            type_name = "function";
+        else
+            type_name = "object";
         PUSH(val_obj(copy_string(vm, type_name, strlen(type_name))));
         DISPATCH();
     }
-    
-    CASE(abs): {
+
+    CASE(abs) :
+    {
         Value v = POP();
-        if (IS_INT(v)) {
+        if (IS_INT(v))
+        {
             int32_t i = as_int(v);
             PUSH(val_int(i < 0 ? -i : i));
-        } else {
+        }
+        else
+        {
             PUSH(val_num(fabs(as_num(v))));
         }
         DISPATCH();
     }
-    
-    CASE(min): {
+
+    CASE(min) :
+    {
         Value b = POP();
         Value a = POP();
         double da = IS_INT(a) ? as_int(a) : as_num(a);
@@ -1521,8 +1884,9 @@ InterpretResult vm_run(VM* vm) {
         PUSH(da < db ? a : b);
         DISPATCH();
     }
-    
-    CASE(max): {
+
+    CASE(max) :
+    {
         Value b = POP();
         Value a = POP();
         double da = IS_INT(a) ? as_int(a) : as_num(a);
@@ -1530,65 +1894,74 @@ InterpretResult vm_run(VM* vm) {
         PUSH(da > db ? a : b);
         DISPATCH();
     }
-    
-    CASE(sqrt): {
+
+    CASE(sqrt) :
+    {
         Value v = POP();
         double d = IS_INT(v) ? as_int(v) : as_num(v);
         PUSH(val_num(sqrt(d)));
         DISPATCH();
     }
-    
-    CASE(floor): {
+
+    CASE(floor) :
+    {
         Value v = POP();
         double d = IS_INT(v) ? as_int(v) : as_num(v);
         PUSH(val_int((int32_t)floor(d)));
         DISPATCH();
     }
-    
-    CASE(ceil): {
+
+    CASE(ceil) :
+    {
         Value v = POP();
         double d = IS_INT(v) ? as_int(v) : as_num(v);
         PUSH(val_int((int32_t)ceil(d)));
         DISPATCH();
     }
-    
-    CASE(round): {
+
+    CASE(round) :
+    {
         Value v = POP();
         double d = IS_INT(v) ? as_int(v) : as_num(v);
         PUSH(val_int((int32_t)round(d)));
         DISPATCH();
     }
-    
-    CASE(rand): {
+
+    CASE(rand) :
+    {
         PUSH(val_num((double)rand() / RAND_MAX));
         DISPATCH();
     }
-    
+
     /* ============ BIT MANIPULATION INTRINSICS ============ */
     /* Map directly to CPU instructions via GCC builtins */
-    
-    CASE(popcount): {
+
+    CASE(popcount) :
+    {
         Value v = POP();
         int32_t n = IS_INT(v) ? as_int(v) : (int32_t)as_num(v);
         PUSH(val_int(__builtin_popcount((unsigned int)n)));
         DISPATCH();
     }
-    
-    CASE(clz): {
+
+    CASE(clz) :
+    {
         Value v = POP();
         int32_t n = IS_INT(v) ? as_int(v) : (int32_t)as_num(v);
         PUSH(val_int(n == 0 ? 32 : __builtin_clz((unsigned int)n)));
         DISPATCH();
     }
-    
-    CASE(ctz): {
+
+    CASE(ctz) :
+    {
         Value v = POP();
         int32_t n = IS_INT(v) ? as_int(v) : (int32_t)as_num(v);
         PUSH(val_int(n == 0 ? 32 : __builtin_ctz((unsigned int)n)));
         DISPATCH();
     }
-    
-    CASE(rotl): {
+
+    CASE(rotl) :
+    {
         Value vn = POP();
         Value vx = POP();
         uint32_t n = (IS_INT(vn) ? as_int(vn) : (int32_t)as_num(vn)) & 31;
@@ -1596,8 +1969,9 @@ InterpretResult vm_run(VM* vm) {
         PUSH(val_int((int32_t)((x << n) | (x >> (32 - n)))));
         DISPATCH();
     }
-    
-    CASE(rotr): {
+
+    CASE(rotr) :
+    {
         Value vn = POP();
         Value vx = POP();
         uint32_t n = (IS_INT(vn) ? as_int(vn) : (int32_t)as_num(vn)) & 31;
@@ -1605,197 +1979,227 @@ InterpretResult vm_run(VM* vm) {
         PUSH(val_int((int32_t)((x >> n) | (x << (32 - n)))));
         DISPATCH();
     }
-    
+
     /* ============ STRING OPERATIONS ============ */
-    
-    CASE(substr): {
+
+    CASE(substr) :
+    {
         Value vlen = POP();
         Value vstart = POP();
         Value vstr = POP();
-        
-        if (!IS_OBJ(vstr)) {
+
+        if (!IS_OBJ(vstr))
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
-        ObjString* str = (ObjString*)as_obj(vstr);
+        ObjString *str = (ObjString *)as_obj(vstr);
         int32_t start = IS_INT(vstart) ? as_int(vstart) : (int32_t)as_num(vstart);
         int32_t len = IS_INT(vlen) ? as_int(vlen) : (int32_t)as_num(vlen);
-        
-        if (start < 0) start = 0;
-        if (start >= (int32_t)str->length) {
+
+        if (start < 0)
+            start = 0;
+        if (start >= (int32_t)str->length)
+        {
             PUSH(val_obj(copy_string(vm, "", 0)));
             DISPATCH();
         }
-        if (len < 0 || start + len > (int32_t)str->length) {
+        if (len < 0 || start + len > (int32_t)str->length)
+        {
             len = str->length - start;
         }
-        
+
         PUSH(val_obj(copy_string(vm, str->chars + start, len)));
         DISPATCH();
     }
-    
-    CASE(upper): {
+
+    CASE(upper) :
+    {
         Value v = POP();
-        if (!IS_OBJ(v)) {
+        if (!IS_OBJ(v))
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
-        ObjString* str = (ObjString*)as_obj(v);
-        char* buf = malloc(str->length + 1);
-        for (uint32_t i = 0; i < str->length; i++) {
+        ObjString *str = (ObjString *)as_obj(v);
+        char *buf = malloc(str->length + 1);
+        for (uint32_t i = 0; i < str->length; i++)
+        {
             char c = str->chars[i];
             buf[i] = (c >= 'a' && c <= 'z') ? (c - 32) : c;
         }
         buf[str->length] = '\0';
-        ObjString* result = copy_string(vm, buf, str->length);
+        ObjString *result = copy_string(vm, buf, str->length);
         free(buf);
         PUSH(val_obj(result));
         DISPATCH();
     }
-    
-    CASE(lower): {
+
+    CASE(lower) :
+    {
         Value v = POP();
-        if (!IS_OBJ(v)) {
+        if (!IS_OBJ(v))
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
-        ObjString* str = (ObjString*)as_obj(v);
-        char* buf = malloc(str->length + 1);
-        for (uint32_t i = 0; i < str->length; i++) {
+        ObjString *str = (ObjString *)as_obj(v);
+        char *buf = malloc(str->length + 1);
+        for (uint32_t i = 0; i < str->length; i++)
+        {
             char c = str->chars[i];
             buf[i] = (c >= 'A' && c <= 'Z') ? (c + 32) : c;
         }
         buf[str->length] = '\0';
-        ObjString* result = copy_string(vm, buf, str->length);
+        ObjString *result = copy_string(vm, buf, str->length);
         free(buf);
         PUSH(val_obj(result));
         DISPATCH();
     }
-    
-    CASE(split): {
+
+    CASE(split) :
+    {
         Value vdelim = POP();
         Value vstr = POP();
-        
-        if (!IS_OBJ(vstr) || !IS_OBJ(vdelim)) {
+
+        if (!IS_OBJ(vstr) || !IS_OBJ(vdelim))
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
-        ObjString* str = (ObjString*)as_obj(vstr);
-        ObjString* delim = (ObjString*)as_obj(vdelim);
-        
+        ObjString *str = (ObjString *)as_obj(vstr);
+        ObjString *delim = (ObjString *)as_obj(vdelim);
+
         /* Count parts */
         int count = 1;
-        const char* p = str->chars;
-        while ((p = strstr(p, delim->chars)) != NULL) {
+        const char *p = str->chars;
+        while ((p = strstr(p, delim->chars)) != NULL)
+        {
             count++;
             p += delim->length;
         }
-        
+
         /* Create array */
-        ObjArray* arr = new_array(vm, count);
+        ObjArray *arr = new_array(vm, count);
         p = str->chars;
         int idx = 0;
-        const char* next;
-        while ((next = strstr(p, delim->chars)) != NULL) {
+        const char *next;
+        while ((next = strstr(p, delim->chars)) != NULL)
+        {
             arr->values[idx++] = val_obj(copy_string(vm, p, next - p));
             p = next + delim->length;
         }
         arr->values[idx] = val_obj(copy_string(vm, p, str->chars + str->length - p));
         arr->count = count;
-        
+
         PUSH(val_obj(arr));
         DISPATCH();
     }
-    
-    CASE(join): {
+
+    CASE(join) :
+    {
         Value vdelim = POP();
         Value varr = POP();
-        
-        if (!IS_OBJ(varr) || !IS_OBJ(vdelim)) {
+
+        if (!IS_OBJ(varr) || !IS_OBJ(vdelim))
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
-        ObjArray* arr = (ObjArray*)as_obj(varr);
-        ObjString* delim = (ObjString*)as_obj(vdelim);
-        
-        if (arr->count == 0) {
+        ObjArray *arr = (ObjArray *)as_obj(varr);
+        ObjString *delim = (ObjString *)as_obj(vdelim);
+
+        if (arr->count == 0)
+        {
             PUSH(val_obj(copy_string(vm, "", 0)));
             DISPATCH();
         }
-        
+
         /* Calculate total length */
         size_t total = 0;
-        for (uint32_t i = 0; i < arr->count; i++) {
+        for (uint32_t i = 0; i < arr->count; i++)
+        {
             Value v = arr->values[i];
-            if (IS_OBJ(v)) {
-                ObjString* s = (ObjString*)as_obj(v);
+            if (IS_OBJ(v))
+            {
+                ObjString *s = (ObjString *)as_obj(v);
                 total += s->length;
             }
-            if (i > 0) total += delim->length;
+            if (i > 0)
+                total += delim->length;
         }
-        
+
         /* Build result */
-        char* buf = malloc(total + 1);
-        char* dst = buf;
-        for (uint32_t i = 0; i < arr->count; i++) {
-            if (i > 0) {
+        char *buf = malloc(total + 1);
+        char *dst = buf;
+        for (uint32_t i = 0; i < arr->count; i++)
+        {
+            if (i > 0)
+            {
                 memcpy(dst, delim->chars, delim->length);
                 dst += delim->length;
             }
             Value v = arr->values[i];
-            if (IS_OBJ(v)) {
-                ObjString* s = (ObjString*)as_obj(v);
+            if (IS_OBJ(v))
+            {
+                ObjString *s = (ObjString *)as_obj(v);
                 memcpy(dst, s->chars, s->length);
                 dst += s->length;
             }
         }
         *dst = '\0';
-        
-        ObjString* result = copy_string(vm, buf, total);
+
+        ObjString *result = copy_string(vm, buf, total);
         free(buf);
         PUSH(val_obj(result));
         DISPATCH();
     }
-    
-    CASE(replace): {
+
+    CASE(replace) :
+    {
         Value vto = POP();
         Value vfrom = POP();
         Value vstr = POP();
-        
-        if (!IS_OBJ(vstr) || !IS_OBJ(vfrom) || !IS_OBJ(vto)) {
+
+        if (!IS_OBJ(vstr) || !IS_OBJ(vfrom) || !IS_OBJ(vto))
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
-        ObjString* str = (ObjString*)as_obj(vstr);
-        ObjString* from = (ObjString*)as_obj(vfrom);
-        ObjString* to = (ObjString*)as_obj(vto);
-        
-        if (from->length == 0) {
+        ObjString *str = (ObjString *)as_obj(vstr);
+        ObjString *from = (ObjString *)as_obj(vfrom);
+        ObjString *to = (ObjString *)as_obj(vto);
+
+        if (from->length == 0)
+        {
             PUSH(vstr);
             DISPATCH();
         }
-        
+
         /* Count occurrences */
         int count = 0;
-        const char* p = str->chars;
-        while ((p = strstr(p, from->chars)) != NULL) {
+        const char *p = str->chars;
+        while ((p = strstr(p, from->chars)) != NULL)
+        {
             count++;
             p += from->length;
         }
-        
-        if (count == 0) {
+
+        if (count == 0)
+        {
             PUSH(vstr);
             DISPATCH();
         }
-        
+
         /* Calculate new length */
         size_t new_len = str->length + count * ((int)to->length - (int)from->length);
-        char* buf = malloc(new_len + 1);
-        char* dst = buf;
+        char *buf = malloc(new_len + 1);
+        char *dst = buf;
         p = str->chars;
-        const char* next;
-        
-        while ((next = strstr(p, from->chars)) != NULL) {
+        const char *next;
+
+        while ((next = strstr(p, from->chars)) != NULL)
+        {
             memcpy(dst, p, next - p);
             dst += next - p;
             memcpy(dst, to->chars, to->length);
@@ -1804,546 +2208,930 @@ InterpretResult vm_run(VM* vm) {
         }
         memcpy(dst, p, str->chars + str->length - p);
         buf[new_len] = '\0';
-        
-        ObjString* result = copy_string(vm, buf, new_len);
+
+        ObjString *result = copy_string(vm, buf, new_len);
         free(buf);
         PUSH(val_obj(result));
         DISPATCH();
     }
-    
-    CASE(find): {
+
+    CASE(find) :
+    {
         Value vneedle = POP();
         Value vhaystack = POP();
-        
-        if (!IS_OBJ(vhaystack) || !IS_OBJ(vneedle)) {
+
+        if (!IS_OBJ(vhaystack) || !IS_OBJ(vneedle))
+        {
             PUSH(val_int(-1));
             DISPATCH();
         }
-        ObjString* haystack = (ObjString*)as_obj(vhaystack);
-        ObjString* needle = (ObjString*)as_obj(vneedle);
-        
-        const char* found = strstr(haystack->chars, needle->chars);
-        if (found) {
+        ObjString *haystack = (ObjString *)as_obj(vhaystack);
+        ObjString *needle = (ObjString *)as_obj(vneedle);
+
+        const char *found = strstr(haystack->chars, needle->chars);
+        if (found)
+        {
             PUSH(val_int((int32_t)(found - haystack->chars)));
-        } else {
+        }
+        else
+        {
             PUSH(val_int(-1));
         }
         DISPATCH();
     }
-    
-    CASE(trim): {
+
+    CASE(trim) :
+    {
         Value v = POP();
-        if (!IS_OBJ(v)) {
+        if (!IS_OBJ(v))
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
-        ObjString* str = (ObjString*)as_obj(v);
-        
-        const char* start = str->chars;
-        const char* end = str->chars + str->length;
-        
-        while (start < end && (*start == ' ' || *start == '\t' || *start == '\n' || *start == '\r')) {
+        ObjString *str = (ObjString *)as_obj(v);
+
+        const char *start = str->chars;
+        const char *end = str->chars + str->length;
+
+        while (start < end && (*start == ' ' || *start == '\t' || *start == '\n' || *start == '\r'))
+        {
             start++;
         }
-        while (end > start && (*(end-1) == ' ' || *(end-1) == '\t' || *(end-1) == '\n' || *(end-1) == '\r')) {
+        while (end > start && (*(end - 1) == ' ' || *(end - 1) == '\t' || *(end - 1) == '\n' || *(end - 1) == '\r'))
+        {
             end--;
         }
-        
+
         PUSH(val_obj(copy_string(vm, start, end - start)));
         DISPATCH();
     }
-    
-    CASE(char): {
+
+    CASE(char) :
+    {
         Value v = POP();
         int32_t code = IS_INT(v) ? as_int(v) : (int32_t)as_num(v);
         char buf[2] = {(char)code, '\0'};
         PUSH(val_obj(copy_string(vm, buf, 1)));
         DISPATCH();
     }
-    
-    CASE(ord): {
+
+    CASE(ord) :
+    {
         Value v = POP();
-        if (!IS_OBJ(v)) {
+        if (!IS_OBJ(v))
+        {
             PUSH(val_int(0));
             DISPATCH();
         }
-        ObjString* str = (ObjString*)as_obj(v);
-        if (str->length == 0) {
+        ObjString *str = (ObjString *)as_obj(v);
+        if (str->length == 0)
+        {
             PUSH(val_int(0));
-        } else {
+        }
+        else
+        {
             PUSH(val_int((unsigned char)str->chars[0]));
         }
         DISPATCH();
     }
-    
-    CASE(halt): {
+
+    CASE(halt) :
+    {
         return INTERPRET_OK;
     }
-    
+
     /* ============ SUPERINSTRUCTIONS ============ */
     /* These fused instructions eliminate dispatch overhead and provide 2-3x speedup */
-    
+
     /* Fast local variable access for common slots - using cached bp */
-    CASE(get_local_0): {
+    CASE(get_local_0) :
+    {
         PUSH(bp[0]);
         DISPATCH();
     }
-    
-    CASE(get_local_1): {
+
+    CASE(get_local_1) :
+    {
         PUSH(bp[1]);
         DISPATCH();
     }
-    
-    CASE(get_local_2): {
+
+    CASE(get_local_2) :
+    {
         PUSH(bp[2]);
         DISPATCH();
     }
-    
-    CASE(get_local_3): {
+
+    CASE(get_local_3) :
+    {
         PUSH(bp[3]);
         DISPATCH();
     }
-    
+
     /* Fast constants */
-    CASE(const_0): {
+    CASE(const_0) :
+    {
         PUSH(val_int(0));
         DISPATCH();
     }
-    
-    CASE(const_1): {
+
+    CASE(const_1) :
+    {
         PUSH(val_int(1));
         DISPATCH();
     }
-    
-    CASE(const_2): {
+
+    CASE(const_2) :
+    {
         PUSH(val_int(2));
         DISPATCH();
     }
-    
+
+    /* ============ INTEGER-SPECIALIZED OPCODES ============ */
+    /* These skip type checking and provide fastest path for integer-only code */
+    /* ~2-4x faster than generic opcodes due to no type dispatch */
+
+    CASE(add_ii) :
+    {
+        /* Pure integer add - no type checks */
+        int32_t b = as_int(POP());
+        int32_t a = as_int(POP());
+        PUSH(val_int(a + b));
+        DISPATCH();
+    }
+
+    CASE(sub_ii) :
+    {
+        int32_t b = as_int(POP());
+        int32_t a = as_int(POP());
+        PUSH(val_int(a - b));
+        DISPATCH();
+    }
+
+    CASE(mul_ii) :
+    {
+        int32_t b = as_int(POP());
+        int32_t a = as_int(POP());
+        PUSH(val_int(a * b));
+        DISPATCH();
+    }
+
+    CASE(div_ii) :
+    {
+        int32_t b = as_int(POP());
+        int32_t a = as_int(POP());
+        PUSH(val_int(b != 0 ? a / b : 0));
+        DISPATCH();
+    }
+
+    CASE(mod_ii) :
+    {
+        int32_t b = as_int(POP());
+        int32_t a = as_int(POP());
+        PUSH(val_int(b != 0 ? a % b : 0));
+        DISPATCH();
+    }
+
+    CASE(lt_ii) :
+    {
+        int32_t b = as_int(POP());
+        int32_t a = as_int(POP());
+        PUSH(val_bool(a < b));
+        DISPATCH();
+    }
+
+    CASE(gt_ii) :
+    {
+        int32_t b = as_int(POP());
+        int32_t a = as_int(POP());
+        PUSH(val_bool(a > b));
+        DISPATCH();
+    }
+
+    CASE(lte_ii) :
+    {
+        int32_t b = as_int(POP());
+        int32_t a = as_int(POP());
+        PUSH(val_bool(a <= b));
+        DISPATCH();
+    }
+
+    CASE(gte_ii) :
+    {
+        int32_t b = as_int(POP());
+        int32_t a = as_int(POP());
+        PUSH(val_bool(a >= b));
+        DISPATCH();
+    }
+
+    CASE(eq_ii) :
+    {
+        int32_t b = as_int(POP());
+        int32_t a = as_int(POP());
+        PUSH(val_bool(a == b));
+        DISPATCH();
+    }
+
+    CASE(neq_ii) :
+    {
+        int32_t b = as_int(POP());
+        int32_t a = as_int(POP());
+        PUSH(val_bool(a != b));
+        DISPATCH();
+    }
+
+    CASE(inc_ii) :
+    {
+        int32_t a = as_int(POP());
+        PUSH(val_int(a + 1));
+        DISPATCH();
+    }
+
+    CASE(dec_ii) :
+    {
+        int32_t a = as_int(POP());
+        PUSH(val_int(a - 1));
+        DISPATCH();
+    }
+
+    CASE(neg_ii) :
+    {
+        int32_t a = as_int(POP());
+        PUSH(val_int(-a));
+        DISPATCH();
+    }
+
+    /* Integer-specialized comparison + jump - FASTEST loop opcodes */
+    CASE(lt_ii_jmp_false) :
+    {
+        uint16_t offset = READ_SHORT();
+        int32_t b = as_int(POP());
+        int32_t a = as_int(POP());
+        if (!(a < b))
+            ip += offset;
+        DISPATCH();
+    }
+
+    CASE(lte_ii_jmp_false) :
+    {
+        uint16_t offset = READ_SHORT();
+        int32_t b = as_int(POP());
+        int32_t a = as_int(POP());
+        if (!(a <= b))
+            ip += offset;
+        DISPATCH();
+    }
+
+    CASE(gt_ii_jmp_false) :
+    {
+        uint16_t offset = READ_SHORT();
+        int32_t b = as_int(POP());
+        int32_t a = as_int(POP());
+        if (!(a > b))
+            ip += offset;
+        DISPATCH();
+    }
+
+    CASE(gte_ii_jmp_false) :
+    {
+        uint16_t offset = READ_SHORT();
+        int32_t b = as_int(POP());
+        int32_t a = as_int(POP());
+        if (!(a >= b))
+            ip += offset;
+        DISPATCH();
+    }
+
     /* Fast increment/decrement */
-    CASE(add_1): {
+    CASE(add_1) :
+    {
         Value v = POP();
         PUSH(val_int(as_int(v) + 1));
         DISPATCH();
     }
-    
-    CASE(sub_1): {
+
+    CASE(sub_1) :
+    {
         Value v = POP();
         PUSH(val_int(as_int(v) - 1));
         DISPATCH();
     }
-    
+
     /* Fused comparison + conditional jump - CRITICAL for loops */
     /* These pop 2 values, compare, and conditionally jump WITHOUT leaving result */
     /* The compiler skips the subsequent OP_POP when fusion happens */
-    CASE(lt_jmp_false): {
+    CASE(lt_jmp_false) :
+    {
         uint16_t offset = READ_SHORT();
         Value b = POP();
         Value a = POP();
         bool result;
-        if (IS_INT(a) && IS_INT(b)) {
+        if (IS_INT(a) && IS_INT(b))
+        {
             result = as_int(a) < as_int(b);
-        } else {
+        }
+        else
+        {
             double da = IS_INT(a) ? as_int(a) : as_num(a);
             double db = IS_INT(b) ? as_int(b) : as_num(b);
             result = da < db;
         }
-        if (!result) ip += offset;
+        if (!result)
+            ip += offset;
         DISPATCH();
     }
-    
-    CASE(lte_jmp_false): {
+
+    CASE(lte_jmp_false) :
+    {
         uint16_t offset = READ_SHORT();
         Value b = POP();
         Value a = POP();
         bool result;
-        if (IS_INT(a) && IS_INT(b)) {
+        if (IS_INT(a) && IS_INT(b))
+        {
             result = as_int(a) <= as_int(b);
-        } else {
+        }
+        else
+        {
             double da = IS_INT(a) ? as_int(a) : as_num(a);
             double db = IS_INT(b) ? as_int(b) : as_num(b);
             result = da <= db;
         }
-        if (!result) ip += offset;
+        if (!result)
+            ip += offset;
         DISPATCH();
     }
-    
-    CASE(gt_jmp_false): {
+
+    CASE(gt_jmp_false) :
+    {
         uint16_t offset = READ_SHORT();
         Value b = POP();
         Value a = POP();
         bool result;
-        if (IS_INT(a) && IS_INT(b)) {
+        if (IS_INT(a) && IS_INT(b))
+        {
             result = as_int(a) > as_int(b);
-        } else {
+        }
+        else
+        {
             double da = IS_INT(a) ? as_int(a) : as_num(a);
             double db = IS_INT(b) ? as_int(b) : as_num(b);
             result = da > db;
         }
-        if (!result) ip += offset;
+        if (!result)
+            ip += offset;
         DISPATCH();
     }
-    
-    CASE(gte_jmp_false): {
+
+    CASE(gte_jmp_false) :
+    {
         uint16_t offset = READ_SHORT();
         Value b = POP();
         Value a = POP();
         bool result;
-        if (IS_INT(a) && IS_INT(b)) {
+        if (IS_INT(a) && IS_INT(b))
+        {
             result = as_int(a) >= as_int(b);
-        } else {
+        }
+        else
+        {
             double da = IS_INT(a) ? as_int(a) : as_num(a);
             double db = IS_INT(b) ? as_int(b) : as_num(b);
             result = da >= db;
         }
-        if (!result) ip += offset;
+        if (!result)
+            ip += offset;
         DISPATCH();
     }
-    
-    CASE(eq_jmp_false): {
+
+    CASE(eq_jmp_false) :
+    {
         uint16_t offset = READ_SHORT();
         Value b = POP();
         Value a = POP();
-        if (a != b) ip += offset;
+        if (a != b)
+            ip += offset;
         DISPATCH();
     }
-    
+
     /* Fused local + arithmetic */
-    CASE(get_local_add): {
+    CASE(get_local_add) :
+    {
         uint8_t slot = READ_BYTE();
-        Value local = bp[slot];  /* Use cached bp */
+        Value local = bp[slot]; /* Use cached bp */
         Value tos = POP();
-        if (IS_INT(local) && IS_INT(tos)) {
+        if (IS_INT(local) && IS_INT(tos))
+        {
             PUSH(val_int(as_int(local) + as_int(tos)));
-        } else {
+        }
+        else
+        {
             double da = IS_INT(local) ? as_int(local) : as_num(local);
             double db = IS_INT(tos) ? as_int(tos) : as_num(tos);
             PUSH(val_num(da + db));
         }
         DISPATCH();
     }
-    
-    CASE(get_local_sub): {
+
+    CASE(get_local_sub) :
+    {
         uint8_t slot = READ_BYTE();
-        Value local = bp[slot];  /* Use cached bp */
+        Value local = bp[slot]; /* Use cached bp */
         Value tos = POP();
-        if (IS_INT(local) && IS_INT(tos)) {
+        if (IS_INT(local) && IS_INT(tos))
+        {
             PUSH(val_int(as_int(tos) - as_int(local)));
-        } else {
+        }
+        else
+        {
             double da = IS_INT(tos) ? as_int(tos) : as_num(tos);
             double db = IS_INT(local) ? as_int(local) : as_num(local);
             PUSH(val_num(da - db));
         }
         DISPATCH();
     }
-    
+
     /* Ultra-fast loop increment - critical for tight loops */
-    CASE(inc_local): {
+    CASE(inc_local) :
+    {
         uint8_t slot = READ_BYTE();
         /* Use cached bp - assume integer for loop counters */
         bp[slot] = val_int(as_int(bp[slot]) + 1);
         DISPATCH();
     }
-    
-    CASE(dec_local): {
+
+    CASE(dec_local) :
+    {
         uint8_t slot = READ_BYTE();
         /* Use cached bp */
         bp[slot] = val_int(as_int(bp[slot]) - 1);
         DISPATCH();
     }
-    
+
     /* Fused for-range iteration: counter in slot, limit in next slot */
     /* Format: OP_FOR_RANGE, counter_slot, limit_slot, offset[2] */
-    CASE(for_range): {
+    CASE(for_range) :
+    {
         uint8_t counter_slot = READ_BYTE();
         uint8_t limit_slot = READ_BYTE();
         uint16_t offset = READ_SHORT();
-        
+
         /* Use cached bp - no branch! */
         int32_t counter = as_int(bp[counter_slot]);
         int32_t limit = as_int(bp[limit_slot]);
-        
-        if (counter >= limit) {
-            ip += offset;  /* Exit loop */
-        } else {
+
+        if (counter >= limit)
+        {
+            ip += offset; /* Exit loop */
+        }
+        else
+        {
             /* Push current value for loop body, then increment */
             PUSH(val_int(counter));
             bp[counter_slot] = val_int(counter + 1);
         }
         DISPATCH();
     }
-    
+
     /* Generic for loop: handles Range and Array */
     /* Format: OP_FOR_LOOP, iter_slot, idx_slot, var_slot, offset[2] */
     /* For arrays: iter_slot has array, idx_slot has current index, var_slot gets element */
     /* For ranges: iter_slot has range (with internal counter), idx_slot unused */
-    CASE(for_loop): {
+    CASE(for_loop) :
+    {
         uint8_t iter_slot = READ_BYTE();
         uint8_t idx_slot = READ_BYTE();
         uint8_t var_slot = READ_BYTE();
         uint16_t offset = READ_SHORT();
-        
+
         /* Use cached bp - no branch! */
         Value iter = bp[iter_slot];
-        if (IS_RANGE(iter)) {
-            ObjRange* range = AS_RANGE(iter);
-            if (range->current >= range->end) {
+        if (IS_RANGE(iter))
+        {
+            ObjRange *range = AS_RANGE(iter);
+            if (range->current >= range->end)
+            {
                 ip += offset;
-            } else {
+            }
+            else
+            {
                 bp[var_slot] = val_int(range->current++);
             }
-        } else if (IS_ARRAY(iter)) {
+        }
+        else if (IS_ARRAY(iter))
+        {
             /* Array iteration: iter_slot has array, idx_slot has index */
-            ObjArray* arr = AS_ARRAY(iter);
+            ObjArray *arr = AS_ARRAY(iter);
             int32_t idx = as_int(bp[idx_slot]);
-            
-            if ((uint32_t)idx >= arr->count) {
-                ip += offset;  /* Exit loop */
-            } else {
+
+            if ((uint32_t)idx >= arr->count)
+            {
+                ip += offset; /* Exit loop */
+            }
+            else
+            {
                 bp[var_slot] = arr->values[idx];
-                bp[idx_slot] = val_int(idx + 1);  /* Increment index */
+                bp[idx_slot] = val_int(idx + 1); /* Increment index */
             }
-        } else if (IS_STRING(iter)) {
+        }
+        else if (IS_STRING(iter))
+        {
             /* String iteration: iterate over characters */
-            ObjString* str = AS_STRING(iter);
+            ObjString *str = AS_STRING(iter);
             int32_t idx = as_int(bp[idx_slot]);
-            
-            if ((uint32_t)idx >= str->length) {
-                ip += offset;  /* Exit loop */
-            } else {
-                /* Create single-character string */
-                ObjString* ch = copy_string(vm, &str->chars[idx], 1);
-                bp[var_slot] = val_obj(ch);
-                bp[idx_slot] = val_int(idx + 1);  /* Increment index */
+
+            if ((uint32_t)idx >= str->length)
+            {
+                ip += offset; /* Exit loop */
             }
-        } else {
+            else
+            {
+                /* Create single-character string */
+                ObjString *ch = copy_string(vm, &str->chars[idx], 1);
+                bp[var_slot] = val_obj(ch);
+                bp[idx_slot] = val_int(idx + 1); /* Increment index */
+            }
+        }
+        else
+        {
             vm->sp = sp;
             runtime_error(vm, "Expected iterable (range, array, or string).");
             return INTERPRET_RUNTIME_ERROR;
         }
         DISPATCH();
     }
-    
+
     /* Heap-allocation-free integer for loop: no Range object! */
     /* Format: OP_FOR_INT_INIT - nothing to do, just skip */
-    CASE(for_int_init): {
+    CASE(for_int_init) :
+    {
         DISPATCH();
     }
-    
+
     /* Ultra-fast int loop: counter, end, var all stored as raw ints in locals */
     /* Format: OP_FOR_INT_LOOP, counter_slot, end_slot, var_slot, offset[2] */
-    CASE(for_int_loop): {
+    CASE(for_int_loop) :
+    {
         uint8_t counter_slot = READ_BYTE();
         uint8_t end_slot = READ_BYTE();
         uint8_t var_slot = READ_BYTE();
         uint16_t offset = READ_SHORT();
-        
+
+        /* JIT: Check if we have compiled code for this loop */
+        uint8_t *loop_header = ip - 6; /* Point back to FOR_INT_LOOP */
+        int trace_idx = jit_check_hotloop(loop_header);
+
+        if (trace_idx >= 0)
+        {
+            /* Execute JIT-compiled trace */
+            int64_t counter = as_int(bp[counter_slot]);
+            int64_t end = as_int(bp[end_slot]);
+            int64_t iterations = end - counter;
+
+            /* Set globals for JIT to access */
+            jit_set_globals(vm->globals.values, vm->chunk.constants);
+            jit_execute_loop(trace_idx, bp, iterations);
+
+            /* Loop completed - jump past the loop */
+            ip += offset;
+            DISPATCH();
+        }
+
+        /* JIT: Count this loop header */
+        if (jit_count_loop(loop_header))
+        {
+            /* Hot! Compile it */
+            uint8_t *loop_end = ip + offset - 2; /* LOOP instruction */
+            jit_compile_loop(loop_header, loop_end, bp,
+                             vm->chunk.constants,
+                             vm->chunk.const_count,
+                             vm->globals.keys, vm->globals.values, vm->globals.capacity);
+        }
+
         /* Use cached bp - no branch! */
         int64_t counter = as_int(bp[counter_slot]);
         int64_t end = as_int(bp[end_slot]);
-        
-        if (counter >= end) {
+
+        if (counter >= end)
+        {
             ip += offset;
-        } else {
+        }
+        else
+        {
             bp[var_slot] = val_int(counter);
             bp[counter_slot] = val_int(counter + 1);
         }
         DISPATCH();
     }
-    
+
     /* ULTRA-TIGHT counting loop - the fastest possible for numeric iteration */
     /* No Range object, no type checks, just raw integer operations */
     /* Format: OP_FOR_COUNT, counter_slot, end_slot, var_slot, offset[2] */
-    CASE(for_count): {
+    CASE(for_count) :
+    {
         uint8_t counter_slot = READ_BYTE();
         uint8_t end_slot = READ_BYTE();
         uint8_t var_slot = READ_BYTE();
         uint16_t offset = READ_SHORT();
-        
+
+        /* JIT: Check if we have compiled code for this loop */
+        uint8_t *loop_header = ip - 6; /* Point back to OP_FOR_COUNT */
+        int trace_idx = jit_check_hotloop(loop_header);
+
+        if (trace_idx >= 0)
+        {
+            /* Execute JIT-compiled trace */
+            int32_t counter_val, end_val;
+            FAST_INT(bp[counter_slot], counter_val);
+            FAST_INT(bp[end_slot], end_val);
+            int64_t iterations = end_val - counter_val;
+
+            /* Set globals for JIT to access */
+            jit_set_globals(vm->globals.values, vm->chunk.constants);
+            jit_execute_loop(trace_idx, bp, iterations);
+
+            /* Loop completed - jump past the loop */
+            ip += offset;
+            DISPATCH();
+        }
+
+        /* JIT: Count this loop header */
+        if (jit_count_loop(loop_header))
+        {
+            /* Hot! Compile it */
+            uint8_t *loop_end = ip + offset - 2; /* LOOP instruction */
+            jit_compile_loop(loop_header, loop_end, bp,
+                             vm->chunk.constants,
+                             vm->chunk.const_count,
+                             vm->globals.keys, vm->globals.values, vm->globals.capacity);
+        }
+
         /* Use cached base pointer - no branch! */
         int32_t counter, end_val;
         FAST_INT(bp[counter_slot], counter);
         FAST_INT(bp[end_slot], end_val);
-        
-        if (counter >= end_val) {
-            ip += offset;  /* Exit loop */
-        } else {
+
+        if (counter >= end_val)
+        {
+            ip += offset; /* Exit loop */
+        }
+        else
+        {
             bp[var_slot] = val_int(counter);
             bp[counter_slot] = val_int(counter + 1);
         }
         DISPATCH();
     }
-    
+
     /* Add immediate integer to local variable */
     /* Format: OP_ADD_LOCAL_INT, slot, delta (signed 8-bit) */
-    CASE(add_local_int): {
+    CASE(add_local_int) :
+    {
         uint8_t slot = READ_BYTE();
         int8_t delta = (int8_t)READ_BYTE();
-        
+
         /* Use cached bp - no branch! */
         int32_t val;
         FAST_INT(bp[slot], val);
         bp[slot] = val_int(val + delta);
         DISPATCH();
     }
-    
+
+    /* ============ FUSED LOCAL ARITHMETIC ============ */
+    /* These reduce dispatch overhead by combining common patterns */
+
+    /* Increment local by 1 (pure int path) */
+    /* Format: OP_INC_LOCAL_I, slot */
+    CASE(inc_local_i) :
+    {
+        uint8_t slot = READ_BYTE();
+        int32_t val = as_int(bp[slot]);
+        bp[slot] = val_int(val + 1);
+        DISPATCH();
+    }
+
+    /* Decrement local by 1 */
+    CASE(dec_local_i) :
+    {
+        uint8_t slot = READ_BYTE();
+        int32_t val = as_int(bp[slot]);
+        bp[slot] = val_int(val - 1);
+        DISPATCH();
+    }
+
+    /* Push local[a] + local[b] onto stack */
+    /* Format: OP_LOCAL_ADD_LOCAL, slot_a, slot_b */
+    CASE(local_add_local) :
+    {
+        uint8_t slot_a = READ_BYTE();
+        uint8_t slot_b = READ_BYTE();
+        int32_t a = as_int(bp[slot_a]);
+        int32_t b = as_int(bp[slot_b]);
+        PUSH(val_int(a + b));
+        DISPATCH();
+    }
+
+    /* Push local[slot] * constant onto stack */
+    /* Format: OP_LOCAL_MUL_CONST, slot, const_idx */
+    CASE(local_mul_const) :
+    {
+        uint8_t slot = READ_BYTE();
+        uint8_t const_idx = READ_BYTE();
+        int32_t local_val = as_int(bp[slot]);
+        Value constant = vm->chunk.constants[const_idx];
+        int32_t const_val = as_int(constant);
+        PUSH(val_int(local_val * const_val));
+        DISPATCH();
+    }
+
+    /* Push local[slot] + constant onto stack */
+    /* Format: OP_LOCAL_ADD_CONST, slot, const_idx */
+    CASE(local_add_const) :
+    {
+        uint8_t slot = READ_BYTE();
+        uint8_t const_idx = READ_BYTE();
+        int32_t local_val = as_int(bp[slot]);
+        Value constant = vm->chunk.constants[const_idx];
+        int32_t const_val = as_int(constant);
+        PUSH(val_int(local_val + const_val));
+        DISPATCH();
+    }
+
     /* Compare two locals and loop backward if condition is true */
     /* Format: OP_LOCAL_LT_LOOP, slot_a, slot_b, offset[2] (backward) */
-    CASE(local_lt_loop): {
+    CASE(local_lt_loop) :
+    {
         uint8_t slot_a = READ_BYTE();
         uint8_t slot_b = READ_BYTE();
         uint16_t offset = READ_SHORT();
-        
+
         /* Use cached bp - no branch! */
         int32_t a, b;
         FAST_INT(bp[slot_a], a);
         FAST_INT(bp[slot_b], b);
-        
-        if (a < b) {
-            ip -= offset;  /* Jump backward to loop start */
+
+        if (a < b)
+        {
+            ip -= offset; /* Jump backward to loop start */
         }
         DISPATCH();
     }
-    
+
     /* ============================================================
      * JIT-COMPILED LOOP HANDLERS
      * These execute native machine code for maximum performance
      * ============================================================ */
-    
+
     /* JIT: for i in 0..iterations do x = x + 1 end
      * Stack: [x, iterations] -> [result] */
-    CASE(jit_inc_loop): {
+    CASE(jit_inc_loop) :
+    {
         Value iter_val = POP();
         Value x_val = POP();
-        
+
         int32_t x, iterations;
         FAST_INT(x_val, x);
         FAST_INT(iter_val, iterations);
-        
+
         /* Call JIT-compiled native code! */
         int64_t result = jit_run_inc_loop(x, iterations);
-        
+
         PUSH(val_int((int32_t)result));
         DISPATCH();
     }
-    
+
     /* JIT: for i in 0..iterations do x = x * 3 + 7 end
      * Stack: [x, iterations] -> [result] */
-    CASE(jit_arith_loop): {
+    CASE(jit_arith_loop) :
+    {
         Value iter_val = POP();
         Value x_val = POP();
-        
+
         int32_t x, iterations;
         FAST_INT(x_val, x);
         FAST_INT(iter_val, iterations);
-        
+
         /* Call JIT-compiled native code! */
         int64_t result = jit_run_arith_loop(x, iterations);
-        
+
         PUSH(val_int((int32_t)result));
         DISPATCH();
     }
-    
+
     /* JIT: for i in 0..iterations do if i%2==0 x++ else x-- end
      * Stack: [x, iterations] -> [result] */
-    CASE(jit_branch_loop): {
+    CASE(jit_branch_loop) :
+    {
         Value iter_val = POP();
         Value x_val = POP();
-        
+
         int32_t x, iterations;
         FAST_INT(x_val, x);
         FAST_INT(iter_val, iterations);
-        
+
         /* Call JIT-compiled native code! */
         int64_t result = jit_run_branch_loop(x, iterations);
-        
+
         PUSH(val_int((int32_t)result));
         DISPATCH();
     }
-    
+
     /* TAIL CALL OPTIMIZATION - Revolutionary for recursive functions! */
     /* Reuses the current stack frame instead of creating a new one */
-    CASE(tail_call): {
+    CASE(tail_call) :
+    {
         uint8_t arg_count = READ_BYTE();
         Value callee = PEEK(arg_count);
-        
-        if (!IS_FUNCTION(callee)) {
+
+        if (!IS_FUNCTION(callee))
+        {
             vm->sp = sp;
             runtime_error(vm, "Can only call functions.");
             return INTERPRET_RUNTIME_ERROR;
         }
-        
-        ObjFunction* function = AS_FUNCTION(callee);
-        if (arg_count != function->arity) {
+
+        ObjFunction *function = AS_FUNCTION(callee);
+        if (arg_count != function->arity)
+        {
             vm->sp = sp;
             runtime_error(vm, "Expected %d arguments but got %d.",
-                function->arity, arg_count);
+                          function->arity, arg_count);
             return INTERPRET_RUNTIME_ERROR;
         }
-        
+
         /* Move arguments down to overwrite current frame */
-        Value* new_base;
-        if (vm->frame_count > 0) {
+        Value *new_base;
+        if (vm->frame_count > 0)
+        {
             new_base = vm->frames[vm->frame_count - 1].slots;
-        } else {
+        }
+        else
+        {
             new_base = vm->stack;
         }
-        
+
         /* Copy callee and arguments to base of frame */
-        for (int i = 0; i <= arg_count; i++) {
+        for (int i = 0; i <= arg_count; i++)
+        {
             new_base[i] = sp[-arg_count - 1 + i];
         }
-        
+
         /* Reset stack pointer */
         sp = new_base + arg_count + 1;
-        
+
         /* Jump to function code (same frame) */
         ip = vm->chunk.code + function->code_start;
         DISPATCH();
     }
-    
+
     /* ============ FILE I/O ============ */
-    
-    CASE(read_file): {
+
+    CASE(read_file) :
+    {
         Value path_val = POP();
-        if (!IS_STRING(path_val)) {
+        if (!IS_STRING(path_val))
+        {
             vm->sp = sp;
             runtime_error(vm, "read_file expects a string path.");
             return INTERPRET_RUNTIME_ERROR;
         }
-        ObjString* path = AS_STRING(path_val);
-        FILE* f = fopen(path->chars, "r");
-        if (!f) {
+        ObjString *path = AS_STRING(path_val);
+        FILE *f = fopen(path->chars, "r");
+        if (!f)
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
         fseek(f, 0, SEEK_END);
         long size = ftell(f);
         fseek(f, 0, SEEK_SET);
-        char* buffer = malloc(size + 1);
+        char *buffer = malloc(size + 1);
         fread(buffer, 1, size, f);
         buffer[size] = '\0';
         fclose(f);
         vm->sp = sp;
-        ObjString* content = copy_string(vm, buffer, size);
+        ObjString *content = copy_string(vm, buffer, size);
         sp = vm->sp;
         free(buffer);
         PUSH(val_obj(content));
         DISPATCH();
     }
-    
-    CASE(write_file): {
+
+    CASE(write_file) :
+    {
         Value content_val = POP();
         Value path_val = POP();
-        if (!IS_STRING(path_val) || !IS_STRING(content_val)) {
+        if (!IS_STRING(path_val) || !IS_STRING(content_val))
+        {
             vm->sp = sp;
             runtime_error(vm, "write_file expects string arguments.");
             return INTERPRET_RUNTIME_ERROR;
         }
-        ObjString* path = AS_STRING(path_val);
-        ObjString* content = AS_STRING(content_val);
-        FILE* f = fopen(path->chars, "w");
-        if (!f) {
+        ObjString *path = AS_STRING(path_val);
+        ObjString *content = AS_STRING(content_val);
+        FILE *f = fopen(path->chars, "w");
+        if (!f)
+        {
             PUSH(VAL_FALSE);
             DISPATCH();
         }
@@ -2352,19 +3140,22 @@ InterpretResult vm_run(VM* vm) {
         PUSH(VAL_TRUE);
         DISPATCH();
     }
-    
-    CASE(append_file): {
+
+    CASE(append_file) :
+    {
         Value content_val = POP();
         Value path_val = POP();
-        if (!IS_STRING(path_val) || !IS_STRING(content_val)) {
+        if (!IS_STRING(path_val) || !IS_STRING(content_val))
+        {
             vm->sp = sp;
             runtime_error(vm, "append_file expects string arguments.");
             return INTERPRET_RUNTIME_ERROR;
         }
-        ObjString* path = AS_STRING(path_val);
-        ObjString* content = AS_STRING(content_val);
-        FILE* f = fopen(path->chars, "a");
-        if (!f) {
+        ObjString *path = AS_STRING(path_val);
+        ObjString *content = AS_STRING(content_val);
+        FILE *f = fopen(path->chars, "a");
+        if (!f)
+        {
             PUSH(VAL_FALSE);
             DISPATCH();
         }
@@ -2373,44 +3164,51 @@ InterpretResult vm_run(VM* vm) {
         PUSH(VAL_TRUE);
         DISPATCH();
     }
-    
-    CASE(file_exists): {
+
+    CASE(file_exists) :
+    {
         Value path_val = POP();
-        if (!IS_STRING(path_val)) {
+        if (!IS_STRING(path_val))
+        {
             PUSH(VAL_FALSE);
             DISPATCH();
         }
-        ObjString* path = AS_STRING(path_val);
+        ObjString *path = AS_STRING(path_val);
         PUSH(val_bool(access(path->chars, F_OK) == 0));
         DISPATCH();
     }
-    
-    CASE(list_dir): {
+
+    CASE(list_dir) :
+    {
         Value path_val = POP();
-        if (!IS_STRING(path_val)) {
+        if (!IS_STRING(path_val))
+        {
             vm->sp = sp;
             runtime_error(vm, "list_dir expects a string path.");
             return INTERPRET_RUNTIME_ERROR;
         }
-        ObjString* path = AS_STRING(path_val);
-        DIR* dir = opendir(path->chars);
-        if (!dir) {
+        ObjString *path = AS_STRING(path_val);
+        DIR *dir = opendir(path->chars);
+        if (!dir)
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
         vm->sp = sp;
-        ObjArray* arr = new_array(vm, 16);
+        ObjArray *arr = new_array(vm, 16);
         sp = vm->sp;
-        struct dirent* entry;
-        while ((entry = readdir(dir)) != NULL) {
-            if (entry->d_name[0] == '.' && 
-                (entry->d_name[1] == '\0' || 
+        struct dirent *entry;
+        while ((entry = readdir(dir)) != NULL)
+        {
+            if (entry->d_name[0] == '.' &&
+                (entry->d_name[1] == '\0' ||
                  (entry->d_name[1] == '.' && entry->d_name[2] == '\0')))
                 continue;
             vm->sp = sp;
-            ObjString* name = copy_string(vm, entry->d_name, strlen(entry->d_name));
+            ObjString *name = copy_string(vm, entry->d_name, strlen(entry->d_name));
             sp = vm->sp;
-            if (arr->count >= arr->capacity) {
+            if (arr->count >= arr->capacity)
+            {
                 uint32_t new_cap = GROW_CAPACITY(arr->capacity);
                 arr->values = realloc(arr->values, new_cap * sizeof(Value));
                 arr->capacity = new_cap;
@@ -2421,263 +3219,307 @@ InterpretResult vm_run(VM* vm) {
         PUSH(val_obj(arr));
         DISPATCH();
     }
-    
-    CASE(delete_file): {
+
+    CASE(delete_file) :
+    {
         Value path_val = POP();
-        if (!IS_STRING(path_val)) {
+        if (!IS_STRING(path_val))
+        {
             PUSH(VAL_FALSE);
             DISPATCH();
         }
-        ObjString* path = AS_STRING(path_val);
+        ObjString *path = AS_STRING(path_val);
         PUSH(val_bool(unlink(path->chars) == 0));
         DISPATCH();
     }
-    
-    CASE(mkdir): {
+
+    CASE(mkdir) :
+    {
         Value path_val = POP();
-        if (!IS_STRING(path_val)) {
+        if (!IS_STRING(path_val))
+        {
             PUSH(VAL_FALSE);
             DISPATCH();
         }
-        ObjString* path = AS_STRING(path_val);
+        ObjString *path = AS_STRING(path_val);
         PUSH(val_bool(mkdir(path->chars, 0755) == 0));
         DISPATCH();
     }
-    
+
     /* ============ HTTP (using popen + curl) ============ */
-    
-    CASE(http_get): {
+
+    CASE(http_get) :
+    {
         Value url_val = POP();
-        if (!IS_STRING(url_val)) {
+        if (!IS_STRING(url_val))
+        {
             vm->sp = sp;
             runtime_error(vm, "http_get expects a string URL.");
             return INTERPRET_RUNTIME_ERROR;
         }
-        ObjString* url = AS_STRING(url_val);
-        if (url->length > 2000) {
+        ObjString *url = AS_STRING(url_val);
+        if (url->length > 2000)
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
-        char* cmd = malloc(url->length + 64);
+        char *cmd = malloc(url->length + 64);
         sprintf(cmd, "curl -s \"%s\"", url->chars);
-        FILE* p = popen(cmd, "r");
+        FILE *p = popen(cmd, "r");
         free(cmd);
-        if (!p) {
+        if (!p)
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
-        char* buffer = NULL;
+        char *buffer = NULL;
         size_t size = 0;
         char chunk[1024];
-        while (fgets(chunk, sizeof(chunk), p)) {
+        while (fgets(chunk, sizeof(chunk), p))
+        {
             size_t chunk_len = strlen(chunk);
             buffer = realloc(buffer, size + chunk_len + 1);
             memcpy(buffer + size, chunk, chunk_len);
             size += chunk_len;
         }
         pclose(p);
-        if (buffer) {
+        if (buffer)
+        {
             buffer[size] = '\0';
             vm->sp = sp;
-            ObjString* result = copy_string(vm, buffer, size);
+            ObjString *result = copy_string(vm, buffer, size);
             sp = vm->sp;
             free(buffer);
             PUSH(val_obj(result));
-        } else {
+        }
+        else
+        {
             PUSH(VAL_NIL);
         }
         DISPATCH();
     }
-    
-    CASE(http_post): {
+
+    CASE(http_post) :
+    {
         Value body_val = POP();
         Value url_val = POP();
-        if (!IS_STRING(url_val)) {
+        if (!IS_STRING(url_val))
+        {
             vm->sp = sp;
             runtime_error(vm, "http_post expects string URL.");
             return INTERPRET_RUNTIME_ERROR;
         }
-        ObjString* url = AS_STRING(url_val);
-        const char* body = IS_STRING(body_val) ? AS_STRING(body_val)->chars : "";
+        ObjString *url = AS_STRING(url_val);
+        const char *body = IS_STRING(body_val) ? AS_STRING(body_val)->chars : "";
         char cmd[8192];
         snprintf(cmd, sizeof(cmd), "curl -s -X POST -d '%s' '%s'", body, url->chars);
-        FILE* p = popen(cmd, "r");
-        if (!p) {
+        FILE *p = popen(cmd, "r");
+        if (!p)
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
-        char* buffer = NULL;
+        char *buffer = NULL;
         size_t size = 0;
         char chunk[1024];
-        while (fgets(chunk, sizeof(chunk), p)) {
+        while (fgets(chunk, sizeof(chunk), p))
+        {
             size_t chunk_len = strlen(chunk);
             buffer = realloc(buffer, size + chunk_len + 1);
             memcpy(buffer + size, chunk, chunk_len);
             size += chunk_len;
         }
         pclose(p);
-        if (buffer) {
+        if (buffer)
+        {
             buffer[size] = '\0';
             vm->sp = sp;
-            ObjString* result = copy_string(vm, buffer, size);
+            ObjString *result = copy_string(vm, buffer, size);
             sp = vm->sp;
             free(buffer);
             PUSH(val_obj(result));
-        } else {
+        }
+        else
+        {
             PUSH(VAL_NIL);
         }
         DISPATCH();
     }
-    
+
     /* ============ JSON ============ */
     /* Recursive descent JSON parser */
-    
-    CASE(json_parse): {
+
+    CASE(json_parse) :
+    {
         Value str_val = POP();
-        if (!IS_STRING(str_val)) {
+        if (!IS_STRING(str_val))
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
-        ObjString* str = AS_STRING(str_val);
-        const char* json = str->chars;
-        const char* end = json + str->length;
+        ObjString *str = AS_STRING(str_val);
+        const char *json = str->chars;
+        const char *end = json + str->length;
         vm->sp = sp;
         Value result = json_parse_value(vm, &json, end);
         sp = vm->sp;
         PUSH(result);
         DISPATCH();
     }
-    
-    CASE(json_stringify): {
+
+    CASE(json_stringify) :
+    {
         Value val = POP();
         vm->sp = sp;
-        ObjString* result = json_stringify_value(vm, val);
+        ObjString *result = json_stringify_value(vm, val);
         sp = vm->sp;
         PUSH(val_obj(result));
         DISPATCH();
     }
-    
+
     /* ============ PROCESS/SYSTEM ============ */
-    
-    CASE(exec): {
+
+    CASE(exec) :
+    {
         Value cmd_val = POP();
-        if (!IS_STRING(cmd_val)) {
+        if (!IS_STRING(cmd_val))
+        {
             vm->sp = sp;
             runtime_error(vm, "exec expects a string command.");
             return INTERPRET_RUNTIME_ERROR;
         }
-        ObjString* cmd = AS_STRING(cmd_val);
-        FILE* p = popen(cmd->chars, "r");
-        if (!p) {
+        ObjString *cmd = AS_STRING(cmd_val);
+        FILE *p = popen(cmd->chars, "r");
+        if (!p)
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
-        char* buffer = NULL;
+        char *buffer = NULL;
         size_t size = 0;
         char chunk[1024];
-        while (fgets(chunk, sizeof(chunk), p)) {
+        while (fgets(chunk, sizeof(chunk), p))
+        {
             size_t chunk_len = strlen(chunk);
             buffer = realloc(buffer, size + chunk_len + 1);
             memcpy(buffer + size, chunk, chunk_len);
             size += chunk_len;
         }
         pclose(p);
-        if (buffer) {
+        if (buffer)
+        {
             buffer[size] = '\0';
             vm->sp = sp;
-            ObjString* result = copy_string(vm, buffer, size);
+            ObjString *result = copy_string(vm, buffer, size);
             sp = vm->sp;
             free(buffer);
             PUSH(val_obj(result));
-        } else {
+        }
+        else
+        {
             vm->sp = sp;
-            ObjString* result = copy_string(vm, "", 0);
+            ObjString *result = copy_string(vm, "", 0);
             sp = vm->sp;
             PUSH(val_obj(result));
         }
         DISPATCH();
     }
-    
-    CASE(env): {
+
+    CASE(env) :
+    {
         Value name_val = POP();
-        if (!IS_STRING(name_val)) {
+        if (!IS_STRING(name_val))
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
-        ObjString* name = AS_STRING(name_val);
-        char* val = getenv(name->chars);
-        if (val) {
+        ObjString *name = AS_STRING(name_val);
+        char *val = getenv(name->chars);
+        if (val)
+        {
             vm->sp = sp;
-            ObjString* result = copy_string(vm, val, strlen(val));
+            ObjString *result = copy_string(vm, val, strlen(val));
             sp = vm->sp;
             PUSH(val_obj(result));
-        } else {
+        }
+        else
+        {
             PUSH(VAL_NIL);
         }
         DISPATCH();
     }
-    
-    CASE(set_env): {
+
+    CASE(set_env) :
+    {
         Value val_val = POP();
         Value name_val = POP();
-        if (!IS_STRING(name_val) || !IS_STRING(val_val)) {
+        if (!IS_STRING(name_val) || !IS_STRING(val_val))
+        {
             PUSH(VAL_FALSE);
             DISPATCH();
         }
-        ObjString* name = AS_STRING(name_val);
-        ObjString* val = AS_STRING(val_val);
+        ObjString *name = AS_STRING(name_val);
+        ObjString *val = AS_STRING(val_val);
         PUSH(val_bool(setenv(name->chars, val->chars, 1) == 0));
         DISPATCH();
     }
-    
-    CASE(args): {
+
+    CASE(args) :
+    {
         /* TODO: Store args in VM and return them */
         vm->sp = sp;
-        ObjArray* arr = new_array(vm, 0);
+        ObjArray *arr = new_array(vm, 0);
         sp = vm->sp;
         PUSH(val_obj(arr));
         DISPATCH();
     }
-    
-    CASE(exit): {
+
+    CASE(exit) :
+    {
         Value code_val = POP();
-        int code = IS_INT(code_val) ? as_int(code_val) : 
-                   IS_NUM(code_val) ? (int)as_num(code_val) : 0;
+        int code = IS_INT(code_val) ? as_int(code_val) : IS_NUM(code_val) ? (int)as_num(code_val)
+                                                                          : 0;
         exit(code);
         DISPATCH();
     }
-    
-    CASE(sleep): {
+
+    CASE(sleep) :
+    {
         Value ms_val = POP();
-        int ms = IS_INT(ms_val) ? as_int(ms_val) : 
-                 IS_NUM(ms_val) ? (int)as_num(ms_val) : 0;
+        int ms = IS_INT(ms_val) ? as_int(ms_val) : IS_NUM(ms_val) ? (int)as_num(ms_val)
+                                                                  : 0;
         usleep(ms * 1000);
         PUSH(VAL_NIL);
         DISPATCH();
     }
-    
+
     /* ============ DICTIONARY ============ */
-    
-    CASE(dict): {
+
+    CASE(dict) :
+    {
         vm->sp = sp;
-        ObjDict* dict = new_dict(vm, 8);
+        ObjDict *dict = new_dict(vm, 8);
         sp = vm->sp;
         PUSH(val_obj(dict));
         DISPATCH();
     }
-    
-    CASE(dict_get): {
+
+    CASE(dict_get) :
+    {
         Value key_val = POP();
         Value dict_val = POP();
-        if (!IS_DICT(dict_val) || !IS_STRING(key_val)) {
+        if (!IS_DICT(dict_val) || !IS_STRING(key_val))
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
-        ObjDict* dict = AS_DICT(dict_val);
-        ObjString* key = AS_STRING(key_val);
-        for (uint32_t i = 0; i < dict->capacity; i++) {
+        ObjDict *dict = AS_DICT(dict_val);
+        ObjString *key = AS_STRING(key_val);
+        for (uint32_t i = 0; i < dict->capacity; i++)
+        {
             if (dict->keys[i] && dict->keys[i]->length == key->length &&
-                memcmp(dict->keys[i]->chars, key->chars, key->length) == 0) {
+                memcmp(dict->keys[i]->chars, key->chars, key->length) == 0)
+            {
                 PUSH(dict->values[i]);
                 DISPATCH();
             }
@@ -2685,22 +3527,26 @@ InterpretResult vm_run(VM* vm) {
         PUSH(VAL_NIL);
         DISPATCH();
     }
-    
-    CASE(dict_set): {
+
+    CASE(dict_set) :
+    {
         Value val = POP();
         Value key_val = POP();
         Value dict_val = POP();
-        if (!IS_DICT(dict_val) || !IS_STRING(key_val)) {
+        if (!IS_DICT(dict_val) || !IS_STRING(key_val))
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
-        ObjDict* dict = AS_DICT(dict_val);
-        ObjString* key = AS_STRING(key_val);
+        ObjDict *dict = AS_DICT(dict_val);
+        ObjString *key = AS_STRING(key_val);
         /* Find existing or empty slot */
         uint32_t slot = key->hash & (dict->capacity - 1);
-        for (uint32_t i = 0; i < dict->capacity; i++) {
+        for (uint32_t i = 0; i < dict->capacity; i++)
+        {
             uint32_t idx = (slot + i) & (dict->capacity - 1);
-            if (!dict->keys[idx]) {
+            if (!dict->keys[idx])
+            {
                 dict->keys[idx] = key;
                 dict->values[idx] = val;
                 dict->count++;
@@ -2708,7 +3554,8 @@ InterpretResult vm_run(VM* vm) {
                 DISPATCH();
             }
             if (dict->keys[idx]->length == key->length &&
-                memcmp(dict->keys[idx]->chars, key->chars, key->length) == 0) {
+                memcmp(dict->keys[idx]->chars, key->chars, key->length) == 0)
+            {
                 dict->values[idx] = val;
                 PUSH(val_obj(dict));
                 DISPATCH();
@@ -2717,19 +3564,23 @@ InterpretResult vm_run(VM* vm) {
         PUSH(val_obj(dict));
         DISPATCH();
     }
-    
-    CASE(dict_has): {
+
+    CASE(dict_has) :
+    {
         Value key_val = POP();
         Value dict_val = POP();
-        if (!IS_DICT(dict_val) || !IS_STRING(key_val)) {
+        if (!IS_DICT(dict_val) || !IS_STRING(key_val))
+        {
             PUSH(VAL_FALSE);
             DISPATCH();
         }
-        ObjDict* dict = AS_DICT(dict_val);
-        ObjString* key = AS_STRING(key_val);
-        for (uint32_t i = 0; i < dict->capacity; i++) {
+        ObjDict *dict = AS_DICT(dict_val);
+        ObjString *key = AS_STRING(key_val);
+        for (uint32_t i = 0; i < dict->capacity; i++)
+        {
             if (dict->keys[i] && dict->keys[i]->length == key->length &&
-                memcmp(dict->keys[i]->chars, key->chars, key->length) == 0) {
+                memcmp(dict->keys[i]->chars, key->chars, key->length) == 0)
+            {
                 PUSH(VAL_TRUE);
                 DISPATCH();
             }
@@ -2737,63 +3588,75 @@ InterpretResult vm_run(VM* vm) {
         PUSH(VAL_FALSE);
         DISPATCH();
     }
-    
-    CASE(dict_keys): {
+
+    CASE(dict_keys) :
+    {
         Value dict_val = POP();
-        if (!IS_DICT(dict_val)) {
+        if (!IS_DICT(dict_val))
+        {
             vm->sp = sp;
-            ObjArray* arr = new_array(vm, 0);
+            ObjArray *arr = new_array(vm, 0);
             sp = vm->sp;
             PUSH(val_obj(arr));
             DISPATCH();
         }
-        ObjDict* dict = AS_DICT(dict_val);
+        ObjDict *dict = AS_DICT(dict_val);
         vm->sp = sp;
-        ObjArray* arr = new_array(vm, dict->count);
+        ObjArray *arr = new_array(vm, dict->count);
         sp = vm->sp;
-        for (uint32_t i = 0; i < dict->capacity; i++) {
-            if (dict->keys[i]) {
+        for (uint32_t i = 0; i < dict->capacity; i++)
+        {
+            if (dict->keys[i])
+            {
                 arr->values[arr->count++] = val_obj(dict->keys[i]);
             }
         }
         PUSH(val_obj(arr));
         DISPATCH();
     }
-    
-    CASE(dict_values): {
+
+    CASE(dict_values) :
+    {
         Value dict_val = POP();
-        if (!IS_DICT(dict_val)) {
+        if (!IS_DICT(dict_val))
+        {
             vm->sp = sp;
-            ObjArray* arr = new_array(vm, 0);
+            ObjArray *arr = new_array(vm, 0);
             sp = vm->sp;
             PUSH(val_obj(arr));
             DISPATCH();
         }
-        ObjDict* dict = AS_DICT(dict_val);
+        ObjDict *dict = AS_DICT(dict_val);
         vm->sp = sp;
-        ObjArray* arr = new_array(vm, dict->count);
+        ObjArray *arr = new_array(vm, dict->count);
         sp = vm->sp;
-        for (uint32_t i = 0; i < dict->capacity; i++) {
-            if (dict->keys[i]) {
+        for (uint32_t i = 0; i < dict->capacity; i++)
+        {
+            if (dict->keys[i])
+            {
                 arr->values[arr->count++] = dict->values[i];
             }
         }
         PUSH(val_obj(arr));
         DISPATCH();
     }
-    
-    CASE(dict_delete): {
+
+    CASE(dict_delete) :
+    {
         Value key_val = POP();
         Value dict_val = POP();
-        if (!IS_DICT(dict_val) || !IS_STRING(key_val)) {
+        if (!IS_DICT(dict_val) || !IS_STRING(key_val))
+        {
             PUSH(VAL_FALSE);
             DISPATCH();
         }
-        ObjDict* dict = AS_DICT(dict_val);
-        ObjString* key = AS_STRING(key_val);
-        for (uint32_t i = 0; i < dict->capacity; i++) {
+        ObjDict *dict = AS_DICT(dict_val);
+        ObjString *key = AS_STRING(key_val);
+        for (uint32_t i = 0; i < dict->capacity; i++)
+        {
             if (dict->keys[i] && dict->keys[i]->length == key->length &&
-                memcmp(dict->keys[i]->chars, key->chars, key->length) == 0) {
+                memcmp(dict->keys[i]->chars, key->chars, key->length) == 0)
+            {
                 dict->keys[i] = NULL;
                 dict->count--;
                 PUSH(VAL_TRUE);
@@ -2803,52 +3666,59 @@ InterpretResult vm_run(VM* vm) {
         PUSH(VAL_FALSE);
         DISPATCH();
     }
-    
+
     /* ============ ADVANCED MATH ============ */
-    
-    CASE(sin): {
+
+    CASE(sin) :
+    {
         Value v = POP();
         double d = IS_INT(v) ? as_int(v) : as_num(v);
         PUSH(val_num(sin(d)));
         DISPATCH();
     }
-    
-    CASE(cos): {
+
+    CASE(cos) :
+    {
         Value v = POP();
         double d = IS_INT(v) ? as_int(v) : as_num(v);
         PUSH(val_num(cos(d)));
         DISPATCH();
     }
-    
-    CASE(tan): {
+
+    CASE(tan) :
+    {
         Value v = POP();
         double d = IS_INT(v) ? as_int(v) : as_num(v);
         PUSH(val_num(tan(d)));
         DISPATCH();
     }
-    
-    CASE(asin): {
+
+    CASE(asin) :
+    {
         Value v = POP();
         double d = IS_INT(v) ? as_int(v) : as_num(v);
         PUSH(val_num(asin(d)));
         DISPATCH();
     }
-    
-    CASE(acos): {
+
+    CASE(acos) :
+    {
         Value v = POP();
         double d = IS_INT(v) ? as_int(v) : as_num(v);
         PUSH(val_num(acos(d)));
         DISPATCH();
     }
-    
-    CASE(atan): {
+
+    CASE(atan) :
+    {
         Value v = POP();
         double d = IS_INT(v) ? as_int(v) : as_num(v);
         PUSH(val_num(atan(d)));
         DISPATCH();
     }
-    
-    CASE(atan2): {
+
+    CASE(atan2) :
+    {
         Value x = POP();
         Value y = POP();
         double dy = IS_INT(y) ? as_int(y) : as_num(y);
@@ -2856,36 +3726,41 @@ InterpretResult vm_run(VM* vm) {
         PUSH(val_num(atan2(dy, dx)));
         DISPATCH();
     }
-    
-    CASE(log): {
+
+    CASE(log) :
+    {
         Value v = POP();
         double d = IS_INT(v) ? as_int(v) : as_num(v);
         PUSH(val_num(log(d)));
         DISPATCH();
     }
-    
-    CASE(log10): {
+
+    CASE(log10) :
+    {
         Value v = POP();
         double d = IS_INT(v) ? as_int(v) : as_num(v);
         PUSH(val_num(log10(d)));
         DISPATCH();
     }
-    
-    CASE(log2): {
+
+    CASE(log2) :
+    {
         Value v = POP();
         double d = IS_INT(v) ? as_int(v) : as_num(v);
         PUSH(val_num(log2(d)));
         DISPATCH();
     }
-    
-    CASE(exp): {
+
+    CASE(exp) :
+    {
         Value v = POP();
         double d = IS_INT(v) ? as_int(v) : as_num(v);
         PUSH(val_num(exp(d)));
         DISPATCH();
     }
-    
-    CASE(hypot): {
+
+    CASE(hypot) :
+    {
         Value y = POP();
         Value x = POP();
         double dx = IS_INT(x) ? as_int(x) : as_num(x);
@@ -2893,23 +3768,26 @@ InterpretResult vm_run(VM* vm) {
         PUSH(val_num(hypot(dx, dy)));
         DISPATCH();
     }
-    
+
     /* ============ VECTOR OPERATIONS ============ */
-    
-    CASE(vec_add): {
+
+    CASE(vec_add) :
+    {
         Value b_val = POP();
         Value a_val = POP();
-        if (!IS_ARRAY(a_val) || !IS_ARRAY(b_val)) {
+        if (!IS_ARRAY(a_val) || !IS_ARRAY(b_val))
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
-        ObjArray* a = AS_ARRAY(a_val);
-        ObjArray* b = AS_ARRAY(b_val);
+        ObjArray *a = AS_ARRAY(a_val);
+        ObjArray *b = AS_ARRAY(b_val);
         uint32_t len = a->count < b->count ? a->count : b->count;
         vm->sp = sp;
-        ObjArray* result = new_array(vm, len);
+        ObjArray *result = new_array(vm, len);
         sp = vm->sp;
-        for (uint32_t i = 0; i < len; i++) {
+        for (uint32_t i = 0; i < len; i++)
+        {
             double da = IS_INT(a->values[i]) ? as_int(a->values[i]) : as_num(a->values[i]);
             double db = IS_INT(b->values[i]) ? as_int(b->values[i]) : as_num(b->values[i]);
             result->values[i] = val_num(da + db);
@@ -2918,21 +3796,24 @@ InterpretResult vm_run(VM* vm) {
         PUSH(val_obj(result));
         DISPATCH();
     }
-    
-    CASE(vec_sub): {
+
+    CASE(vec_sub) :
+    {
         Value b_val = POP();
         Value a_val = POP();
-        if (!IS_ARRAY(a_val) || !IS_ARRAY(b_val)) {
+        if (!IS_ARRAY(a_val) || !IS_ARRAY(b_val))
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
-        ObjArray* a = AS_ARRAY(a_val);
-        ObjArray* b = AS_ARRAY(b_val);
+        ObjArray *a = AS_ARRAY(a_val);
+        ObjArray *b = AS_ARRAY(b_val);
         uint32_t len = a->count < b->count ? a->count : b->count;
         vm->sp = sp;
-        ObjArray* result = new_array(vm, len);
+        ObjArray *result = new_array(vm, len);
         sp = vm->sp;
-        for (uint32_t i = 0; i < len; i++) {
+        for (uint32_t i = 0; i < len; i++)
+        {
             double da = IS_INT(a->values[i]) ? as_int(a->values[i]) : as_num(a->values[i]);
             double db = IS_INT(b->values[i]) ? as_int(b->values[i]) : as_num(b->values[i]);
             result->values[i] = val_num(da - db);
@@ -2941,21 +3822,24 @@ InterpretResult vm_run(VM* vm) {
         PUSH(val_obj(result));
         DISPATCH();
     }
-    
-    CASE(vec_mul): {
+
+    CASE(vec_mul) :
+    {
         Value b_val = POP();
         Value a_val = POP();
-        if (!IS_ARRAY(a_val) || !IS_ARRAY(b_val)) {
+        if (!IS_ARRAY(a_val) || !IS_ARRAY(b_val))
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
-        ObjArray* a = AS_ARRAY(a_val);
-        ObjArray* b = AS_ARRAY(b_val);
+        ObjArray *a = AS_ARRAY(a_val);
+        ObjArray *b = AS_ARRAY(b_val);
         uint32_t len = a->count < b->count ? a->count : b->count;
         vm->sp = sp;
-        ObjArray* result = new_array(vm, len);
+        ObjArray *result = new_array(vm, len);
         sp = vm->sp;
-        for (uint32_t i = 0; i < len; i++) {
+        for (uint32_t i = 0; i < len; i++)
+        {
             double da = IS_INT(a->values[i]) ? as_int(a->values[i]) : as_num(a->values[i]);
             double db = IS_INT(b->values[i]) ? as_int(b->values[i]) : as_num(b->values[i]);
             result->values[i] = val_num(da * db);
@@ -2964,21 +3848,24 @@ InterpretResult vm_run(VM* vm) {
         PUSH(val_obj(result));
         DISPATCH();
     }
-    
-    CASE(vec_div): {
+
+    CASE(vec_div) :
+    {
         Value b_val = POP();
         Value a_val = POP();
-        if (!IS_ARRAY(a_val) || !IS_ARRAY(b_val)) {
+        if (!IS_ARRAY(a_val) || !IS_ARRAY(b_val))
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
-        ObjArray* a = AS_ARRAY(a_val);
-        ObjArray* b = AS_ARRAY(b_val);
+        ObjArray *a = AS_ARRAY(a_val);
+        ObjArray *b = AS_ARRAY(b_val);
         uint32_t len = a->count < b->count ? a->count : b->count;
         vm->sp = sp;
-        ObjArray* result = new_array(vm, len);
+        ObjArray *result = new_array(vm, len);
         sp = vm->sp;
-        for (uint32_t i = 0; i < len; i++) {
+        for (uint32_t i = 0; i < len; i++)
+        {
             double da = IS_INT(a->values[i]) ? as_int(a->values[i]) : as_num(a->values[i]);
             double db = IS_INT(b->values[i]) ? as_int(b->values[i]) : as_num(b->values[i]);
             result->values[i] = val_num(da / db);
@@ -2987,19 +3874,22 @@ InterpretResult vm_run(VM* vm) {
         PUSH(val_obj(result));
         DISPATCH();
     }
-    
-    CASE(vec_dot): {
+
+    CASE(vec_dot) :
+    {
         Value b_val = POP();
         Value a_val = POP();
-        if (!IS_ARRAY(a_val) || !IS_ARRAY(b_val)) {
+        if (!IS_ARRAY(a_val) || !IS_ARRAY(b_val))
+        {
             PUSH(val_num(0));
             DISPATCH();
         }
-        ObjArray* a = AS_ARRAY(a_val);
-        ObjArray* b = AS_ARRAY(b_val);
+        ObjArray *a = AS_ARRAY(a_val);
+        ObjArray *b = AS_ARRAY(b_val);
         uint32_t len = a->count < b->count ? a->count : b->count;
         double dot = 0;
-        for (uint32_t i = 0; i < len; i++) {
+        for (uint32_t i = 0; i < len; i++)
+        {
             double da = IS_INT(a->values[i]) ? as_int(a->values[i]) : as_num(a->values[i]);
             double db = IS_INT(b->values[i]) ? as_int(b->values[i]) : as_num(b->values[i]);
             dot += da * db;
@@ -3007,116 +3897,145 @@ InterpretResult vm_run(VM* vm) {
         PUSH(val_num(dot));
         DISPATCH();
     }
-    
-    CASE(vec_sum): {
+
+    CASE(vec_sum) :
+    {
         Value a_val = POP();
-        if (!IS_ARRAY(a_val)) {
+        if (!IS_ARRAY(a_val))
+        {
             PUSH(val_num(0));
             DISPATCH();
         }
-        ObjArray* a = AS_ARRAY(a_val);
+        ObjArray *a = AS_ARRAY(a_val);
         double sum = 0;
-        for (uint32_t i = 0; i < a->count; i++) {
+        for (uint32_t i = 0; i < a->count; i++)
+        {
             sum += IS_INT(a->values[i]) ? as_int(a->values[i]) : as_num(a->values[i]);
         }
         PUSH(val_num(sum));
         DISPATCH();
     }
-    
-    CASE(vec_prod): {
+
+    CASE(vec_prod) :
+    {
         Value a_val = POP();
-        if (!IS_ARRAY(a_val)) {
+        if (!IS_ARRAY(a_val))
+        {
             PUSH(val_num(1));
             DISPATCH();
         }
-        ObjArray* a = AS_ARRAY(a_val);
+        ObjArray *a = AS_ARRAY(a_val);
         double prod = 1;
-        for (uint32_t i = 0; i < a->count; i++) {
+        for (uint32_t i = 0; i < a->count; i++)
+        {
             prod *= IS_INT(a->values[i]) ? as_int(a->values[i]) : as_num(a->values[i]);
         }
         PUSH(val_num(prod));
         DISPATCH();
     }
-    
-    CASE(vec_min): {
+
+    CASE(vec_min) :
+    {
         Value a_val = POP();
-        if (!IS_ARRAY(a_val) || AS_ARRAY(a_val)->count == 0) {
+        if (!IS_ARRAY(a_val) || AS_ARRAY(a_val)->count == 0)
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
-        ObjArray* a = AS_ARRAY(a_val);
+        ObjArray *a = AS_ARRAY(a_val);
         double min_val = IS_INT(a->values[0]) ? as_int(a->values[0]) : as_num(a->values[0]);
-        for (uint32_t i = 1; i < a->count; i++) {
+        for (uint32_t i = 1; i < a->count; i++)
+        {
             double v = IS_INT(a->values[i]) ? as_int(a->values[i]) : as_num(a->values[i]);
-            if (v < min_val) min_val = v;
+            if (v < min_val)
+                min_val = v;
         }
         PUSH(val_num(min_val));
         DISPATCH();
     }
-    
-    CASE(vec_max): {
+
+    CASE(vec_max) :
+    {
         Value a_val = POP();
-        if (!IS_ARRAY(a_val) || AS_ARRAY(a_val)->count == 0) {
+        if (!IS_ARRAY(a_val) || AS_ARRAY(a_val)->count == 0)
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
-        ObjArray* a = AS_ARRAY(a_val);
+        ObjArray *a = AS_ARRAY(a_val);
         double max_val = IS_INT(a->values[0]) ? as_int(a->values[0]) : as_num(a->values[0]);
-        for (uint32_t i = 1; i < a->count; i++) {
+        for (uint32_t i = 1; i < a->count; i++)
+        {
             double v = IS_INT(a->values[i]) ? as_int(a->values[i]) : as_num(a->values[i]);
-            if (v > max_val) max_val = v;
+            if (v > max_val)
+                max_val = v;
         }
         PUSH(val_num(max_val));
         DISPATCH();
     }
-    
-    CASE(vec_mean): {
+
+    CASE(vec_mean) :
+    {
         Value a_val = POP();
-        if (!IS_ARRAY(a_val) || AS_ARRAY(a_val)->count == 0) {
+        if (!IS_ARRAY(a_val) || AS_ARRAY(a_val)->count == 0)
+        {
             PUSH(val_num(0));
             DISPATCH();
         }
-        ObjArray* a = AS_ARRAY(a_val);
+        ObjArray *a = AS_ARRAY(a_val);
         double sum = 0;
-        for (uint32_t i = 0; i < a->count; i++) {
+        for (uint32_t i = 0; i < a->count; i++)
+        {
             sum += IS_INT(a->values[i]) ? as_int(a->values[i]) : as_num(a->values[i]);
         }
         PUSH(val_num(sum / a->count));
         DISPATCH();
     }
-    
-    CASE(vec_map): {
+
+    CASE(vec_map) :
+    {
         /* TODO: Higher-order functions require closures */
-        POP(); POP();
+        POP();
+        POP();
         PUSH(VAL_NIL);
         DISPATCH();
     }
-    
-    CASE(vec_filter): {
-        POP(); POP();
+
+    CASE(vec_filter) :
+    {
+        POP();
+        POP();
         PUSH(VAL_NIL);
         DISPATCH();
     }
-    
-    CASE(vec_reduce): {
-        POP(); POP(); POP();
+
+    CASE(vec_reduce) :
+    {
+        POP();
+        POP();
+        POP();
         PUSH(VAL_NIL);
         DISPATCH();
     }
-    
-    CASE(vec_sort): {
+
+    CASE(vec_sort) :
+    {
         Value a_val = POP();
-        if (!IS_ARRAY(a_val)) {
+        if (!IS_ARRAY(a_val))
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
-        ObjArray* a = AS_ARRAY(a_val);
+        ObjArray *a = AS_ARRAY(a_val);
         /* Simple bubble sort for now - could optimize with quicksort */
-        for (uint32_t i = 0; i < a->count; i++) {
-            for (uint32_t j = i + 1; j < a->count; j++) {
+        for (uint32_t i = 0; i < a->count; i++)
+        {
+            for (uint32_t j = i + 1; j < a->count; j++)
+            {
                 double vi = IS_INT(a->values[i]) ? as_int(a->values[i]) : as_num(a->values[i]);
                 double vj = IS_INT(a->values[j]) ? as_int(a->values[j]) : as_num(a->values[j]);
-                if (vi > vj) {
+                if (vi > vj)
+                {
                     Value tmp = a->values[i];
                     a->values[i] = a->values[j];
                     a->values[j] = tmp;
@@ -3126,15 +4045,18 @@ InterpretResult vm_run(VM* vm) {
         PUSH(a_val);
         DISPATCH();
     }
-    
-    CASE(vec_reverse): {
+
+    CASE(vec_reverse) :
+    {
         Value a_val = POP();
-        if (!IS_ARRAY(a_val)) {
+        if (!IS_ARRAY(a_val))
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
-        ObjArray* a = AS_ARRAY(a_val);
-        for (uint32_t i = 0; i < a->count / 2; i++) {
+        ObjArray *a = AS_ARRAY(a_val);
+        for (uint32_t i = 0; i < a->count / 2; i++)
+        {
             Value tmp = a->values[i];
             a->values[i] = a->values[a->count - 1 - i];
             a->values[a->count - 1 - i] = tmp;
@@ -3142,49 +4064,58 @@ InterpretResult vm_run(VM* vm) {
         PUSH(a_val);
         DISPATCH();
     }
-    
-    CASE(vec_unique): {
+
+    CASE(vec_unique) :
+    {
         Value a_val = POP();
-        if (!IS_ARRAY(a_val)) {
+        if (!IS_ARRAY(a_val))
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
-        ObjArray* a = AS_ARRAY(a_val);
+        ObjArray *a = AS_ARRAY(a_val);
         vm->sp = sp;
-        ObjArray* result = new_array(vm, a->count);
+        ObjArray *result = new_array(vm, a->count);
         sp = vm->sp;
-        for (uint32_t i = 0; i < a->count; i++) {
+        for (uint32_t i = 0; i < a->count; i++)
+        {
             bool found = false;
-            for (uint32_t j = 0; j < result->count; j++) {
-                if (a->values[i] == result->values[j]) {
+            for (uint32_t j = 0; j < result->count; j++)
+            {
+                if (a->values[i] == result->values[j])
+                {
                     found = true;
                     break;
                 }
             }
-            if (!found) {
+            if (!found)
+            {
                 result->values[result->count++] = a->values[i];
             }
         }
         PUSH(val_obj(result));
         DISPATCH();
     }
-    
-    CASE(vec_zip): {
+
+    CASE(vec_zip) :
+    {
         Value b_val = POP();
         Value a_val = POP();
-        if (!IS_ARRAY(a_val) || !IS_ARRAY(b_val)) {
+        if (!IS_ARRAY(a_val) || !IS_ARRAY(b_val))
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
-        ObjArray* a = AS_ARRAY(a_val);
-        ObjArray* b = AS_ARRAY(b_val);
+        ObjArray *a = AS_ARRAY(a_val);
+        ObjArray *b = AS_ARRAY(b_val);
         uint32_t len = a->count < b->count ? a->count : b->count;
         vm->sp = sp;
-        ObjArray* result = new_array(vm, len);
+        ObjArray *result = new_array(vm, len);
         sp = vm->sp;
-        for (uint32_t i = 0; i < len; i++) {
+        for (uint32_t i = 0; i < len; i++)
+        {
             vm->sp = sp;
-            ObjArray* pair = new_array(vm, 2);
+            ObjArray *pair = new_array(vm, 2);
             sp = vm->sp;
             pair->values[0] = a->values[i];
             pair->values[1] = b->values[i];
@@ -3195,22 +4126,26 @@ InterpretResult vm_run(VM* vm) {
         PUSH(val_obj(result));
         DISPATCH();
     }
-    
-    CASE(vec_range): {
+
+    CASE(vec_range) :
+    {
         Value step_val = POP();
         Value end_val = POP();
         Value start_val = POP();
         double start = IS_INT(start_val) ? as_int(start_val) : as_num(start_val);
         double end = IS_INT(end_val) ? as_int(end_val) : as_num(end_val);
         double step = IS_INT(step_val) ? as_int(step_val) : as_num(step_val);
-        if (step == 0) step = 1;
+        if (step == 0)
+            step = 1;
         uint32_t count = (uint32_t)((end - start) / step);
-        if (count > 10000000) count = 10000000; /* Safety limit */
+        if (count > 10000000)
+            count = 10000000; /* Safety limit */
         vm->sp = sp;
-        ObjArray* result = new_array(vm, count);
+        ObjArray *result = new_array(vm, count);
         sp = vm->sp;
         double v = start;
-        for (uint32_t i = 0; i < count && ((step > 0 && v < end) || (step < 0 && v > end)); i++) {
+        for (uint32_t i = 0; i < count && ((step > 0 && v < end) || (step < 0 && v > end)); i++)
+        {
             result->values[i] = val_num(v);
             result->count++;
             v += step;
@@ -3218,49 +4153,56 @@ InterpretResult vm_run(VM* vm) {
         PUSH(val_obj(result));
         DISPATCH();
     }
-    
+
     /* ============ BINARY DATA ============ */
-    
-    CASE(bytes): {
+
+    CASE(bytes) :
+    {
         Value size_val = POP();
         uint32_t size = IS_INT(size_val) ? as_int(size_val) : (uint32_t)as_num(size_val);
         vm->sp = sp;
-        ObjBytes* bytes = new_bytes(vm, size);
+        ObjBytes *bytes = new_bytes(vm, size);
         sp = vm->sp;
         bytes->length = size;
         memset(bytes->data, 0, size);
         PUSH(val_obj(bytes));
         DISPATCH();
     }
-    
-    CASE(bytes_get): {
+
+    CASE(bytes_get) :
+    {
         Value idx_val = POP();
         Value bytes_val = POP();
-        if (!IS_BYTES(bytes_val)) {
+        if (!IS_BYTES(bytes_val))
+        {
             PUSH(val_int(0));
             DISPATCH();
         }
-        ObjBytes* bytes = AS_BYTES(bytes_val);
+        ObjBytes *bytes = AS_BYTES(bytes_val);
         uint32_t idx = IS_INT(idx_val) ? as_int(idx_val) : (uint32_t)as_num(idx_val);
-        if (idx >= bytes->length) {
+        if (idx >= bytes->length)
+        {
             PUSH(val_int(0));
             DISPATCH();
         }
         PUSH(val_int(bytes->data[idx]));
         DISPATCH();
     }
-    
-    CASE(bytes_set): {
+
+    CASE(bytes_set) :
+    {
         Value val = POP();
         Value idx_val = POP();
         Value bytes_val = POP();
-        if (!IS_BYTES(bytes_val)) {
+        if (!IS_BYTES(bytes_val))
+        {
             PUSH(VAL_FALSE);
             DISPATCH();
         }
-        ObjBytes* bytes = AS_BYTES(bytes_val);
+        ObjBytes *bytes = AS_BYTES(bytes_val);
         uint32_t idx = IS_INT(idx_val) ? as_int(idx_val) : (uint32_t)as_num(idx_val);
-        if (idx >= bytes->length) {
+        if (idx >= bytes->length)
+        {
             PUSH(VAL_FALSE);
             DISPATCH();
         }
@@ -3268,67 +4210,81 @@ InterpretResult vm_run(VM* vm) {
         PUSH(VAL_TRUE);
         DISPATCH();
     }
-    
-    CASE(encode_utf8): {
+
+    CASE(encode_utf8) :
+    {
         Value str_val = POP();
-        if (!IS_STRING(str_val)) {
+        if (!IS_STRING(str_val))
+        {
             vm->sp = sp;
-            ObjBytes* bytes = new_bytes(vm, 0);
+            ObjBytes *bytes = new_bytes(vm, 0);
             sp = vm->sp;
             PUSH(val_obj(bytes));
             DISPATCH();
         }
-        ObjString* str = AS_STRING(str_val);
+        ObjString *str = AS_STRING(str_val);
         vm->sp = sp;
-        ObjBytes* bytes = new_bytes(vm, str->length);
+        ObjBytes *bytes = new_bytes(vm, str->length);
         sp = vm->sp;
         memcpy(bytes->data, str->chars, str->length);
         bytes->length = str->length;
         PUSH(val_obj(bytes));
         DISPATCH();
     }
-    
-    CASE(decode_utf8): {
+
+    CASE(decode_utf8) :
+    {
         Value bytes_val = POP();
-        if (!IS_BYTES(bytes_val)) {
+        if (!IS_BYTES(bytes_val))
+        {
             vm->sp = sp;
-            ObjString* str = copy_string(vm, "", 0);
+            ObjString *str = copy_string(vm, "", 0);
             sp = vm->sp;
             PUSH(val_obj(str));
             DISPATCH();
         }
-        ObjBytes* bytes = AS_BYTES(bytes_val);
+        ObjBytes *bytes = AS_BYTES(bytes_val);
         vm->sp = sp;
-        ObjString* str = copy_string(vm, (char*)bytes->data, bytes->length);
+        ObjString *str = copy_string(vm, (char *)bytes->data, bytes->length);
         sp = vm->sp;
         PUSH(val_obj(str));
         DISPATCH();
     }
-    
-    CASE(encode_base64): {
+
+    CASE(encode_base64) :
+    {
         static const char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
         Value data_val = POP();
-        uint8_t* data; uint32_t len;
-        if (IS_STRING(data_val)) {
-            data = (uint8_t*)AS_STRING(data_val)->chars;
+        uint8_t *data;
+        uint32_t len;
+        if (IS_STRING(data_val))
+        {
+            data = (uint8_t *)AS_STRING(data_val)->chars;
             len = AS_STRING(data_val)->length;
-        } else if (IS_BYTES(data_val)) {
+        }
+        else if (IS_BYTES(data_val))
+        {
             data = AS_BYTES(data_val)->data;
             len = AS_BYTES(data_val)->length;
-        } else {
+        }
+        else
+        {
             vm->sp = sp;
-            ObjString* str = copy_string(vm, "", 0);
+            ObjString *str = copy_string(vm, "", 0);
             sp = vm->sp;
             PUSH(val_obj(str));
             DISPATCH();
         }
         uint32_t out_len = ((len + 2) / 3) * 4;
-        char* out = malloc(out_len + 1);
+        char *out = malloc(out_len + 1);
         uint32_t j = 0;
-        for (uint32_t i = 0; i < len; i += 3) {
+        for (uint32_t i = 0; i < len; i += 3)
+        {
             uint32_t n = ((uint32_t)data[i]) << 16;
-            if (i + 1 < len) n |= ((uint32_t)data[i + 1]) << 8;
-            if (i + 2 < len) n |= data[i + 2];
+            if (i + 1 < len)
+                n |= ((uint32_t)data[i + 1]) << 8;
+            if (i + 2 < len)
+                n |= data[i + 2];
             out[j++] = b64[(n >> 18) & 0x3F];
             out[j++] = b64[(n >> 12) & 0x3F];
             out[j++] = (i + 1 < len) ? b64[(n >> 6) & 0x3F] : '=';
@@ -3336,61 +4292,66 @@ InterpretResult vm_run(VM* vm) {
         }
         out[j] = '\0';
         vm->sp = sp;
-        ObjString* str = copy_string(vm, out, j);
+        ObjString *str = copy_string(vm, out, j);
         sp = vm->sp;
         free(out);
         PUSH(val_obj(str));
         DISPATCH();
     }
-    
-    CASE(decode_base64): {
+
+    CASE(decode_base64) :
+    {
         /* Simplified base64 decode */
         Value str_val = POP();
-        if (!IS_STRING(str_val)) {
+        if (!IS_STRING(str_val))
+        {
             vm->sp = sp;
-            ObjBytes* bytes = new_bytes(vm, 0);
+            ObjBytes *bytes = new_bytes(vm, 0);
             sp = vm->sp;
             PUSH(val_obj(bytes));
             DISPATCH();
         }
-        ObjString* str = AS_STRING(str_val);
-        
+        ObjString *str = AS_STRING(str_val);
+
         /* Base64 decode lookup table */
         static const int8_t b64_table[256] = {
-            -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
-            -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
-            -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,62,-1,-1,-1,63,
-            52,53,54,55,56,57,58,59,60,61,-1,-1,-1,-2,-1,-1,
-            -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,
-            15,16,17,18,19,20,21,22,23,24,25,-1,-1,-1,-1,-1,
-            -1,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,
-            41,42,43,44,45,46,47,48,49,50,51,-1,-1,-1,-1,-1,
-            -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
-            -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
-            -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
-            -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
-            -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
-            -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
-            -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
-            -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1
-        };
-        
+            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 62, -1, -1, -1, 63,
+            52, 53, 54, 55, 56, 57, 58, 59, 60, 61, -1, -1, -1, -2, -1, -1,
+            -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
+            15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, -1, -1, -1, -1, -1,
+            -1, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
+            41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, -1, -1, -1, -1, -1,
+            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
+
         uint32_t out_len = (str->length / 4) * 3;
         vm->sp = sp;
-        ObjBytes* bytes = new_bytes(vm, out_len + 4);
+        ObjBytes *bytes = new_bytes(vm, out_len + 4);
         sp = vm->sp;
-        
+
         uint32_t j = 0;
         uint32_t acc = 0;
         int bits = 0;
-        
-        for (uint32_t i = 0; i < str->length; i++) {
+
+        for (uint32_t i = 0; i < str->length; i++)
+        {
             int8_t val = b64_table[(uint8_t)str->chars[i]];
-            if (val == -2) break;  /* Padding '=' */
-            if (val < 0) continue;  /* Skip invalid */
+            if (val == -2)
+                break; /* Padding '=' */
+            if (val < 0)
+                continue; /* Skip invalid */
             acc = (acc << 6) | val;
             bits += 6;
-            if (bits >= 8) {
+            if (bits >= 8)
+            {
                 bits -= 8;
                 bytes->data[j++] = (acc >> bits) & 0xFF;
             }
@@ -3399,335 +4360,419 @@ InterpretResult vm_run(VM* vm) {
         PUSH(val_obj(bytes));
         DISPATCH();
     }
-    
+
     /* ============ REGEX ============ */
     /* Note: Full regex would require linking with PCRE */
-    
-    CASE(regex_match): {
-        POP(); POP();
-        PUSH(VAL_FALSE);  /* TODO: Implement with PCRE */
+
+    CASE(regex_match) :
+    {
+        POP();
+        POP();
+        PUSH(VAL_FALSE); /* TODO: Implement with PCRE */
         DISPATCH();
     }
-    
-    CASE(regex_find): {
-        POP(); POP();
+
+    CASE(regex_find) :
+    {
+        POP();
+        POP();
         vm->sp = sp;
-        ObjArray* arr = new_array(vm, 0);
+        ObjArray *arr = new_array(vm, 0);
         sp = vm->sp;
         PUSH(val_obj(arr));
         DISPATCH();
     }
-    
-    CASE(regex_replace): {
-        POP(); POP(); POP();
+
+    CASE(regex_replace) :
+    {
+        POP();
+        POP();
+        POP();
         vm->sp = sp;
-        ObjString* str = copy_string(vm, "", 0);
+        ObjString *str = copy_string(vm, "", 0);
         sp = vm->sp;
         PUSH(val_obj(str));
         DISPATCH();
     }
-    
+
     /* ============ HASHING ============ */
-    
-    CASE(hash): {
+
+    CASE(hash) :
+    {
         Value v = POP();
         uint32_t h = 2166136261u;
-        if (IS_STRING(v)) {
-            ObjString* s = AS_STRING(v);
-            for (uint32_t i = 0; i < s->length; i++) {
+        if (IS_STRING(v))
+        {
+            ObjString *s = AS_STRING(v);
+            for (uint32_t i = 0; i < s->length; i++)
+            {
                 h ^= (uint8_t)s->chars[i];
                 h *= 16777619;
             }
-        } else if (IS_INT(v)) {
+        }
+        else if (IS_INT(v))
+        {
             h = (uint32_t)as_int(v);
-        } else {
+        }
+        else
+        {
             h = (uint32_t)(v >> 32) ^ (uint32_t)v;
         }
         PUSH(val_int((int32_t)h));
         DISPATCH();
     }
-    
-    CASE(hash_sha256): {
+
+    CASE(hash_sha256) :
+    {
         Value v = POP();
-        const uint8_t* data;
+        const uint8_t *data;
         size_t len;
-        
-        if (IS_STRING(v)) {
-            ObjString* s = AS_STRING(v);
-            data = (const uint8_t*)s->chars;
+
+        if (IS_STRING(v))
+        {
+            ObjString *s = AS_STRING(v);
+            data = (const uint8_t *)s->chars;
             len = s->length;
-        } else if (IS_BYTES(v)) {
-            ObjBytes* b = AS_BYTES(v);
+        }
+        else if (IS_BYTES(v))
+        {
+            ObjBytes *b = AS_BYTES(v);
             data = b->data;
             len = b->length;
-        } else {
+        }
+        else
+        {
             vm->sp = sp;
-            ObjString* str = copy_string(vm, "0000000000000000000000000000000000000000000000000000000000000000", 64);
+            ObjString *str = copy_string(vm, "0000000000000000000000000000000000000000000000000000000000000000", 64);
             sp = vm->sp;
             PUSH(val_obj(str));
             DISPATCH();
         }
-        
+
         /* SHA-256 implementation */
         static const uint32_t sha256_k[64] = {
-            0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
-            0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
-            0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
-            0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
-            0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
-            0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
-            0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
-            0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2
-        };
-        
-        #define SHA256_ROTR(x,n) (((x)>>(n))|((x)<<(32-(n))))
-        #define SHA256_CH(x,y,z) (((x)&(y))^((~(x))&(z)))
-        #define SHA256_MAJ(x,y,z) (((x)&(y))^((x)&(z))^((y)&(z)))
-        #define SHA256_EP0(x) (SHA256_ROTR(x,2)^SHA256_ROTR(x,13)^SHA256_ROTR(x,22))
-        #define SHA256_EP1(x) (SHA256_ROTR(x,6)^SHA256_ROTR(x,11)^SHA256_ROTR(x,25))
-        #define SHA256_SIG0(x) (SHA256_ROTR(x,7)^SHA256_ROTR(x,18)^((x)>>3))
-        #define SHA256_SIG1(x) (SHA256_ROTR(x,17)^SHA256_ROTR(x,19)^((x)>>10))
-        
-        uint32_t h[8] = {0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19};
-        
+            0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+            0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+            0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+            0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+            0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+            0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+            0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+            0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2};
+
+#define SHA256_ROTR(x, n) (((x) >> (n)) | ((x) << (32 - (n))))
+#define SHA256_CH(x, y, z) (((x) & (y)) ^ ((~(x)) & (z)))
+#define SHA256_MAJ(x, y, z) (((x) & (y)) ^ ((x) & (z)) ^ ((y) & (z)))
+#define SHA256_EP0(x) (SHA256_ROTR(x, 2) ^ SHA256_ROTR(x, 13) ^ SHA256_ROTR(x, 22))
+#define SHA256_EP1(x) (SHA256_ROTR(x, 6) ^ SHA256_ROTR(x, 11) ^ SHA256_ROTR(x, 25))
+#define SHA256_SIG0(x) (SHA256_ROTR(x, 7) ^ SHA256_ROTR(x, 18) ^ ((x) >> 3))
+#define SHA256_SIG1(x) (SHA256_ROTR(x, 17) ^ SHA256_ROTR(x, 19) ^ ((x) >> 10))
+
+        uint32_t h[8] = {0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19};
+
         /* Pad message */
         size_t bit_len = len * 8;
         size_t padded_len = ((len + 9 + 63) / 64) * 64;
-        uint8_t* msg = calloc(padded_len, 1);
+        uint8_t *msg = calloc(padded_len, 1);
         memcpy(msg, data, len);
         msg[len] = 0x80;
-        for (int i = 0; i < 8; i++) {
+        for (int i = 0; i < 8; i++)
+        {
             msg[padded_len - 1 - i] = (bit_len >> (i * 8)) & 0xFF;
         }
-        
+
         /* Process blocks */
-        for (size_t blk = 0; blk < padded_len; blk += 64) {
+        for (size_t blk = 0; blk < padded_len; blk += 64)
+        {
             uint32_t w[64];
-            for (int i = 0; i < 16; i++) {
-                w[i] = ((uint32_t)msg[blk + i*4] << 24) | ((uint32_t)msg[blk + i*4+1] << 16) |
-                       ((uint32_t)msg[blk + i*4+2] << 8) | msg[blk + i*4+3];
+            for (int i = 0; i < 16; i++)
+            {
+                w[i] = ((uint32_t)msg[blk + i * 4] << 24) | ((uint32_t)msg[blk + i * 4 + 1] << 16) |
+                       ((uint32_t)msg[blk + i * 4 + 2] << 8) | msg[blk + i * 4 + 3];
             }
-            for (int i = 16; i < 64; i++) {
-                w[i] = SHA256_SIG1(w[i-2]) + w[i-7] + SHA256_SIG0(w[i-15]) + w[i-16];
+            for (int i = 16; i < 64; i++)
+            {
+                w[i] = SHA256_SIG1(w[i - 2]) + w[i - 7] + SHA256_SIG0(w[i - 15]) + w[i - 16];
             }
-            
-            uint32_t a=h[0],b=h[1],c=h[2],d=h[3],e=h[4],f=h[5],g=h[6],hh=h[7];
-            for (int i = 0; i < 64; i++) {
-                uint32_t t1 = hh + SHA256_EP1(e) + SHA256_CH(e,f,g) + sha256_k[i] + w[i];
-                uint32_t t2 = SHA256_EP0(a) + SHA256_MAJ(a,b,c);
-                hh=g; g=f; f=e; e=d+t1; d=c; c=b; b=a; a=t1+t2;
+
+            uint32_t a = h[0], b = h[1], c = h[2], d = h[3], e = h[4], f = h[5], g = h[6], hh = h[7];
+            for (int i = 0; i < 64; i++)
+            {
+                uint32_t t1 = hh + SHA256_EP1(e) + SHA256_CH(e, f, g) + sha256_k[i] + w[i];
+                uint32_t t2 = SHA256_EP0(a) + SHA256_MAJ(a, b, c);
+                hh = g;
+                g = f;
+                f = e;
+                e = d + t1;
+                d = c;
+                c = b;
+                b = a;
+                a = t1 + t2;
             }
-            h[0]+=a; h[1]+=b; h[2]+=c; h[3]+=d; h[4]+=e; h[5]+=f; h[6]+=g; h[7]+=hh;
+            h[0] += a;
+            h[1] += b;
+            h[2] += c;
+            h[3] += d;
+            h[4] += e;
+            h[5] += f;
+            h[6] += g;
+            h[7] += hh;
         }
         free(msg);
-        
-        #undef SHA256_ROTR
-        #undef SHA256_CH
-        #undef SHA256_MAJ
-        #undef SHA256_EP0
-        #undef SHA256_EP1
-        #undef SHA256_SIG0
-        #undef SHA256_SIG1
-        
+
+#undef SHA256_ROTR
+#undef SHA256_CH
+#undef SHA256_MAJ
+#undef SHA256_EP0
+#undef SHA256_EP1
+#undef SHA256_SIG0
+#undef SHA256_SIG1
+
         char hex[65];
-        for (int i = 0; i < 8; i++) {
-            snprintf(hex + i*8, 9, "%08x", h[i]);
+        for (int i = 0; i < 8; i++)
+        {
+            snprintf(hex + i * 8, 9, "%08x", h[i]);
         }
-        
+
         vm->sp = sp;
-        ObjString* str = copy_string(vm, hex, 64);
+        ObjString *str = copy_string(vm, hex, 64);
         sp = vm->sp;
         PUSH(val_obj(str));
         DISPATCH();
     }
-    
-    CASE(hash_md5): {
+
+    CASE(hash_md5) :
+    {
         Value v = POP();
-        const uint8_t* data;
+        const uint8_t *data;
         size_t len;
-        
-        if (IS_STRING(v)) {
-            ObjString* s = AS_STRING(v);
-            data = (const uint8_t*)s->chars;
+
+        if (IS_STRING(v))
+        {
+            ObjString *s = AS_STRING(v);
+            data = (const uint8_t *)s->chars;
             len = s->length;
-        } else if (IS_BYTES(v)) {
-            ObjBytes* b = AS_BYTES(v);
+        }
+        else if (IS_BYTES(v))
+        {
+            ObjBytes *b = AS_BYTES(v);
             data = b->data;
             len = b->length;
-        } else {
+        }
+        else
+        {
             vm->sp = sp;
-            ObjString* str = copy_string(vm, "00000000000000000000000000000000", 32);
+            ObjString *str = copy_string(vm, "00000000000000000000000000000000", 32);
             sp = vm->sp;
             PUSH(val_obj(str));
             DISPATCH();
         }
-        
+
         /* MD5 implementation */
         static const uint32_t md5_k[64] = {
-            0xd76aa478,0xe8c7b756,0x242070db,0xc1bdceee,0xf57c0faf,0x4787c62a,0xa8304613,0xfd469501,
-            0x698098d8,0x8b44f7af,0xffff5bb1,0x895cd7be,0x6b901122,0xfd987193,0xa679438e,0x49b40821,
-            0xf61e2562,0xc040b340,0x265e5a51,0xe9b6c7aa,0xd62f105d,0x02441453,0xd8a1e681,0xe7d3fbc8,
-            0x21e1cde6,0xc33707d6,0xf4d50d87,0x455a14ed,0xa9e3e905,0xfcefa3f8,0x676f02d9,0x8d2a4c8a,
-            0xfffa3942,0x8771f681,0x6d9d6122,0xfde5380c,0xa4beea44,0x4bdecfa9,0xf6bb4b60,0xbebfbc70,
-            0x289b7ec6,0xeaa127fa,0xd4ef3085,0x04881d05,0xd9d4d039,0xe6db99e5,0x1fa27cf8,0xc4ac5665,
-            0xf4292244,0x432aff97,0xab9423a7,0xfc93a039,0x655b59c3,0x8f0ccc92,0xffeff47d,0x85845dd1,
-            0x6fa87e4f,0xfe2ce6e0,0xa3014314,0x4e0811a1,0xf7537e82,0xbd3af235,0x2ad7d2bb,0xeb86d391
-        };
+            0xd76aa478, 0xe8c7b756, 0x242070db, 0xc1bdceee, 0xf57c0faf, 0x4787c62a, 0xa8304613, 0xfd469501,
+            0x698098d8, 0x8b44f7af, 0xffff5bb1, 0x895cd7be, 0x6b901122, 0xfd987193, 0xa679438e, 0x49b40821,
+            0xf61e2562, 0xc040b340, 0x265e5a51, 0xe9b6c7aa, 0xd62f105d, 0x02441453, 0xd8a1e681, 0xe7d3fbc8,
+            0x21e1cde6, 0xc33707d6, 0xf4d50d87, 0x455a14ed, 0xa9e3e905, 0xfcefa3f8, 0x676f02d9, 0x8d2a4c8a,
+            0xfffa3942, 0x8771f681, 0x6d9d6122, 0xfde5380c, 0xa4beea44, 0x4bdecfa9, 0xf6bb4b60, 0xbebfbc70,
+            0x289b7ec6, 0xeaa127fa, 0xd4ef3085, 0x04881d05, 0xd9d4d039, 0xe6db99e5, 0x1fa27cf8, 0xc4ac5665,
+            0xf4292244, 0x432aff97, 0xab9423a7, 0xfc93a039, 0x655b59c3, 0x8f0ccc92, 0xffeff47d, 0x85845dd1,
+            0x6fa87e4f, 0xfe2ce6e0, 0xa3014314, 0x4e0811a1, 0xf7537e82, 0xbd3af235, 0x2ad7d2bb, 0xeb86d391};
         static const uint32_t md5_s[64] = {
-            7,12,17,22,7,12,17,22,7,12,17,22,7,12,17,22,
-            5,9,14,20,5,9,14,20,5,9,14,20,5,9,14,20,
-            4,11,16,23,4,11,16,23,4,11,16,23,4,11,16,23,
-            6,10,15,21,6,10,15,21,6,10,15,21,6,10,15,21
-        };
-        
-        #define MD5_ROTL(x,n) (((x)<<(n))|((x)>>(32-(n))))
-        
-        uint32_t h0=0x67452301, h1=0xefcdab89, h2=0x98badcfe, h3=0x10325476;
-        
+            7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22,
+            5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20,
+            4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23,
+            6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21};
+
+#define MD5_ROTL(x, n) (((x) << (n)) | ((x) >> (32 - (n))))
+
+        uint32_t h0 = 0x67452301, h1 = 0xefcdab89, h2 = 0x98badcfe, h3 = 0x10325476;
+
         size_t bit_len = len * 8;
         size_t padded_len = ((len + 9 + 63) / 64) * 64;
-        uint8_t* msg = calloc(padded_len, 1);
+        uint8_t *msg = calloc(padded_len, 1);
         memcpy(msg, data, len);
         msg[len] = 0x80;
         /* MD5 uses little-endian length */
-        for (int i = 0; i < 8; i++) {
+        for (int i = 0; i < 8; i++)
+        {
             msg[padded_len - 8 + i] = (bit_len >> (i * 8)) & 0xFF;
         }
-        
-        for (size_t blk = 0; blk < padded_len; blk += 64) {
+
+        for (size_t blk = 0; blk < padded_len; blk += 64)
+        {
             uint32_t w[16];
-            for (int i = 0; i < 16; i++) {
-                w[i] = msg[blk + i*4] | ((uint32_t)msg[blk + i*4+1] << 8) |
-                       ((uint32_t)msg[blk + i*4+2] << 16) | ((uint32_t)msg[blk + i*4+3] << 24);
+            for (int i = 0; i < 16; i++)
+            {
+                w[i] = msg[blk + i * 4] | ((uint32_t)msg[blk + i * 4 + 1] << 8) |
+                       ((uint32_t)msg[blk + i * 4 + 2] << 16) | ((uint32_t)msg[blk + i * 4 + 3] << 24);
             }
-            
-            uint32_t a=h0, b=h1, c=h2, d=h3;
-            for (int i = 0; i < 64; i++) {
+
+            uint32_t a = h0, b = h1, c = h2, d = h3;
+            for (int i = 0; i < 64; i++)
+            {
                 uint32_t f, g;
-                if (i < 16) { f = (b & c) | ((~b) & d); g = i; }
-                else if (i < 32) { f = (d & b) | ((~d) & c); g = (5*i + 1) % 16; }
-                else if (i < 48) { f = b ^ c ^ d; g = (3*i + 5) % 16; }
-                else { f = c ^ (b | (~d)); g = (7*i) % 16; }
+                if (i < 16)
+                {
+                    f = (b & c) | ((~b) & d);
+                    g = i;
+                }
+                else if (i < 32)
+                {
+                    f = (d & b) | ((~d) & c);
+                    g = (5 * i + 1) % 16;
+                }
+                else if (i < 48)
+                {
+                    f = b ^ c ^ d;
+                    g = (3 * i + 5) % 16;
+                }
+                else
+                {
+                    f = c ^ (b | (~d));
+                    g = (7 * i) % 16;
+                }
                 f = f + a + md5_k[i] + w[g];
-                a = d; d = c; c = b; b = b + MD5_ROTL(f, md5_s[i]);
+                a = d;
+                d = c;
+                c = b;
+                b = b + MD5_ROTL(f, md5_s[i]);
             }
-            h0 += a; h1 += b; h2 += c; h3 += d;
+            h0 += a;
+            h1 += b;
+            h2 += c;
+            h3 += d;
         }
         free(msg);
-        
-        #undef MD5_ROTL
-        
+
+#undef MD5_ROTL
+
         char hex[33];
         snprintf(hex, 33, "%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
-            h0&0xFF,(h0>>8)&0xFF,(h0>>16)&0xFF,(h0>>24)&0xFF,
-            h1&0xFF,(h1>>8)&0xFF,(h1>>16)&0xFF,(h1>>24)&0xFF,
-            h2&0xFF,(h2>>8)&0xFF,(h2>>16)&0xFF,(h2>>24)&0xFF,
-            h3&0xFF,(h3>>8)&0xFF,(h3>>16)&0xFF,(h3>>24)&0xFF);
-        
+                 h0 & 0xFF, (h0 >> 8) & 0xFF, (h0 >> 16) & 0xFF, (h0 >> 24) & 0xFF,
+                 h1 & 0xFF, (h1 >> 8) & 0xFF, (h1 >> 16) & 0xFF, (h1 >> 24) & 0xFF,
+                 h2 & 0xFF, (h2 >> 8) & 0xFF, (h2 >> 16) & 0xFF, (h2 >> 24) & 0xFF,
+                 h3 & 0xFF, (h3 >> 8) & 0xFF, (h3 >> 16) & 0xFF, (h3 >> 24) & 0xFF);
+
         vm->sp = sp;
-        ObjString* str = copy_string(vm, hex, 32);
+        ObjString *str = copy_string(vm, hex, 32);
         sp = vm->sp;
         PUSH(val_obj(str));
         DISPATCH();
     }
-    
+
     /* ============ TENSOR OPERATIONS ============ */
-    
-    CASE(tensor): {
+
+    CASE(tensor) :
+    {
         /* Create tensor from array */
         Value arr_val = POP();
-        if (!IS_ARRAY(arr_val)) {
+        if (!IS_ARRAY(arr_val))
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
         vm->sp = sp;
-        ObjTensor* t = tensor_from_array(vm, AS_ARRAY(arr_val));
+        ObjTensor *t = tensor_from_array(vm, AS_ARRAY(arr_val));
         sp = vm->sp;
         PUSH(val_obj(t));
         DISPATCH();
     }
-    
-    CASE(tensor_zeros): {
+
+    CASE(tensor_zeros) :
+    {
         Value shape_val = POP();
-        if (!IS_ARRAY(shape_val)) {
+        if (!IS_ARRAY(shape_val))
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
-        ObjArray* shape_arr = AS_ARRAY(shape_val);
+        ObjArray *shape_arr = AS_ARRAY(shape_val);
         uint32_t shape[8];
         uint32_t ndim = shape_arr->count > 8 ? 8 : shape_arr->count;
-        for (uint32_t i = 0; i < ndim; i++) {
-            shape[i] = IS_INT(shape_arr->values[i]) ? as_int(shape_arr->values[i]) 
-                                                     : (uint32_t)as_num(shape_arr->values[i]);
-        }
-        vm->sp = sp;
-        ObjTensor* t = tensor_zeros(vm, ndim, shape);
-        sp = vm->sp;
-        PUSH(val_obj(t));
-        DISPATCH();
-    }
-    
-    CASE(tensor_ones): {
-        Value shape_val = POP();
-        if (!IS_ARRAY(shape_val)) {
-            PUSH(VAL_NIL);
-            DISPATCH();
-        }
-        ObjArray* shape_arr = AS_ARRAY(shape_val);
-        uint32_t shape[8];
-        uint32_t ndim = shape_arr->count > 8 ? 8 : shape_arr->count;
-        for (uint32_t i = 0; i < ndim; i++) {
+        for (uint32_t i = 0; i < ndim; i++)
+        {
             shape[i] = IS_INT(shape_arr->values[i]) ? as_int(shape_arr->values[i])
-                                                     : (uint32_t)as_num(shape_arr->values[i]);
+                                                    : (uint32_t)as_num(shape_arr->values[i]);
         }
         vm->sp = sp;
-        ObjTensor* t = tensor_ones(vm, ndim, shape);
+        ObjTensor *t = tensor_zeros(vm, ndim, shape);
         sp = vm->sp;
         PUSH(val_obj(t));
         DISPATCH();
     }
-    
-    CASE(tensor_rand): {
+
+    CASE(tensor_ones) :
+    {
         Value shape_val = POP();
-        if (!IS_ARRAY(shape_val)) {
+        if (!IS_ARRAY(shape_val))
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
-        ObjArray* shape_arr = AS_ARRAY(shape_val);
+        ObjArray *shape_arr = AS_ARRAY(shape_val);
         uint32_t shape[8];
         uint32_t ndim = shape_arr->count > 8 ? 8 : shape_arr->count;
-        for (uint32_t i = 0; i < ndim; i++) {
+        for (uint32_t i = 0; i < ndim; i++)
+        {
             shape[i] = IS_INT(shape_arr->values[i]) ? as_int(shape_arr->values[i])
-                                                     : (uint32_t)as_num(shape_arr->values[i]);
+                                                    : (uint32_t)as_num(shape_arr->values[i]);
         }
         vm->sp = sp;
-        ObjTensor* t = tensor_rand(vm, ndim, shape);
+        ObjTensor *t = tensor_ones(vm, ndim, shape);
         sp = vm->sp;
         PUSH(val_obj(t));
         DISPATCH();
     }
-    
-    CASE(tensor_randn): {
+
+    CASE(tensor_rand) :
+    {
         Value shape_val = POP();
-        if (!IS_ARRAY(shape_val)) {
+        if (!IS_ARRAY(shape_val))
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
-        ObjArray* shape_arr = AS_ARRAY(shape_val);
+        ObjArray *shape_arr = AS_ARRAY(shape_val);
         uint32_t shape[8];
         uint32_t ndim = shape_arr->count > 8 ? 8 : shape_arr->count;
-        for (uint32_t i = 0; i < ndim; i++) {
+        for (uint32_t i = 0; i < ndim; i++)
+        {
             shape[i] = IS_INT(shape_arr->values[i]) ? as_int(shape_arr->values[i])
-                                                     : (uint32_t)as_num(shape_arr->values[i]);
+                                                    : (uint32_t)as_num(shape_arr->values[i]);
         }
         vm->sp = sp;
-        ObjTensor* t = tensor_randn(vm, ndim, shape);
+        ObjTensor *t = tensor_rand(vm, ndim, shape);
         sp = vm->sp;
         PUSH(val_obj(t));
         DISPATCH();
     }
-    
-    CASE(tensor_arange): {
+
+    CASE(tensor_randn) :
+    {
+        Value shape_val = POP();
+        if (!IS_ARRAY(shape_val))
+        {
+            PUSH(VAL_NIL);
+            DISPATCH();
+        }
+        ObjArray *shape_arr = AS_ARRAY(shape_val);
+        uint32_t shape[8];
+        uint32_t ndim = shape_arr->count > 8 ? 8 : shape_arr->count;
+        for (uint32_t i = 0; i < ndim; i++)
+        {
+            shape[i] = IS_INT(shape_arr->values[i]) ? as_int(shape_arr->values[i])
+                                                    : (uint32_t)as_num(shape_arr->values[i]);
+        }
+        vm->sp = sp;
+        ObjTensor *t = tensor_randn(vm, ndim, shape);
+        sp = vm->sp;
+        PUSH(val_obj(t));
+        DISPATCH();
+    }
+
+    CASE(tensor_arange) :
+    {
         Value step_val = POP();
         Value stop_val = POP();
         Value start_val = POP();
@@ -3735,13 +4780,14 @@ InterpretResult vm_run(VM* vm) {
         double stop = IS_INT(stop_val) ? as_int(stop_val) : as_num(stop_val);
         double step = IS_INT(step_val) ? as_int(step_val) : as_num(step_val);
         vm->sp = sp;
-        ObjTensor* t = tensor_arange(vm, start, stop, step);
+        ObjTensor *t = tensor_arange(vm, start, stop, step);
         sp = vm->sp;
         PUSH(val_obj(t));
         DISPATCH();
     }
-    
-    CASE(tensor_linspace): {
+
+    CASE(tensor_linspace) :
+    {
         Value num_val = POP();
         Value stop_val = POP();
         Value start_val = POP();
@@ -3749,306 +4795,357 @@ InterpretResult vm_run(VM* vm) {
         double stop = IS_INT(stop_val) ? as_int(stop_val) : as_num(stop_val);
         uint32_t num = IS_INT(num_val) ? as_int(num_val) : (uint32_t)as_num(num_val);
         vm->sp = sp;
-        ObjTensor* t = tensor_linspace(vm, start, stop, num);
+        ObjTensor *t = tensor_linspace(vm, start, stop, num);
         sp = vm->sp;
         PUSH(val_obj(t));
         DISPATCH();
     }
-    
-    CASE(tensor_eye): {
+
+    CASE(tensor_eye) :
+    {
         Value n_val = POP();
         uint32_t n = IS_INT(n_val) ? as_int(n_val) : (uint32_t)as_num(n_val);
         uint32_t shape[2] = {n, n};
         vm->sp = sp;
-        ObjTensor* t = tensor_zeros(vm, 2, shape);
+        ObjTensor *t = tensor_zeros(vm, 2, shape);
         sp = vm->sp;
-        for (uint32_t i = 0; i < n; i++) {
+        for (uint32_t i = 0; i < n; i++)
+        {
             t->data[i * n + i] = 1.0;
         }
         PUSH(val_obj(t));
         DISPATCH();
     }
-    
-    CASE(tensor_shape): {
+
+    CASE(tensor_shape) :
+    {
         Value t_val = POP();
-        if (!IS_TENSOR(t_val)) {
+        if (!IS_TENSOR(t_val))
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
-        ObjTensor* t = AS_TENSOR(t_val);
+        ObjTensor *t = AS_TENSOR(t_val);
         vm->sp = sp;
-        ObjArray* arr = new_array(vm, t->ndim);
+        ObjArray *arr = new_array(vm, t->ndim);
         sp = vm->sp;
-        for (uint32_t i = 0; i < t->ndim; i++) {
+        for (uint32_t i = 0; i < t->ndim; i++)
+        {
             arr->values[i] = val_int(t->shape[i]);
         }
         arr->count = t->ndim;
         PUSH(val_obj(arr));
         DISPATCH();
     }
-    
-    CASE(tensor_reshape): {
+
+    CASE(tensor_reshape) :
+    {
         Value shape_val = POP();
         Value t_val = POP();
-        if (!IS_TENSOR(t_val) || !IS_ARRAY(shape_val)) {
+        if (!IS_TENSOR(t_val) || !IS_ARRAY(shape_val))
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
-        ObjTensor* t = AS_TENSOR(t_val);
-        ObjArray* shape_arr = AS_ARRAY(shape_val);
+        ObjTensor *t = AS_TENSOR(t_val);
+        ObjArray *shape_arr = AS_ARRAY(shape_val);
         uint32_t shape[8];
         uint32_t ndim = shape_arr->count > 8 ? 8 : shape_arr->count;
         uint32_t new_size = 1;
-        for (uint32_t i = 0; i < ndim; i++) {
+        for (uint32_t i = 0; i < ndim; i++)
+        {
             shape[i] = IS_INT(shape_arr->values[i]) ? as_int(shape_arr->values[i])
-                                                     : (uint32_t)as_num(shape_arr->values[i]);
+                                                    : (uint32_t)as_num(shape_arr->values[i]);
             new_size *= shape[i];
         }
-        if (new_size != t->size) {
+        if (new_size != t->size)
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
         vm->sp = sp;
-        ObjTensor* result = tensor_create(vm, ndim, shape);
+        ObjTensor *result = tensor_create(vm, ndim, shape);
         sp = vm->sp;
         memcpy(result->data, t->data, t->size * sizeof(double));
         PUSH(val_obj(result));
         DISPATCH();
     }
-    
-    CASE(tensor_transpose): {
+
+    CASE(tensor_transpose) :
+    {
         Value t_val = POP();
-        if (!IS_TENSOR(t_val)) {
+        if (!IS_TENSOR(t_val))
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
-        ObjTensor* t = AS_TENSOR(t_val);
-        if (t->ndim != 2) {
+        ObjTensor *t = AS_TENSOR(t_val);
+        if (t->ndim != 2)
+        {
             PUSH(val_obj(t)); /* Only 2D transpose for now */
             DISPATCH();
         }
         uint32_t new_shape[2] = {t->shape[1], t->shape[0]};
         vm->sp = sp;
-        ObjTensor* result = tensor_create(vm, 2, new_shape);
+        ObjTensor *result = tensor_create(vm, 2, new_shape);
         sp = vm->sp;
-        for (uint32_t i = 0; i < t->shape[0]; i++) {
-            for (uint32_t j = 0; j < t->shape[1]; j++) {
+        for (uint32_t i = 0; i < t->shape[0]; i++)
+        {
+            for (uint32_t j = 0; j < t->shape[1]; j++)
+            {
                 result->data[j * t->shape[0] + i] = t->data[i * t->shape[1] + j];
             }
         }
         PUSH(val_obj(result));
         DISPATCH();
     }
-    
-    CASE(tensor_flatten): {
+
+    CASE(tensor_flatten) :
+    {
         Value t_val = POP();
-        if (!IS_TENSOR(t_val)) {
+        if (!IS_TENSOR(t_val))
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
-        ObjTensor* t = AS_TENSOR(t_val);
+        ObjTensor *t = AS_TENSOR(t_val);
         uint32_t shape[1] = {t->size};
         vm->sp = sp;
-        ObjTensor* result = tensor_create(vm, 1, shape);
+        ObjTensor *result = tensor_create(vm, 1, shape);
         sp = vm->sp;
         memcpy(result->data, t->data, t->size * sizeof(double));
         PUSH(val_obj(result));
         DISPATCH();
     }
-    
-    CASE(tensor_squeeze): {
+
+    CASE(tensor_squeeze) :
+    {
         Value t_val = POP();
-        if (!IS_TENSOR(t_val)) {
+        if (!IS_TENSOR(t_val))
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
-        ObjTensor* t = AS_TENSOR(t_val);
-        
+        ObjTensor *t = AS_TENSOR(t_val);
+
         /* Count non-1 dimensions */
         uint32_t new_ndim = 0;
         uint32_t new_shape[8];
-        for (uint32_t i = 0; i < t->ndim && new_ndim < 8; i++) {
-            if (t->shape[i] != 1) {
+        for (uint32_t i = 0; i < t->ndim && new_ndim < 8; i++)
+        {
+            if (t->shape[i] != 1)
+            {
                 new_shape[new_ndim++] = t->shape[i];
             }
         }
-        if (new_ndim == 0) { new_ndim = 1; new_shape[0] = 1; }
-        
+        if (new_ndim == 0)
+        {
+            new_ndim = 1;
+            new_shape[0] = 1;
+        }
+
         vm->sp = sp;
-        ObjTensor* result = tensor_create(vm, new_ndim, new_shape);
+        ObjTensor *result = tensor_create(vm, new_ndim, new_shape);
         sp = vm->sp;
         memcpy(result->data, t->data, t->size * sizeof(double));
         PUSH(val_obj(result));
         DISPATCH();
     }
-    
-    CASE(tensor_unsqueeze): {
+
+    CASE(tensor_unsqueeze) :
+    {
         Value dim_val = POP();
         Value t_val = POP();
-        if (!IS_TENSOR(t_val)) {
+        if (!IS_TENSOR(t_val))
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
-        ObjTensor* t = AS_TENSOR(t_val);
+        ObjTensor *t = AS_TENSOR(t_val);
         uint32_t dim = IS_INT(dim_val) ? as_int(dim_val) : (uint32_t)as_num(dim_val);
-        if (dim > t->ndim || t->ndim >= 8) {
+        if (dim > t->ndim || t->ndim >= 8)
+        {
             PUSH(t_val);
             DISPATCH();
         }
-        
+
         /* Build new shape with 1 inserted at dim */
         uint32_t new_shape[8];
-        for (uint32_t i = 0; i < dim; i++) new_shape[i] = t->shape[i];
+        for (uint32_t i = 0; i < dim; i++)
+            new_shape[i] = t->shape[i];
         new_shape[dim] = 1;
-        for (uint32_t i = dim; i < t->ndim; i++) new_shape[i+1] = t->shape[i];
-        
+        for (uint32_t i = dim; i < t->ndim; i++)
+            new_shape[i + 1] = t->shape[i];
+
         vm->sp = sp;
-        ObjTensor* result = tensor_create(vm, t->ndim + 1, new_shape);
+        ObjTensor *result = tensor_create(vm, t->ndim + 1, new_shape);
         sp = vm->sp;
         memcpy(result->data, t->data, t->size * sizeof(double));
         PUSH(val_obj(result));
         DISPATCH();
     }
-    
-    CASE(tensor_add): {
+
+    CASE(tensor_add) :
+    {
         Value b_val = POP();
         Value a_val = POP();
-        if (!IS_TENSOR(a_val) || !IS_TENSOR(b_val)) {
+        if (!IS_TENSOR(a_val) || !IS_TENSOR(b_val))
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
         vm->sp = sp;
-        ObjTensor* result = tensor_add_tensors(vm, AS_TENSOR(a_val), AS_TENSOR(b_val));
+        ObjTensor *result = tensor_add_tensors(vm, AS_TENSOR(a_val), AS_TENSOR(b_val));
         sp = vm->sp;
         PUSH(result ? val_obj(result) : VAL_NIL);
         DISPATCH();
     }
-    
-    CASE(tensor_sub): {
+
+    CASE(tensor_sub) :
+    {
         Value b_val = POP();
         Value a_val = POP();
-        if (!IS_TENSOR(a_val) || !IS_TENSOR(b_val)) {
+        if (!IS_TENSOR(a_val) || !IS_TENSOR(b_val))
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
         vm->sp = sp;
-        ObjTensor* result = tensor_sub_tensors(vm, AS_TENSOR(a_val), AS_TENSOR(b_val));
+        ObjTensor *result = tensor_sub_tensors(vm, AS_TENSOR(a_val), AS_TENSOR(b_val));
         sp = vm->sp;
         PUSH(result ? val_obj(result) : VAL_NIL);
         DISPATCH();
     }
-    
-    CASE(tensor_mul): {
+
+    CASE(tensor_mul) :
+    {
         Value b_val = POP();
         Value a_val = POP();
-        if (!IS_TENSOR(a_val) || !IS_TENSOR(b_val)) {
+        if (!IS_TENSOR(a_val) || !IS_TENSOR(b_val))
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
         vm->sp = sp;
-        ObjTensor* result = tensor_mul_tensors(vm, AS_TENSOR(a_val), AS_TENSOR(b_val));
+        ObjTensor *result = tensor_mul_tensors(vm, AS_TENSOR(a_val), AS_TENSOR(b_val));
         sp = vm->sp;
         PUSH(result ? val_obj(result) : VAL_NIL);
         DISPATCH();
     }
-    
-    CASE(tensor_div): {
+
+    CASE(tensor_div) :
+    {
         Value b_val = POP();
         Value a_val = POP();
-        if (!IS_TENSOR(a_val) || !IS_TENSOR(b_val)) {
+        if (!IS_TENSOR(a_val) || !IS_TENSOR(b_val))
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
         vm->sp = sp;
-        ObjTensor* result = tensor_div_tensors(vm, AS_TENSOR(a_val), AS_TENSOR(b_val));
+        ObjTensor *result = tensor_div_tensors(vm, AS_TENSOR(a_val), AS_TENSOR(b_val));
         sp = vm->sp;
         PUSH(result ? val_obj(result) : VAL_NIL);
         DISPATCH();
     }
-    
-    CASE(tensor_pow): {
+
+    CASE(tensor_pow) :
+    {
         Value p_val = POP();
         Value t_val = POP();
-        if (!IS_TENSOR(t_val)) {
+        if (!IS_TENSOR(t_val))
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
         double power = IS_INT(p_val) ? as_int(p_val) : as_num(p_val);
         vm->sp = sp;
-        ObjTensor* result = tensor_pow_op(vm, AS_TENSOR(t_val), power);
+        ObjTensor *result = tensor_pow_op(vm, AS_TENSOR(t_val), power);
         sp = vm->sp;
         PUSH(val_obj(result));
         DISPATCH();
     }
-    
-    CASE(tensor_neg): {
+
+    CASE(tensor_neg) :
+    {
         Value t_val = POP();
-        if (!IS_TENSOR(t_val)) {
+        if (!IS_TENSOR(t_val))
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
         vm->sp = sp;
-        ObjTensor* result = tensor_neg(vm, AS_TENSOR(t_val));
+        ObjTensor *result = tensor_neg(vm, AS_TENSOR(t_val));
         sp = vm->sp;
         PUSH(val_obj(result));
         DISPATCH();
     }
-    
-    CASE(tensor_abs): {
+
+    CASE(tensor_abs) :
+    {
         Value t_val = POP();
-        if (!IS_TENSOR(t_val)) {
+        if (!IS_TENSOR(t_val))
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
         vm->sp = sp;
-        ObjTensor* result = tensor_abs(vm, AS_TENSOR(t_val));
+        ObjTensor *result = tensor_abs(vm, AS_TENSOR(t_val));
         sp = vm->sp;
         PUSH(val_obj(result));
         DISPATCH();
     }
-    
-    CASE(tensor_sqrt): {
+
+    CASE(tensor_sqrt) :
+    {
         Value t_val = POP();
-        if (!IS_TENSOR(t_val)) {
+        if (!IS_TENSOR(t_val))
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
         vm->sp = sp;
-        ObjTensor* result = tensor_sqrt_op(vm, AS_TENSOR(t_val));
+        ObjTensor *result = tensor_sqrt_op(vm, AS_TENSOR(t_val));
         sp = vm->sp;
         PUSH(val_obj(result));
         DISPATCH();
     }
-    
-    CASE(tensor_exp): {
+
+    CASE(tensor_exp) :
+    {
         Value t_val = POP();
-        if (!IS_TENSOR(t_val)) {
+        if (!IS_TENSOR(t_val))
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
         vm->sp = sp;
-        ObjTensor* result = tensor_exp_op(vm, AS_TENSOR(t_val));
+        ObjTensor *result = tensor_exp_op(vm, AS_TENSOR(t_val));
         sp = vm->sp;
         PUSH(val_obj(result));
         DISPATCH();
     }
-    
-    CASE(tensor_log): {
+
+    CASE(tensor_log) :
+    {
         Value t_val = POP();
-        if (!IS_TENSOR(t_val)) {
+        if (!IS_TENSOR(t_val))
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
         vm->sp = sp;
-        ObjTensor* result = tensor_log_op(vm, AS_TENSOR(t_val));
+        ObjTensor *result = tensor_log_op(vm, AS_TENSOR(t_val));
         sp = vm->sp;
         PUSH(val_obj(result));
         DISPATCH();
     }
-    
-    CASE(tensor_sum): {
+
+    CASE(tensor_sum) :
+    {
         Value t_val = POP();
-        if (!IS_TENSOR(t_val)) {
+        if (!IS_TENSOR(t_val))
+        {
             PUSH(val_num(0));
             DISPATCH();
         }
@@ -4056,10 +5153,12 @@ InterpretResult vm_run(VM* vm) {
         PUSH(val_num(sum));
         DISPATCH();
     }
-    
-    CASE(tensor_mean): {
+
+    CASE(tensor_mean) :
+    {
         Value t_val = POP();
-        if (!IS_TENSOR(t_val)) {
+        if (!IS_TENSOR(t_val))
+        {
             PUSH(val_num(0));
             DISPATCH();
         }
@@ -4067,10 +5166,12 @@ InterpretResult vm_run(VM* vm) {
         PUSH(val_num(mean));
         DISPATCH();
     }
-    
-    CASE(tensor_min): {
+
+    CASE(tensor_min) :
+    {
         Value t_val = POP();
-        if (!IS_TENSOR(t_val)) {
+        if (!IS_TENSOR(t_val))
+        {
             PUSH(val_num(0));
             DISPATCH();
         }
@@ -4078,10 +5179,12 @@ InterpretResult vm_run(VM* vm) {
         PUSH(val_num(min));
         DISPATCH();
     }
-    
-    CASE(tensor_max): {
+
+    CASE(tensor_max) :
+    {
         Value t_val = POP();
-        if (!IS_TENSOR(t_val)) {
+        if (!IS_TENSOR(t_val))
+        {
             PUSH(val_num(0));
             DISPATCH();
         }
@@ -4089,18 +5192,22 @@ InterpretResult vm_run(VM* vm) {
         PUSH(val_num(max));
         DISPATCH();
     }
-    
-    CASE(tensor_argmin): {
+
+    CASE(tensor_argmin) :
+    {
         Value t_val = POP();
-        if (!IS_TENSOR(t_val)) {
+        if (!IS_TENSOR(t_val))
+        {
             PUSH(val_int(0));
             DISPATCH();
         }
-        ObjTensor* t = AS_TENSOR(t_val);
+        ObjTensor *t = AS_TENSOR(t_val);
         uint32_t idx = 0;
         double min = t->data[0];
-        for (uint32_t i = 1; i < t->size; i++) {
-            if (t->data[i] < min) {
+        for (uint32_t i = 1; i < t->size; i++)
+        {
+            if (t->data[i] < min)
+            {
                 min = t->data[i];
                 idx = i;
             }
@@ -4108,18 +5215,22 @@ InterpretResult vm_run(VM* vm) {
         PUSH(val_int(idx));
         DISPATCH();
     }
-    
-    CASE(tensor_argmax): {
+
+    CASE(tensor_argmax) :
+    {
         Value t_val = POP();
-        if (!IS_TENSOR(t_val)) {
+        if (!IS_TENSOR(t_val))
+        {
             PUSH(val_int(0));
             DISPATCH();
         }
-        ObjTensor* t = AS_TENSOR(t_val);
+        ObjTensor *t = AS_TENSOR(t_val);
         uint32_t idx = 0;
         double max = t->data[0];
-        for (uint32_t i = 1; i < t->size; i++) {
-            if (t->data[i] > max) {
+        for (uint32_t i = 1; i < t->size; i++)
+        {
+            if (t->data[i] > max)
+            {
                 max = t->data[i];
                 idx = i;
             }
@@ -4127,29 +5238,35 @@ InterpretResult vm_run(VM* vm) {
         PUSH(val_int(idx));
         DISPATCH();
     }
-    
-    CASE(tensor_matmul): {
+
+    CASE(tensor_matmul) :
+    {
         Value b_val = POP();
         Value a_val = POP();
-        if (!IS_TENSOR(a_val) || !IS_TENSOR(b_val)) {
+        if (!IS_TENSOR(a_val) || !IS_TENSOR(b_val))
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
-        ObjTensor* a = AS_TENSOR(a_val);
-        ObjTensor* b = AS_TENSOR(b_val);
-        if (a->ndim != 2 || b->ndim != 2 || a->shape[1] != b->shape[0]) {
+        ObjTensor *a = AS_TENSOR(a_val);
+        ObjTensor *b = AS_TENSOR(b_val);
+        if (a->ndim != 2 || b->ndim != 2 || a->shape[1] != b->shape[0])
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
         uint32_t new_shape[2] = {a->shape[0], b->shape[1]};
         vm->sp = sp;
-        ObjTensor* result = tensor_zeros(vm, 2, new_shape);
+        ObjTensor *result = tensor_zeros(vm, 2, new_shape);
         sp = vm->sp;
         /* Matrix multiplication */
-        for (uint32_t i = 0; i < a->shape[0]; i++) {
-            for (uint32_t k = 0; k < a->shape[1]; k++) {
+        for (uint32_t i = 0; i < a->shape[0]; i++)
+        {
+            for (uint32_t k = 0; k < a->shape[1]; k++)
+            {
                 double aik = a->data[i * a->shape[1] + k];
-                for (uint32_t j = 0; j < b->shape[1]; j++) {
+                for (uint32_t j = 0; j < b->shape[1]; j++)
+                {
                     result->data[i * b->shape[1] + j] += aik * b->data[k * b->shape[1] + j];
                 }
             }
@@ -4157,17 +5274,20 @@ InterpretResult vm_run(VM* vm) {
         PUSH(val_obj(result));
         DISPATCH();
     }
-    
-    CASE(tensor_dot): {
+
+    CASE(tensor_dot) :
+    {
         Value b_val = POP();
         Value a_val = POP();
-        if (!IS_TENSOR(a_val) || !IS_TENSOR(b_val)) {
+        if (!IS_TENSOR(a_val) || !IS_TENSOR(b_val))
+        {
             PUSH(val_num(0));
             DISPATCH();
         }
-        ObjTensor* a = AS_TENSOR(a_val);
-        ObjTensor* b = AS_TENSOR(b_val);
-        if (a->size != b->size) {
+        ObjTensor *a = AS_TENSOR(a_val);
+        ObjTensor *b = AS_TENSOR(b_val);
+        if (a->size != b->size)
+        {
             PUSH(val_num(0));
             DISPATCH();
         }
@@ -4175,10 +5295,12 @@ InterpretResult vm_run(VM* vm) {
         PUSH(val_num(dot));
         DISPATCH();
     }
-    
-    CASE(tensor_norm): {
+
+    CASE(tensor_norm) :
+    {
         Value t_val = POP();
-        if (!IS_TENSOR(t_val)) {
+        if (!IS_TENSOR(t_val))
+        {
             PUSH(val_num(0));
             DISPATCH();
         }
@@ -4186,35 +5308,41 @@ InterpretResult vm_run(VM* vm) {
         PUSH(val_num(norm));
         DISPATCH();
     }
-    
-    CASE(tensor_get): {
+
+    CASE(tensor_get) :
+    {
         Value idx_val = POP();
         Value t_val = POP();
-        if (!IS_TENSOR(t_val)) {
+        if (!IS_TENSOR(t_val))
+        {
             PUSH(val_num(0));
             DISPATCH();
         }
-        ObjTensor* t = AS_TENSOR(t_val);
+        ObjTensor *t = AS_TENSOR(t_val);
         uint32_t idx = IS_INT(idx_val) ? as_int(idx_val) : (uint32_t)as_num(idx_val);
-        if (idx >= t->size) {
+        if (idx >= t->size)
+        {
             PUSH(val_num(0));
             DISPATCH();
         }
         PUSH(val_num(t->data[idx]));
         DISPATCH();
     }
-    
-    CASE(tensor_set): {
+
+    CASE(tensor_set) :
+    {
         Value val = POP();
         Value idx_val = POP();
         Value t_val = POP();
-        if (!IS_TENSOR(t_val)) {
+        if (!IS_TENSOR(t_val))
+        {
             PUSH(VAL_FALSE);
             DISPATCH();
         }
-        ObjTensor* t = AS_TENSOR(t_val);
+        ObjTensor *t = AS_TENSOR(t_val);
         uint32_t idx = IS_INT(idx_val) ? as_int(idx_val) : (uint32_t)as_num(idx_val);
-        if (idx >= t->size) {
+        if (idx >= t->size)
+        {
             PUSH(VAL_FALSE);
             DISPATCH();
         }
@@ -4222,199 +5350,226 @@ InterpretResult vm_run(VM* vm) {
         PUSH(VAL_TRUE);
         DISPATCH();
     }
-    
+
     /* ============ MATRIX OPERATIONS ============ */
-    
-    CASE(matrix): {
+
+    CASE(matrix) :
+    {
         Value arr_val = POP();
-        if (!IS_ARRAY(arr_val)) {
+        if (!IS_ARRAY(arr_val))
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
         vm->sp = sp;
-        ObjMatrix* m = matrix_from_array(vm, AS_ARRAY(arr_val));
+        ObjMatrix *m = matrix_from_array(vm, AS_ARRAY(arr_val));
         sp = vm->sp;
         PUSH(val_obj(m));
         DISPATCH();
     }
-    
-    CASE(matrix_zeros): {
+
+    CASE(matrix_zeros) :
+    {
         Value cols_val = POP();
         Value rows_val = POP();
         uint32_t rows = IS_INT(rows_val) ? as_int(rows_val) : (uint32_t)as_num(rows_val);
         uint32_t cols = IS_INT(cols_val) ? as_int(cols_val) : (uint32_t)as_num(cols_val);
         vm->sp = sp;
-        ObjMatrix* m = matrix_zeros(vm, rows, cols);
+        ObjMatrix *m = matrix_zeros(vm, rows, cols);
         sp = vm->sp;
         PUSH(val_obj(m));
         DISPATCH();
     }
-    
-    CASE(matrix_ones): {
+
+    CASE(matrix_ones) :
+    {
         Value cols_val = POP();
         Value rows_val = POP();
         uint32_t rows = IS_INT(rows_val) ? as_int(rows_val) : (uint32_t)as_num(rows_val);
         uint32_t cols = IS_INT(cols_val) ? as_int(cols_val) : (uint32_t)as_num(cols_val);
         vm->sp = sp;
-        ObjMatrix* m = matrix_ones(vm, rows, cols);
+        ObjMatrix *m = matrix_ones(vm, rows, cols);
         sp = vm->sp;
         PUSH(val_obj(m));
         DISPATCH();
     }
-    
-    CASE(matrix_eye): {
+
+    CASE(matrix_eye) :
+    {
         Value n_val = POP();
         uint32_t n = IS_INT(n_val) ? as_int(n_val) : (uint32_t)as_num(n_val);
         vm->sp = sp;
-        ObjMatrix* m = matrix_eye(vm, n);
+        ObjMatrix *m = matrix_eye(vm, n);
         sp = vm->sp;
         PUSH(val_obj(m));
         DISPATCH();
     }
-    
-    CASE(matrix_rand): {
+
+    CASE(matrix_rand) :
+    {
         Value cols_val = POP();
         Value rows_val = POP();
         uint32_t rows = IS_INT(rows_val) ? as_int(rows_val) : (uint32_t)as_num(rows_val);
         uint32_t cols = IS_INT(cols_val) ? as_int(cols_val) : (uint32_t)as_num(cols_val);
         vm->sp = sp;
-        ObjMatrix* m = matrix_rand(vm, rows, cols);
+        ObjMatrix *m = matrix_rand(vm, rows, cols);
         sp = vm->sp;
         PUSH(val_obj(m));
         DISPATCH();
     }
-    
-    CASE(matrix_diag): {
+
+    CASE(matrix_diag) :
+    {
         Value arr_val = POP();
-        if (!IS_ARRAY(arr_val)) {
+        if (!IS_ARRAY(arr_val))
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
-        ObjArray* arr = AS_ARRAY(arr_val);
+        ObjArray *arr = AS_ARRAY(arr_val);
         uint32_t n = arr->count;
         vm->sp = sp;
-        ObjMatrix* m = matrix_zeros(vm, n, n);
+        ObjMatrix *m = matrix_zeros(vm, n, n);
         sp = vm->sp;
-        for (uint32_t i = 0; i < n; i++) {
+        for (uint32_t i = 0; i < n; i++)
+        {
             Value v = arr->values[i];
             m->data[i * n + i] = IS_INT(v) ? as_int(v) : as_num(v);
         }
         PUSH(val_obj(m));
         DISPATCH();
     }
-    
-    CASE(matrix_add): {
+
+    CASE(matrix_add) :
+    {
         Value b_val = POP();
         Value a_val = POP();
-        if (!IS_MATRIX(a_val) || !IS_MATRIX(b_val)) {
+        if (!IS_MATRIX(a_val) || !IS_MATRIX(b_val))
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
         vm->sp = sp;
-        ObjMatrix* result = matrix_add(vm, AS_MATRIX(a_val), AS_MATRIX(b_val));
+        ObjMatrix *result = matrix_add(vm, AS_MATRIX(a_val), AS_MATRIX(b_val));
         sp = vm->sp;
         PUSH(result ? val_obj(result) : VAL_NIL);
         DISPATCH();
     }
-    
-    CASE(matrix_sub): {
+
+    CASE(matrix_sub) :
+    {
         Value b_val = POP();
         Value a_val = POP();
-        if (!IS_MATRIX(a_val) || !IS_MATRIX(b_val)) {
+        if (!IS_MATRIX(a_val) || !IS_MATRIX(b_val))
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
         vm->sp = sp;
-        ObjMatrix* result = matrix_sub(vm, AS_MATRIX(a_val), AS_MATRIX(b_val));
+        ObjMatrix *result = matrix_sub(vm, AS_MATRIX(a_val), AS_MATRIX(b_val));
         sp = vm->sp;
         PUSH(result ? val_obj(result) : VAL_NIL);
         DISPATCH();
     }
-    
-    CASE(matrix_mul): {
+
+    CASE(matrix_mul) :
+    {
         Value b_val = POP();
         Value a_val = POP();
-        if (!IS_MATRIX(a_val) || !IS_MATRIX(b_val)) {
+        if (!IS_MATRIX(a_val) || !IS_MATRIX(b_val))
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
-        ObjMatrix* a = AS_MATRIX(a_val);
-        ObjMatrix* b = AS_MATRIX(b_val);
-        if (a->rows != b->rows || a->cols != b->cols) {
+        ObjMatrix *a = AS_MATRIX(a_val);
+        ObjMatrix *b = AS_MATRIX(b_val);
+        if (a->rows != b->rows || a->cols != b->cols)
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
         vm->sp = sp;
-        ObjMatrix* result = matrix_create(vm, a->rows, a->cols);
+        ObjMatrix *result = matrix_create(vm, a->rows, a->cols);
         sp = vm->sp;
         size_t n = a->rows * a->cols;
         tensor_mul(result->data, a->data, b->data, n);
         PUSH(val_obj(result));
         DISPATCH();
     }
-    
-    CASE(matrix_matmul): {
+
+    CASE(matrix_matmul) :
+    {
         Value b_val = POP();
         Value a_val = POP();
-        if (!IS_MATRIX(a_val) || !IS_MATRIX(b_val)) {
+        if (!IS_MATRIX(a_val) || !IS_MATRIX(b_val))
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
         vm->sp = sp;
-        ObjMatrix* result = matrix_matmul(vm, AS_MATRIX(a_val), AS_MATRIX(b_val));
+        ObjMatrix *result = matrix_matmul(vm, AS_MATRIX(a_val), AS_MATRIX(b_val));
         sp = vm->sp;
         PUSH(result ? val_obj(result) : VAL_NIL);
         DISPATCH();
     }
-    
-    CASE(matrix_scale): {
+
+    CASE(matrix_scale) :
+    {
         Value s_val = POP();
         Value m_val = POP();
-        if (!IS_MATRIX(m_val)) {
+        if (!IS_MATRIX(m_val))
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
-        ObjMatrix* m = AS_MATRIX(m_val);
+        ObjMatrix *m = AS_MATRIX(m_val);
         double s = IS_INT(s_val) ? as_int(s_val) : as_num(s_val);
         vm->sp = sp;
-        ObjMatrix* result = matrix_create(vm, m->rows, m->cols);
+        ObjMatrix *result = matrix_create(vm, m->rows, m->cols);
         sp = vm->sp;
-        for (uint32_t i = 0; i < m->rows * m->cols; i++) {
+        for (uint32_t i = 0; i < m->rows * m->cols; i++)
+        {
             result->data[i] = m->data[i] * s;
         }
         PUSH(val_obj(result));
         DISPATCH();
     }
-    
-    CASE(matrix_t): {
+
+    CASE(matrix_t) :
+    {
         Value m_val = POP();
-        if (!IS_MATRIX(m_val)) {
+        if (!IS_MATRIX(m_val))
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
         vm->sp = sp;
-        ObjMatrix* result = matrix_transpose(vm, AS_MATRIX(m_val));
+        ObjMatrix *result = matrix_transpose(vm, AS_MATRIX(m_val));
         sp = vm->sp;
         PUSH(val_obj(result));
         DISPATCH();
     }
-    
-    CASE(matrix_inv): {
+
+    CASE(matrix_inv) :
+    {
         Value m_val = POP();
-        if (!IS_MATRIX(m_val)) {
+        if (!IS_MATRIX(m_val))
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
         vm->sp = sp;
-        ObjMatrix* result = matrix_inverse(vm, AS_MATRIX(m_val));
+        ObjMatrix *result = matrix_inverse(vm, AS_MATRIX(m_val));
         sp = vm->sp;
         PUSH(result ? val_obj(result) : VAL_NIL);
         DISPATCH();
     }
-    
-    CASE(matrix_det): {
+
+    CASE(matrix_det) :
+    {
         Value m_val = POP();
-        if (!IS_MATRIX(m_val)) {
+        if (!IS_MATRIX(m_val))
+        {
             PUSH(val_num(0));
             DISPATCH();
         }
@@ -4422,10 +5577,12 @@ InterpretResult vm_run(VM* vm) {
         PUSH(val_num(det));
         DISPATCH();
     }
-    
-    CASE(matrix_trace): {
+
+    CASE(matrix_trace) :
+    {
         Value m_val = POP();
-        if (!IS_MATRIX(m_val)) {
+        if (!IS_MATRIX(m_val))
+        {
             PUSH(val_num(0));
             DISPATCH();
         }
@@ -4433,89 +5590,102 @@ InterpretResult vm_run(VM* vm) {
         PUSH(val_num(trace));
         DISPATCH();
     }
-    
-    CASE(matrix_solve): {
+
+    CASE(matrix_solve) :
+    {
         Value b_val = POP();
         Value a_val = POP();
-        if (!IS_MATRIX(a_val) || !IS_MATRIX(b_val)) {
+        if (!IS_MATRIX(a_val) || !IS_MATRIX(b_val))
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
         vm->sp = sp;
-        ObjMatrix* result = matrix_solve(vm, AS_MATRIX(a_val), AS_MATRIX(b_val));
+        ObjMatrix *result = matrix_solve(vm, AS_MATRIX(a_val), AS_MATRIX(b_val));
         sp = vm->sp;
         PUSH(result ? val_obj(result) : VAL_NIL);
         DISPATCH();
     }
-    
+
     /* ============ AUTOGRAD ============ */
-    
-    CASE(grad_tape): {
+
+    CASE(grad_tape) :
+    {
         vm->sp = sp;
-        ObjGradTape* tape = grad_tape_create(vm);
+        ObjGradTape *tape = grad_tape_create(vm);
         sp = vm->sp;
         PUSH(val_obj(tape));
         DISPATCH();
     }
-    
+
     /* ============ NEURAL NETWORK ============ */
-    
-    CASE(nn_relu): {
+
+    CASE(nn_relu) :
+    {
         Value t_val = POP();
-        if (!IS_TENSOR(t_val)) {
+        if (!IS_TENSOR(t_val))
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
         vm->sp = sp;
-        ObjTensor* result = tensor_relu(vm, AS_TENSOR(t_val));
+        ObjTensor *result = tensor_relu(vm, AS_TENSOR(t_val));
         sp = vm->sp;
         PUSH(val_obj(result));
         DISPATCH();
     }
-    
-    CASE(nn_sigmoid): {
+
+    CASE(nn_sigmoid) :
+    {
         Value t_val = POP();
-        if (!IS_TENSOR(t_val)) {
+        if (!IS_TENSOR(t_val))
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
         vm->sp = sp;
-        ObjTensor* result = tensor_sigmoid(vm, AS_TENSOR(t_val));
+        ObjTensor *result = tensor_sigmoid(vm, AS_TENSOR(t_val));
         sp = vm->sp;
         PUSH(val_obj(result));
         DISPATCH();
     }
-    
-    CASE(nn_tanh): {
+
+    CASE(nn_tanh) :
+    {
         Value t_val = POP();
-        if (!IS_TENSOR(t_val)) {
+        if (!IS_TENSOR(t_val))
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
         vm->sp = sp;
-        ObjTensor* result = tensor_tanh_op(vm, AS_TENSOR(t_val));
+        ObjTensor *result = tensor_tanh_op(vm, AS_TENSOR(t_val));
         sp = vm->sp;
         PUSH(val_obj(result));
         DISPATCH();
     }
-    
-    CASE(nn_softmax): {
+
+    CASE(nn_softmax) :
+    {
         Value t_val = POP();
-        if (!IS_TENSOR(t_val)) {
+        if (!IS_TENSOR(t_val))
+        {
             PUSH(VAL_NIL);
             DISPATCH();
         }
         vm->sp = sp;
-        ObjTensor* result = tensor_softmax(vm, AS_TENSOR(t_val));
+        ObjTensor *result = tensor_softmax(vm, AS_TENSOR(t_val));
         sp = vm->sp;
         PUSH(val_obj(result));
         DISPATCH();
     }
-    
-    CASE(nn_mse_loss): {
+
+    CASE(nn_mse_loss) :
+    {
         Value target_val = POP();
         Value pred_val = POP();
-        if (!IS_TENSOR(pred_val) || !IS_TENSOR(target_val)) {
+        if (!IS_TENSOR(pred_val) || !IS_TENSOR(target_val))
+        {
             PUSH(val_num(0));
             DISPATCH();
         }
@@ -4523,11 +5693,13 @@ InterpretResult vm_run(VM* vm) {
         PUSH(val_num(loss));
         DISPATCH();
     }
-    
-    CASE(nn_ce_loss): {
+
+    CASE(nn_ce_loss) :
+    {
         Value target_val = POP();
         Value pred_val = POP();
-        if (!IS_TENSOR(pred_val) || !IS_TENSOR(target_val)) {
+        if (!IS_TENSOR(pred_val) || !IS_TENSOR(target_val))
+        {
             PUSH(val_num(0));
             DISPATCH();
         }
@@ -4537,30 +5709,32 @@ InterpretResult vm_run(VM* vm) {
     }
 
 #if !USE_COMPUTED_GOTO
-        default:
-            runtime_error(vm, "Unknown opcode %d", ip[-1]);
-            return INTERPRET_RUNTIME_ERROR;
-        }
-    }
+default:
+    runtime_error(vm, "Unknown opcode %d", ip[-1]);
+    return INTERPRET_RUNTIME_ERROR;
+}
+}
 #endif
 }
 
 /* ============ Main Entry Point ============ */
 
-InterpretResult vm_interpret(VM* vm, const char* source) {
+InterpretResult vm_interpret(VM *vm, const char *source)
+{
     chunk_init(&vm->chunk);
-    
-    if (!compile(source, &vm->chunk, vm)) {
+
+    if (!compile(source, &vm->chunk, vm))
+    {
         chunk_free(&vm->chunk);
         return INTERPRET_COMPILE_ERROR;
     }
-    
+
     vm->ip = vm->chunk.code;
-    
+
     /* Push placeholder for slot 0 (script "function") to align local slots */
     *vm->sp++ = VAL_NIL;
-    
+
     InterpretResult result = vm_run(vm);
-    
+
     return result;
 }
