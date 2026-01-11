@@ -7,30 +7,22 @@
     <title>Pseudocode — Write Code Like You Think</title>
     <meta name="description"
         content="A programming language with intuitive syntax that reads like pseudocode and runs on a bytecode VM with x86-64 JIT compilation.">
-    <link rel="icon" href="favicon.ico" type="image/x-icon">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
-        rel="stylesheet">
-
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <style>
         :root {
-            --bg-primary: #0d1117;
-            --bg-secondary: #161b22;
-            --bg-tertiary: #21262d;
-            --text-primary: #f0f6fc;
-            --text-secondary: #8b949e;
-            --text-muted: #6e7681;
-            --accent: #58a6ff;
-            --accent-hover: #79b8ff;
-            --border: #30363d;
-            --success: #3fb950;
-            --warning: #d29922;
-            --purple: #a371f7;
-            --code-bg: #0d1117;
-            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            --font-mono: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+            --bg-primary: #1b1b1f;
+            --bg-secondary: #232327;
+            --bg-tertiary: #2a2a2e;
+            --text-primary: #f5f5f7;
+            --text-secondary: #b3b3b6;
+            --text-tertiary: #8e8e93;
+            --accent: #a78bfa;
+            --accent-dim: #7c5cbf;
+            --border: #3a3a3e;
+            --code-bg: #161618;
+            --success: #34d399;
+            --warning: #fbbf24;
+            --link: #93c5fd;
         }
 
         * {
@@ -44,78 +36,104 @@
         }
 
         body {
-            font-family: var(--font-sans);
+            font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: var(--bg-primary);
+            background-image:
+                radial-gradient(ellipse at 20% 0%, rgba(60, 60, 70, 0.2) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 100%, rgba(50, 50, 60, 0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(70, 70, 80, 0.08) 0%, transparent 70%),
+                linear-gradient(180deg, rgba(40, 40, 50, 0.05) 0%, transparent 50%);
+            background-attachment: fixed;
             color: var(--text-primary);
             line-height: 1.6;
+            font-size: 16px;
         }
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 24px;
+        a {
+            color: var(--link);
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
         }
 
         /* Header */
         header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
-            background: rgba(13, 17, 23, 0.95);
-            backdrop-filter: blur(8px);
-            border-bottom: 1px solid var(--border);
-            z-index: 1000;
+            z-index: 100;
         }
 
         .header-inner {
             display: flex;
-            align-items: center;
             justify-content: space-between;
-            height: 64px;
+            align-items: center;
+            height: 56px;
+            padding: 0 24px;
+            max-width: 1600px;
+            margin: 0 auto;
         }
 
         .logo {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-primary);
             display: flex;
             align-items: center;
-            gap: 12px;
-            color: var(--text-primary);
+            gap: 8px;
+        }
+
+        .logo:hover {
             text-decoration: none;
-            font-weight: 600;
-            font-size: 1.25rem;
         }
 
-        .logo img {
-            width: 32px;
-            height: 32px;
-        }
-
-        nav {
+        nav ul {
             display: flex;
-            gap: 32px;
+            gap: 24px;
+            list-style: none;
         }
 
         nav a {
             color: var(--text-secondary);
-            text-decoration: none;
-            font-size: 0.9rem;
-            transition: color 0.2s;
+            font-size: 13px;
+            font-weight: 500;
         }
 
         nav a:hover {
             color: var(--text-primary);
+            text-decoration: none;
+        }
+
+        nav a.active {
+            color: var(--accent);
+        }
+
+        /* Main content */
+        main {
+            margin-top: 56px;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 24px;
         }
 
         /* Hero */
         .hero {
-            padding: 160px 0 100px;
+            padding: 80px 0 60px;
             text-align: center;
         }
 
         .hero h1 {
-            font-size: 3.5rem;
+            font-size: 3rem;
             font-weight: 700;
-            margin-bottom: 24px;
+            margin-bottom: 16px;
             letter-spacing: -0.02em;
         }
 
@@ -123,23 +141,24 @@
             font-size: 1.25rem;
             color: var(--text-secondary);
             max-width: 600px;
-            margin: 0 auto 40px;
+            margin: 0 auto 32px;
+            line-height: 1.7;
         }
 
         .version-badge {
             display: inline-block;
             background: var(--bg-tertiary);
             color: var(--accent);
-            padding: 6px 16px;
-            border-radius: 20px;
-            font-size: 0.85rem;
+            padding: 6px 14px;
+            border-radius: 16px;
+            font-size: 13px;
             margin-bottom: 24px;
             border: 1px solid var(--border);
         }
 
         .hero-buttons {
             display: flex;
-            gap: 16px;
+            gap: 12px;
             justify-content: center;
             flex-wrap: wrap;
         }
@@ -148,23 +167,27 @@
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            padding: 12px 24px;
-            border-radius: 8px;
-            font-size: 1rem;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-size: 14px;
             font-weight: 500;
             text-decoration: none;
-            transition: all 0.2s;
+            transition: all 0.15s;
             cursor: pointer;
             border: none;
         }
 
+        .btn:hover {
+            text-decoration: none;
+        }
+
         .btn-primary {
             background: var(--accent);
-            color: var(--bg-primary);
+            color: #fff;
         }
 
         .btn-primary:hover {
-            background: var(--accent-hover);
+            background: var(--accent-dim);
         }
 
         .btn-secondary {
@@ -174,76 +197,69 @@
         }
 
         .btn-secondary:hover {
-            border-color: var(--text-secondary);
+            border-color: var(--text-tertiary);
         }
 
         /* Sections */
         section {
-            padding: 80px 0;
+            padding: 64px 0;
+        }
+
+        section + section {
+            border-top: 1px solid var(--border);
         }
 
         section h2 {
-            font-size: 2rem;
+            font-size: 1.75rem;
             font-weight: 600;
-            margin-bottom: 16px;
+            margin-bottom: 12px;
             text-align: center;
         }
 
-        section .section-desc {
+        .section-desc {
             color: var(--text-secondary);
             text-align: center;
             max-width: 600px;
-            margin: 0 auto 48px;
+            margin: 0 auto 40px;
         }
 
         /* Features Grid */
         .features-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 24px;
-            margin-top: 48px;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
         }
 
         .feature-card {
             background: var(--bg-secondary);
             border: 1px solid var(--border);
-            border-radius: 12px;
+            border-radius: 8px;
             padding: 24px;
-            transition: border-color 0.2s;
-        }
-
-        .feature-card:hover {
-            border-color: var(--accent);
         }
 
         .feature-card h3 {
-            font-size: 1.1rem;
+            font-size: 1rem;
             margin-bottom: 8px;
+            color: var(--text-primary);
         }
 
         .feature-card p {
             color: var(--text-secondary);
-            font-size: 0.9rem;
+            font-size: 14px;
+            line-height: 1.6;
         }
 
-        /* Code Block */
-        .code-showcase {
+        /* Code Examples */
+        .code-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 24px;
-            align-items: start;
-        }
-
-        @media (max-width: 768px) {
-            .code-showcase {
-                grid-template-columns: 1fr;
-            }
+            gap: 20px;
         }
 
         .code-block {
             background: var(--code-bg);
             border: 1px solid var(--border);
-            border-radius: 12px;
+            border-radius: 8px;
             overflow: hidden;
         }
 
@@ -251,174 +267,119 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 12px 16px;
+            padding: 10px 16px;
             background: var(--bg-secondary);
             border-bottom: 1px solid var(--border);
-        }
-
-        .code-title {
-            font-size: 0.85rem;
-            color: var(--text-secondary);
-        }
-
-        .code-actions {
-            display: flex;
-            gap: 8px;
-        }
-
-        .code-btn {
-            background: transparent;
-            border: 1px solid var(--border);
-            color: var(--text-secondary);
-            padding: 4px 10px;
-            border-radius: 6px;
-            font-size: 0.75rem;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .code-btn:hover {
-            border-color: var(--accent);
-            color: var(--accent);
+            font-size: 13px;
+            color: var(--text-tertiary);
         }
 
         pre {
             padding: 16px;
             overflow-x: auto;
-            font-family: var(--font-mono);
-            font-size: 0.9rem;
+            font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+            font-size: 13px;
             line-height: 1.6;
+            margin: 0;
         }
 
         code {
-            font-family: var(--font-mono);
+            font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
         }
 
-        /* Syntax highlighting */
-        .keyword {
-            color: #ff7b72;
-        }
-
-        .function {
-            color: #d2a8ff;
-        }
-
-        .string {
-            color: #a5d6ff;
-        }
-
-        .number {
-            color: #79c0ff;
-        }
-
-        .comment {
-            color: #8b949e;
-            font-style: italic;
-        }
-
-        .operator {
-            color: #ff7b72;
-        }
+        .keyword { color: #c084fc; }
+        .function { color: #60a5fa; }
+        .string { color: #34d399; }
+        .number { color: #fb923c; }
+        .comment { color: #6b7280; }
 
         /* Benchmarks */
-        .benchmarks-container {
+        .benchmark-container {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 48px;
-            align-items: center;
-        }
-
-        @media (max-width: 900px) {
-            .benchmarks-container {
-                grid-template-columns: 1fr;
-            }
+            gap: 40px;
+            align-items: start;
         }
 
         .benchmark-chart {
             display: flex;
             flex-direction: column;
-            gap: 16px;
+            gap: 12px;
         }
 
-        .benchmark-bar {
+        .benchmark-row {
             display: flex;
             align-items: center;
-            gap: 16px;
+            gap: 12px;
         }
 
         .benchmark-label {
-            width: 140px;
-            font-size: 0.9rem;
+            width: 120px;
+            font-size: 13px;
             color: var(--text-secondary);
         }
 
         .bar-container {
             flex: 1;
-            height: 28px;
+            height: 24px;
             background: var(--bg-tertiary);
-            border-radius: 6px;
+            border-radius: 4px;
             overflow: hidden;
         }
 
         .bar {
             height: 100%;
-            border-radius: 6px;
+            border-radius: 4px;
             display: flex;
             align-items: center;
             justify-content: flex-end;
-            padding-right: 12px;
-            font-size: 0.8rem;
+            padding-right: 8px;
+            font-size: 12px;
             font-weight: 500;
-            color: var(--bg-primary);
+            color: #fff;
         }
 
-        .bar-c {
-            background: var(--success);
-        }
-
-        .bar-pseudo-jit {
-            background: var(--accent);
-        }
-
-        .bar-pseudo-vm {
-            background: var(--purple);
-        }
-
-        .bar-python {
-            background: var(--warning);
-        }
+        .bar-c { background: var(--success); }
+        .bar-jit { background: var(--accent); }
+        .bar-vm { background: #8b5cf6; }
+        .bar-python { background: var(--warning); }
 
         .benchmark-info {
-            padding: 24px;
             background: var(--bg-secondary);
             border: 1px solid var(--border);
-            border-radius: 12px;
+            border-radius: 8px;
+            padding: 24px;
         }
 
         .benchmark-info h3 {
-            margin-bottom: 16px;
-            font-size: 1.25rem;
+            margin-bottom: 12px;
+            font-size: 1.125rem;
         }
 
         .benchmark-info p {
             color: var(--text-secondary);
-            font-size: 0.95rem;
+            font-size: 14px;
             margin-bottom: 12px;
+            line-height: 1.6;
         }
 
         /* Getting Started */
         .getting-started {
             background: var(--bg-secondary);
-            border-radius: 16px;
-            padding: 48px;
             border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 40px;
+        }
+
+        .getting-started h2 {
+            text-align: left;
+            margin-bottom: 32px;
         }
 
         .steps {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            grid-template-columns: repeat(3, 1fr);
             gap: 32px;
-            margin-top: 32px;
         }
 
         .step {
@@ -429,82 +390,64 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 40px;
-            height: 40px;
+            width: 36px;
+            height: 36px;
             background: var(--accent);
-            color: var(--bg-primary);
+            color: #fff;
             border-radius: 50%;
             font-weight: 600;
-            margin-bottom: 16px;
+            margin-bottom: 12px;
         }
 
         .step h3 {
+            font-size: 1rem;
             margin-bottom: 8px;
         }
 
         .step p {
             color: var(--text-secondary);
-            font-size: 0.9rem;
+            font-size: 14px;
+            margin-bottom: 12px;
         }
 
         .step code {
             display: block;
-            margin-top: 12px;
-            padding: 12px;
-            background: var(--bg-primary);
-            border-radius: 8px;
-            font-size: 0.85rem;
+            background: var(--code-bg);
+            padding: 10px 12px;
+            border-radius: 6px;
+            font-size: 13px;
             color: var(--accent);
         }
 
-        /* Examples Grid */
-        .examples-grid {
+        /* Technical */
+        .tech-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 24px;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
         }
 
-        .example-card {
+        .tech-card {
             background: var(--bg-secondary);
             border: 1px solid var(--border);
-            border-radius: 12px;
-            overflow: hidden;
-            transition: border-color 0.2s;
+            border-radius: 8px;
+            padding: 24px;
         }
 
-        .example-card:hover {
-            border-color: var(--accent);
-        }
-
-        .example-header {
-            padding: 16px;
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .example-header h3 {
-            font-size: 1rem;
-        }
-
-        .example-tag {
-            font-size: 0.75rem;
+        .tech-card h3 {
             color: var(--accent);
-            background: rgba(88, 166, 255, 0.1);
-            padding: 4px 10px;
-            border-radius: 12px;
+            font-size: 1rem;
+            margin-bottom: 8px;
         }
 
-        .example-card pre {
-            margin: 0;
-            padding: 16px;
-            font-size: 0.8rem;
+        .tech-card p {
+            color: var(--text-secondary);
+            font-size: 14px;
+            line-height: 1.6;
         }
 
         /* Footer */
         footer {
-            padding: 48px 0;
+            padding: 40px 0;
             border-top: 1px solid var(--border);
             text-align: center;
         }
@@ -512,15 +455,13 @@
         .footer-links {
             display: flex;
             justify-content: center;
-            gap: 32px;
-            margin-bottom: 24px;
+            gap: 24px;
+            margin-bottom: 16px;
         }
 
         .footer-links a {
             color: var(--text-secondary);
-            text-decoration: none;
-            font-size: 0.9rem;
-            transition: color 0.2s;
+            font-size: 13px;
         }
 
         .footer-links a:hover {
@@ -528,81 +469,30 @@
         }
 
         .copyright {
-            color: var(--text-muted);
-            font-size: 0.85rem;
-        }
-
-        /* Animations */
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .animate-fadeInUp {
-            animation: fadeInUp 0.6s ease-out forwards;
-        }
-
-        .animate-delay-1 {
-            animation-delay: 0.1s;
-        }
-
-        .animate-delay-2 {
-            animation-delay: 0.2s;
-        }
-
-        .animate-delay-3 {
-            animation-delay: 0.3s;
-        }
-
-        /* Technical Achievements */
-        .achievements-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 24px;
-            margin-top: 48px;
-        }
-
-        .achievement-card {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 24px;
-        }
-
-        .achievement-card h3 {
-            color: var(--accent);
-            font-size: 1rem;
-            margin-bottom: 8px;
-        }
-
-        .achievement-card p {
-            color: var(--text-secondary);
-            font-size: 0.9rem;
+            color: var(--text-tertiary);
+            font-size: 13px;
         }
 
         /* Responsive */
-        @media (max-width: 768px) {
-            .hero h1 {
-                font-size: 2.5rem;
+        @media (max-width: 900px) {
+            .features-grid,
+            .code-grid,
+            .benchmark-container,
+            .tech-grid {
+                grid-template-columns: 1fr;
             }
 
-            .hero p {
-                font-size: 1.1rem;
+            .steps {
+                grid-template-columns: 1fr;
+                gap: 24px;
             }
 
-            nav {
+            nav ul {
                 display: none;
             }
 
-            .getting-started {
-                padding: 32px 24px;
+            .hero h1 {
+                font-size: 2.25rem;
             }
         }
     </style>
@@ -610,36 +500,34 @@
 
 <body>
     <header>
-        <div class="container header-inner">
-            <a href="/" class="logo">
-                <img src="favicon.ico" alt="Pseudocode">
+        <div class="header-inner">
+            <a href="index.html" class="logo">
+                <img src="favicon.svg" alt="Pseudocode" width="24" height="24" style="border-radius: 5px;">
                 Pseudocode
             </a>
             <nav>
-                <a href="#features">Features</a>
-                <a href="#examples">Examples</a>
-                <a href="benchmarks.html">Benchmarks</a>
-                <a href="learn.html">Learn</a>
-                <a href="reference.html">Reference</a>
-                <a href="https://github.com/NagusameCS/Pseudocode" target="_blank">GitHub</a>
+                <ul>
+                    <li><a href="index.html" class="active">Home</a></li>
+                    <li><a href="getting-started.html">Tutorial</a></li>
+                    <li><a href="examples.html">Examples</a></li>
+                    <li><a href="reference.html">Reference</a></li>
+                    <li><a href="learn.html">Learn</a></li>
+                    <li><a href="https://github.com/NagusameCS/Pseudocode">GitHub</a></li>
+                </ul>
             </nav>
         </div>
     </header>
 
     <main>
         <section class="hero container">
-            <span class="version-badge animate-fadeInUp">v1.1 — x86-64 JIT Compiler</span>
-            <h1 class="animate-fadeInUp animate-delay-1">Write Code Like You Think</h1>
-            <p class="animate-fadeInUp animate-delay-2">
-                A programming language with intuitive, readable syntax designed to look like textbook pseudocode. Runs
-                on a bytecode VM with x86-64 JIT compilation.
-            </p>
-            <div class="hero-buttons animate-fadeInUp animate-delay-3">
-                <a href="https://marketplace.visualstudio.com/items?itemName=NagusameCS.pseudocode-lang"
-                    class="btn btn-primary" target="_blank">
+            <span class="version-badge">v1.1 — x86-64 JIT Compiler</span>
+            <h1>Write Code Like You Think</h1>
+            <p>A programming language with intuitive, readable syntax designed to look like textbook pseudocode. Runs on a bytecode VM with x86-64 JIT compilation.</p>
+            <div class="hero-buttons">
+                <a href="https://marketplace.visualstudio.com/items?itemName=NagusameCS.pseudocode-lang" class="btn btn-primary">
                     Get VS Code Extension
                 </a>
-                <a href="https://github.com/NagusameCS/Pseudocode" class="btn btn-secondary" target="_blank">
+                <a href="https://github.com/NagusameCS/Pseudocode" class="btn btn-secondary">
                     View on GitHub
                 </a>
             </div>
@@ -647,9 +535,7 @@
 
         <section class="container" id="features">
             <h2>Why Pseudocode?</h2>
-            <p class="section-desc">
-                Designed for clarity and performance, Pseudocode combines readable syntax with a powerful runtime.
-            </p>
+            <p class="section-desc">Designed for clarity and performance, Pseudocode combines readable syntax with a powerful runtime.</p>
             <div class="features-grid">
                 <div class="feature-card">
                     <h3>Clean Syntax</h3>
@@ -680,17 +566,10 @@
 
         <section class="container" id="examples">
             <h2>Examples</h2>
-            <p class="section-desc">
-                See how Pseudocode makes complex algorithms readable and concise.
-            </p>
-            <div class="code-showcase">
+            <p class="section-desc">See how Pseudocode makes complex algorithms readable and concise.</p>
+            <div class="code-grid">
                 <div class="code-block">
-                    <div class="code-header">
-                        <span class="code-title">fibonacci.pseudo</span>
-                        <div class="code-actions">
-                            <button class="code-btn" onclick="copyCode(this)">Copy</button>
-                        </div>
-                    </div>
+                    <div class="code-header">fibonacci.pseudo</div>
                     <pre><code><span class="comment">// Recursive Fibonacci</span>
 <span class="keyword">fn</span> <span class="function">fib</span>(n)
     <span class="keyword">if</span> n &lt;= <span class="number">1</span> <span class="keyword">then</span>
@@ -702,12 +581,7 @@
 <span class="function">print</span>(<span class="function">fib</span>(<span class="number">30</span>))</code></pre>
                 </div>
                 <div class="code-block">
-                    <div class="code-header">
-                        <span class="code-title">http_client.pseudo</span>
-                        <div class="code-actions">
-                            <button class="code-btn" onclick="copyCode(this)">Copy</button>
-                        </div>
-                    </div>
+                    <div class="code-header">http_client.pseudo</div>
                     <pre><code><span class="comment">// Fetch user data from API</span>
 <span class="keyword">fn</span> <span class="function">fetch_user</span>(username)
     <span class="keyword">let</span> url = <span class="string">"https://api.github.com/users/"</span> + username
@@ -719,137 +593,80 @@
 <span class="function">print</span>(user[<span class="string">"name"</span>])</code></pre>
                 </div>
             </div>
-
-            <div class="examples-grid" style="margin-top: 32px;">
-                <div class="example-card">
-                    <div class="example-header">
-                        <h3>Quicksort</h3>
-                        <span class="example-tag">Algorithm</span>
-                    </div>
-                    <pre><code><span class="keyword">fn</span> <span class="function">quicksort</span>(arr, lo, hi)
-    <span class="keyword">if</span> lo &lt; hi <span class="keyword">then</span>
-        <span class="keyword">let</span> p = <span class="function">partition</span>(arr, lo, hi)
-        <span class="function">quicksort</span>(arr, lo, p - <span class="number">1</span>)
-        <span class="function">quicksort</span>(arr, p + <span class="number">1</span>, hi)
-    <span class="keyword">end</span>
-<span class="keyword">end</span></code></pre>
-                </div>
-                <div class="example-card">
-                    <div class="example-header">
-                        <h3>Pattern Matching</h3>
-                        <span class="example-tag">Syntax</span>
-                    </div>
-                    <pre><code><span class="keyword">match</span> value
-    <span class="keyword">case</span> <span class="number">0</span> <span class="keyword">then</span>
-        <span class="keyword">return</span> <span class="string">"zero"</span>
-    <span class="keyword">case</span> n <span class="keyword">if</span> n &lt; <span class="number">0</span> <span class="keyword">then</span>
-        <span class="keyword">return</span> <span class="string">"negative"</span>
-    <span class="keyword">case</span> _ <span class="keyword">then</span>
-        <span class="keyword">return</span> <span class="string">"positive"</span>
-<span class="keyword">end</span></code></pre>
-                </div>
-                <div class="example-card">
-                    <div class="example-header">
-                        <h3>Higher-order Functions</h3>
-                        <span class="example-tag">Functional</span>
-                    </div>
-                    <pre><code><span class="keyword">let</span> nums = [<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>]
-
-<span class="keyword">let</span> doubled = <span class="function">map</span>(nums, 
-    <span class="keyword">fn</span>(x) <span class="keyword">return</span> x * <span class="number">2</span> <span class="keyword">end</span>)
-
-<span class="keyword">let</span> sum = <span class="function">reduce</span>(nums,
-    <span class="keyword">fn</span>(a, b) <span class="keyword">return</span> a + b <span class="keyword">end</span>, <span class="number">0</span>)</code></pre>
-                </div>
-            </div>
         </section>
 
         <section class="container" id="benchmarks">
             <h2>Performance</h2>
-            <p class="section-desc">
-                The tracing JIT compiler generates native x86-64 code for hot loops, achieving competitive performance.
-            </p>
-            <div class="benchmarks-container">
+            <p class="section-desc">The tracing JIT compiler generates native x86-64 code for hot loops.</p>
+            <div class="benchmark-container">
                 <div class="benchmark-chart">
-                    <h3 style="margin-bottom: 24px; font-size: 1rem; color: var(--text-secondary);">10M Increment Loop
-                    </h3>
-                    <div class="benchmark-bar">
+                    <h3 style="font-size: 14px; color: var(--text-secondary); margin-bottom: 16px;">10M Increment Loop</h3>
+                    <div class="benchmark-row">
                         <span class="benchmark-label">C (gcc -O2)</span>
                         <div class="bar-container">
                             <div class="bar bar-c" style="width: 100%;">33ms</div>
                         </div>
                     </div>
-                    <div class="benchmark-bar">
+                    <div class="benchmark-row">
                         <span class="benchmark-label">Pseudocode (JIT)</span>
                         <div class="bar-container">
-                            <div class="bar bar-pseudo-jit" style="width: 97%;">32ms</div>
+                            <div class="bar bar-jit" style="width: 97%;">32ms</div>
                         </div>
                     </div>
-                    <div class="benchmark-bar">
+                    <div class="benchmark-row">
                         <span class="benchmark-label">Pseudocode (VM)</span>
                         <div class="bar-container">
-                            <div class="bar bar-pseudo-vm" style="width: 15%;">530ms</div>
+                            <div class="bar bar-vm" style="width: 6%;"></div>
                         </div>
                     </div>
-                    <div class="benchmark-bar">
+                    <div class="benchmark-row">
                         <span class="benchmark-label">Python 3.11</span>
                         <div class="bar-container">
-                            <div class="bar bar-python" style="width: 12%;">450ms</div>
+                            <div class="bar bar-python" style="width: 7%;"></div>
                         </div>
                     </div>
                 </div>
                 <div class="benchmark-info">
                     <h3>Tracing JIT Compiler</h3>
-                    <p>
-                        Pseudocode uses a tracing JIT that records hot loop execution paths and compiles them to native
-                        x86-64 machine code.
-                    </p>
-                    <p>
-                        For simple numeric loops, the JIT achieves performance comparable to optimized C. Complex
-                        operations like string manipulation run through the VM.
-                    </p>
-                    <a href="benchmarks.html" class="btn btn-secondary" style="margin-top: 16px;">View All
-                        Benchmarks</a>
+                    <p>Pseudocode uses a tracing JIT that records hot loop execution paths and compiles them to native x86-64 machine code.</p>
+                    <p>For simple numeric loops, the JIT achieves performance comparable to optimized C. Complex operations like string manipulation run through the VM.</p>
+                    <a href="benchmarks.html" class="btn btn-secondary" style="margin-top: 8px;">View All Benchmarks</a>
                 </div>
             </div>
         </section>
 
         <section class="container" id="technical">
             <h2>Technical Innovations</h2>
-            <p class="section-desc">
-                Built from scratch with a focus on simplicity and performance.
-            </p>
-            <div class="achievements-grid">
-                <div class="achievement-card">
+            <p class="section-desc">Built from scratch with a focus on simplicity and performance.</p>
+            <div class="tech-grid">
+                <div class="tech-card">
                     <h3>Tracing JIT Architecture</h3>
-                    <p>Records execution traces at runtime and compiles hot paths to native machine code with register
-                        allocation.</p>
+                    <p>Records execution traces at runtime and compiles hot paths to native machine code with register allocation.</p>
                 </div>
-                <div class="achievement-card">
+                <div class="tech-card">
                     <h3>NaN-Boxing Value Representation</h3>
                     <p>Efficient 64-bit tagged values that pack type information and data into a single word.</p>
                 </div>
-                <div class="achievement-card">
+                <div class="tech-card">
                     <h3>Function Inlining</h3>
                     <p>Small functions are automatically inlined during JIT compilation for reduced call overhead.</p>
                 </div>
-                <div class="achievement-card">
+                <div class="tech-card">
                     <h3>One-pass Bytecode Compiler</h3>
-                    <p>Single-pass compilation from source to bytecode with constant folding and peephole optimizations.
-                    </p>
+                    <p>Single-pass compilation from source to bytecode with constant folding and peephole optimizations.</p>
                 </div>
             </div>
         </section>
 
         <section class="container" id="getting-started">
             <div class="getting-started">
-                <h2 style="text-align: center;">Get Started</h2>
+                <h2>Get Started</h2>
                 <div class="steps">
                     <div class="step">
                         <div class="step-number">1</div>
                         <h3>Clone Repository</h3>
                         <p>Get the source code from GitHub</p>
-                        <code>git clone https://github.com/NagusameCS/Pseudocode.git</code>
+                        <code>git clone github.com/NagusameCS/Pseudocode</code>
                     </div>
                     <div class="step">
                         <div class="step-number">2</div>
@@ -873,25 +690,13 @@
             <div class="footer-links">
                 <a href="https://github.com/NagusameCS/Pseudocode">GitHub</a>
                 <a href="reference.html">Reference</a>
-                <a href="technical.html">Technical Docs</a>
                 <a href="learn.html">Learn</a>
-                <a href="https://marketplace.visualstudio.com/items?itemName=NagusameCS.pseudocode-lang">VS Code
-                    Extension</a>
+                <a href="https://marketplace.visualstudio.com/items?itemName=NagusameCS.pseudocode-lang">VS Code Extension</a>
                 <a href="https://opencs.dev/NagusameCS">Author</a>
             </div>
             <p class="copyright">MIT License</p>
         </div>
     </footer>
-
-    <script>
-        function copyCode(button) {
-            const codeBlock = button.closest('.code-block');
-            const code = codeBlock.querySelector('code').textContent;
-            navigator.clipboard.writeText(code);
-            button.textContent = 'Copied!';
-            setTimeout(() => button.textContent = 'Copy', 2000);
-        }
-    </script>
 </body>
 
 </html>

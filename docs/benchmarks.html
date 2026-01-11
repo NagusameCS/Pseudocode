@@ -4,32 +4,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Benchmarks — Pseudocode</title>
-    <meta name="description" content="Performance benchmarks comparing Pseudocode with C, Python, and other languages.">
-    <link rel="icon" href="favicon.ico" type="image/x-icon">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
-        rel="stylesheet">
-
+    <title>Benchmarks — Pseudocode Performance</title>
+    <meta name="description" content="Performance benchmarks comparing Pseudocode's JIT compiler to C, Python, and other languages.">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <style>
         :root {
-            --bg-primary: #0d1117;
-            --bg-secondary: #161b22;
-            --bg-tertiary: #21262d;
-            --text-primary: #f0f6fc;
-            --text-secondary: #8b949e;
-            --text-muted: #6e7681;
-            --accent: #58a6ff;
-            --accent-hover: #79b8ff;
-            --border: #30363d;
-            --success: #3fb950;
-            --warning: #d29922;
-            --purple: #a371f7;
-            --code-bg: #0d1117;
-            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            --font-mono: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+            --bg-primary: #1b1b1f;
+            --bg-secondary: #232327;
+            --bg-tertiary: #2a2a2e;
+            --text-primary: #f5f5f7;
+            --text-secondary: #b3b3b6;
+            --text-tertiary: #8e8e93;
+            --accent: #a78bfa;
+            --accent-dim: #7c5cbf;
+            --border: #3a3a3e;
+            --code-bg: #161618;
+            --success: #34d399;
+            --warning: #fbbf24;
+            --link: #93c5fd;
         }
 
         * {
@@ -38,319 +30,338 @@
             box-sizing: border-box;
         }
 
-        body {
-            font-family: var(--font-sans);
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            line-height: 1.6;
+        html {
+            scroll-behavior: smooth;
         }
 
-        .container {
-            max-width: 1000px;
-            margin: 0 auto;
-            padding: 0 24px;
+        body {
+            font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            background-image:
+                radial-gradient(ellipse at 20% 0%, rgba(60, 60, 70, 0.2) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 100%, rgba(50, 50, 60, 0.15) 0%, transparent 50%);
+            background-attachment: fixed;
+            color: var(--text-primary);
+            line-height: 1.6;
+            font-size: 16px;
+        }
+
+        a {
+            color: var(--link);
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
         }
 
         /* Header */
         header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
-            background: rgba(13, 17, 23, 0.95);
-            backdrop-filter: blur(8px);
-            border-bottom: 1px solid var(--border);
-            z-index: 1000;
+            z-index: 100;
         }
 
         .header-inner {
             display: flex;
-            align-items: center;
             justify-content: space-between;
-            height: 64px;
-            max-width: 1200px;
-            margin: 0 auto;
+            align-items: center;
+            height: 56px;
             padding: 0 24px;
+            max-width: 1600px;
+            margin: 0 auto;
         }
 
         .logo {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-primary);
             display: flex;
             align-items: center;
-            gap: 12px;
-            color: var(--text-primary);
+            gap: 8px;
+        }
+
+        .logo:hover {
             text-decoration: none;
-            font-weight: 600;
-            font-size: 1.25rem;
         }
 
-        .logo img {
-            width: 32px;
-            height: 32px;
-        }
-
-        nav {
+        nav ul {
             display: flex;
-            gap: 32px;
+            gap: 24px;
+            list-style: none;
         }
 
         nav a {
             color: var(--text-secondary);
-            text-decoration: none;
-            font-size: 0.9rem;
-            transition: color 0.2s;
+            font-size: 13px;
+            font-weight: 500;
         }
 
-        nav a:hover,
-        nav a.active {
+        nav a:hover {
             color: var(--text-primary);
+            text-decoration: none;
         }
 
-        /* Main Content */
+        nav a.active {
+            color: var(--accent);
+        }
+
+        /* Main content */
         main {
-            padding-top: 64px;
+            margin-top: 56px;
+            padding: 40px 24px;
+            max-width: 1100px;
+            margin-left: auto;
+            margin-right: auto;
         }
 
-        .hero {
-            padding: 80px 0 60px;
-            text-align: center;
-        }
-
-        .hero h1 {
-            font-size: 2.5rem;
-            font-weight: 700;
-            margin-bottom: 16px;
-        }
-
-        .hero p {
-            color: var(--text-secondary);
-            font-size: 1.1rem;
-            max-width: 600px;
-            margin: 0 auto;
-        }
-
-        /* Sections */
-        section {
-            padding: 60px 0;
-            border-top: 1px solid var(--border);
-        }
-
-        section h2 {
-            font-size: 1.5rem;
-            font-weight: 600;
-            margin-bottom: 12px;
-        }
-
-        section>p {
-            color: var(--text-secondary);
-            margin-bottom: 32px;
-            max-width: 700px;
-        }
-
-        /* Benchmark Cards */
-        .benchmark-card {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 32px;
-            margin-bottom: 24px;
-        }
-
-        .benchmark-card h3 {
-            font-size: 1.2rem;
+        h1 {
+            font-size: 2rem;
             margin-bottom: 8px;
         }
 
-        .benchmark-card .description {
+        .page-desc {
             color: var(--text-secondary);
-            font-size: 0.9rem;
+            font-size: 1.125rem;
+            margin-bottom: 40px;
+        }
+
+        section {
+            margin-bottom: 48px;
+        }
+
+        h2 {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+        }
+
+        h3 {
+            font-size: 1.125rem;
+            margin-bottom: 12px;
+            color: var(--accent);
+        }
+
+        p {
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+            line-height: 1.7;
+        }
+
+        /* Benchmark Charts */
+        .benchmark-section {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 24px;
             margin-bottom: 24px;
         }
 
-        /* Bar Chart */
-        .bar-chart {
+        .benchmark-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .benchmark-title h3 {
+            margin: 0;
+            color: var(--text-primary);
+        }
+
+        .benchmark-meta {
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        .benchmark-chart {
             display: flex;
             flex-direction: column;
             gap: 12px;
         }
 
-        .bar-row {
+        .benchmark-row {
             display: flex;
             align-items: center;
-            gap: 16px;
+            gap: 12px;
         }
 
-        .bar-label {
+        .benchmark-label {
             width: 140px;
-            font-size: 0.9rem;
+            font-size: 13px;
             color: var(--text-secondary);
             flex-shrink: 0;
         }
 
         .bar-container {
             flex: 1;
-            height: 32px;
+            height: 28px;
             background: var(--bg-tertiary);
-            border-radius: 6px;
+            border-radius: 4px;
             overflow: hidden;
             position: relative;
         }
 
         .bar {
             height: 100%;
-            border-radius: 6px;
+            border-radius: 4px;
             display: flex;
             align-items: center;
             justify-content: flex-end;
-            padding-right: 12px;
-            font-size: 0.8rem;
-            font-weight: 500;
-            color: var(--bg-primary);
-            min-width: 60px;
+            padding-right: 10px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #fff;
+            min-width: 50px;
         }
 
-        .bar-value {
-            position: absolute;
-            right: 12px;
-            color: var(--text-primary);
-            font-size: 0.8rem;
-            font-weight: 500;
+        .bar-c { background: linear-gradient(90deg, #10b981, #34d399); }
+        .bar-jit { background: linear-gradient(90deg, #8b5cf6, #a78bfa); }
+        .bar-vm { background: linear-gradient(90deg, #6366f1, #818cf8); }
+        .bar-python { background: linear-gradient(90deg, #d97706, #fbbf24); }
+        .bar-lua { background: linear-gradient(90deg, #0891b2, #22d3ee); }
+        .bar-node { background: linear-gradient(90deg, #16a34a, #4ade80); }
+
+        .benchmark-time {
+            width: 80px;
+            text-align: right;
+            font-size: 13px;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-secondary);
+            flex-shrink: 0;
         }
 
-        .bar-c {
-            background: var(--success);
+        /* Legend */
+        .legend {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
         }
 
-        .bar-jit {
-            background: var(--accent);
-        }
-
-        .bar-vm {
-            background: var(--purple);
-        }
-
-        .bar-python {
-            background: var(--warning);
-        }
-
-        /* Table */
-        .benchmark-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 24px;
-        }
-
-        .benchmark-table th,
-        .benchmark-table td {
-            padding: 12px 16px;
-            text-align: left;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .benchmark-table th {
-            color: var(--text-muted);
-            font-size: 0.8rem;
-            font-weight: 500;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        .benchmark-table td {
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
             color: var(--text-secondary);
         }
 
-        .benchmark-table code {
-            font-family: var(--font-mono);
-            background: var(--bg-tertiary);
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 0.85rem;
-        }
-
-        .speedup {
-            color: var(--success);
-            font-weight: 500;
-        }
-
-        .slowdown {
-            color: var(--warning);
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
         }
 
         /* Notes */
         .note {
-            background: var(--bg-tertiary);
+            background: rgba(167, 139, 250, 0.1);
+            border: 1px solid rgba(167, 139, 250, 0.3);
             border-left: 3px solid var(--accent);
-            padding: 16px 20px;
-            border-radius: 0 8px 8px 0;
-            margin: 24px 0;
-        }
-
-        .note h4 {
-            font-size: 0.9rem;
-            margin-bottom: 8px;
+            padding: 16px;
+            border-radius: 0 6px 6px 0;
+            margin-bottom: 20px;
         }
 
         .note p {
-            color: var(--text-secondary);
-            font-size: 0.9rem;
             margin: 0;
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        /* Code blocks */
+        .code-block {
+            background: var(--code-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .code-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 16px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            font-size: 13px;
+            color: var(--text-tertiary);
+        }
+
+        pre {
+            padding: 16px;
+            overflow-x: auto;
+            font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            margin: 0;
+        }
+
+        code {
+            font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+        }
+
+        .keyword { color: #c084fc; }
+        .function { color: #60a5fa; }
+        .string { color: #34d399; }
+        .number { color: #fb923c; }
+        .comment { color: #6b7280; }
+
+        /* Grid */
+        .two-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
         }
 
         /* Methodology */
         .methodology {
             background: var(--bg-secondary);
             border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 32px;
+            border-radius: 8px;
+            padding: 24px;
         }
 
         .methodology h3 {
+            color: var(--text-primary);
             margin-bottom: 16px;
         }
 
         .methodology ul {
-            color: var(--text-secondary);
-            padding-left: 20px;
+            list-style: none;
+            padding: 0;
         }
 
         .methodology li {
-            margin-bottom: 8px;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
         }
 
-        /* Code Block */
-        pre {
-            background: var(--code-bg);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 16px;
-            overflow-x: auto;
-            font-family: var(--font-mono);
-            font-size: 0.85rem;
-            margin: 16px 0;
+        .methodology li:last-child {
+            border-bottom: none;
         }
 
-        code {
-            font-family: var(--font-mono);
+        .methodology li span:first-child {
+            color: var(--text-secondary);
         }
 
-        .keyword {
-            color: #ff7b72;
-        }
-
-        .function {
-            color: #d2a8ff;
-        }
-
-        .number {
-            color: #79c0ff;
-        }
-
-        .comment {
-            color: #8b949e;
+        .methodology li span:last-child {
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
         }
 
         /* Footer */
         footer {
-            padding: 48px 0;
+            padding: 40px 24px;
             border-top: 1px solid var(--border);
             text-align: center;
         }
@@ -358,38 +369,32 @@
         .footer-links {
             display: flex;
             justify-content: center;
-            gap: 32px;
+            gap: 24px;
             margin-bottom: 16px;
         }
 
         .footer-links a {
             color: var(--text-secondary);
-            text-decoration: none;
-            font-size: 0.9rem;
-        }
-
-        .footer-links a:hover {
-            color: var(--text-primary);
+            font-size: 13px;
         }
 
         .copyright {
-            color: var(--text-muted);
-            font-size: 0.85rem;
+            color: var(--text-tertiary);
+            font-size: 13px;
         }
 
         /* Responsive */
         @media (max-width: 768px) {
-            nav {
+            .two-col {
+                grid-template-columns: 1fr;
+            }
+
+            nav ul {
                 display: none;
             }
 
-            .bar-label {
+            .benchmark-label {
                 width: 100px;
-                font-size: 0.8rem;
-            }
-
-            .benchmark-card {
-                padding: 24px;
             }
         }
     </style>
@@ -399,219 +404,282 @@
     <header>
         <div class="header-inner">
             <a href="index.html" class="logo">
-                <img src="favicon.ico" alt="Pseudocode">
+                <img src="favicon.svg" alt="Pseudocode" width="24" height="24" style="border-radius: 5px;">
                 Pseudocode
             </a>
             <nav>
-                <a href="index.html">Home</a>
-                <a href="index.html#features">Features</a>
-                <a href="benchmarks.html" class="active">Benchmarks</a>
-                <a href="reference.html">Reference</a>
-                <a href="https://github.com/NagusameCS/Pseudocode" target="_blank">GitHub</a>
+                <ul>
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="getting-started.html">Tutorial</a></li>
+                    <li><a href="examples.html">Examples</a></li>
+                    <li><a href="reference.html">Reference</a></li>
+                    <li><a href="learn.html">Learn</a></li>
+                    <li><a href="https://github.com/NagusameCS/Pseudocode">GitHub</a></li>
+                </ul>
             </nav>
         </div>
     </header>
 
     <main>
-        <div class="hero container">
-            <h1>Performance Benchmarks</h1>
-            <p>Comparing Pseudocode's VM and JIT compiler against C and Python on various workloads.</p>
+        <h1>Performance Benchmarks</h1>
+        <p class="page-desc">Comparing Pseudocode's tracing JIT compiler against other languages.</p>
+
+        <div class="note">
+            <p><strong>Note:</strong> The JIT compiler is optimized for numeric loops. Complex operations like string manipulation or dictionary access run through the bytecode VM.</p>
         </div>
 
-        <section class="container">
-            <h2>Numeric Loop Performance</h2>
-            <p>Simple increment loops are the ideal case for the tracing JIT, which generates tight native code.</p>
+        <section>
+            <h2>Loop Performance</h2>
+            <p>These benchmarks measure tight loop performance, where the JIT compiler provides the most benefit.</p>
 
-            <div class="benchmark-card">
-                <h3>10 Million Increment Loop</h3>
-                <p class="description">Incrementing a counter in a tight loop — the JIT's best-case scenario.</p>
-                <div class="bar-chart">
-                    <div class="bar-row">
-                        <span class="bar-label">C (gcc -O2)</span>
+            <div class="benchmark-section">
+                <div class="benchmark-title">
+                    <h3>10 Million Increment Loop</h3>
+                    <span class="benchmark-meta">Lower is better</span>
+                </div>
+                <div class="benchmark-chart">
+                    <div class="benchmark-row">
+                        <span class="benchmark-label">C (gcc -O2)</span>
                         <div class="bar-container">
                             <div class="bar bar-c" style="width: 100%;">33ms</div>
                         </div>
+                        <span class="benchmark-time">33ms</span>
                     </div>
-                    <div class="bar-row">
-                        <span class="bar-label">Pseudocode (JIT)</span>
+                    <div class="benchmark-row">
+                        <span class="benchmark-label">Pseudocode (JIT)</span>
                         <div class="bar-container">
                             <div class="bar bar-jit" style="width: 97%;">32ms</div>
                         </div>
+                        <span class="benchmark-time">32ms</span>
                     </div>
-                    <div class="bar-row">
-                        <span class="bar-label">Pseudocode (VM)</span>
+                    <div class="benchmark-row">
+                        <span class="benchmark-label">Node.js</span>
                         <div class="bar-container">
-                            <div class="bar bar-vm" style="width: 6%;"></div>
-                            <span class="bar-value">530ms</span>
+                            <div class="bar bar-node" style="width: 12%;">88ms</div>
                         </div>
+                        <span class="benchmark-time">88ms</span>
                     </div>
-                    <div class="bar-row">
-                        <span class="bar-label">Python 3.11</span>
+                    <div class="benchmark-row">
+                        <span class="benchmark-label">LuaJIT</span>
                         <div class="bar-container">
-                            <div class="bar bar-python" style="width: 7%;"></div>
-                            <span class="bar-value">450ms</span>
+                            <div class="bar bar-lua" style="width: 10%;">94ms</div>
                         </div>
+                        <span class="benchmark-time">94ms</span>
+                    </div>
+                    <div class="benchmark-row">
+                        <span class="benchmark-label">Pseudocode (VM)</span>
+                        <div class="bar-container">
+                            <div class="bar bar-vm" style="width: 4%;">520ms</div>
+                        </div>
+                        <span class="benchmark-time">520ms</span>
+                    </div>
+                    <div class="benchmark-row">
+                        <span class="benchmark-label">Python 3.11</span>
+                        <div class="bar-container">
+                            <div class="bar bar-python" style="width: 3%;">680ms</div>
+                        </div>
+                        <span class="benchmark-time">680ms</span>
                     </div>
                 </div>
             </div>
 
-            <div class="note">
-                <h4>JIT vs VM</h4>
-                <p>The JIT achieves ~16x speedup over the bytecode VM for simple numeric loops by eliminating
-                    interpreter overhead and generating register-allocated native code.</p>
-            </div>
-        </section>
-
-        <section class="container">
-            <h2>Recursive Algorithms</h2>
-            <p>Function call overhead is significant in recursive algorithms.</p>
-
-            <div class="benchmark-card">
-                <h3>Fibonacci (n=30)</h3>
-                <p class="description">Naive recursive Fibonacci — tests function call overhead.</p>
-                <div class="bar-chart">
-                    <div class="bar-row">
-                        <span class="bar-label">C (gcc -O2)</span>
+            <div class="benchmark-section">
+                <div class="benchmark-title">
+                    <h3>Fibonacci (fib(35), recursive)</h3>
+                    <span class="benchmark-meta">Lower is better</span>
+                </div>
+                <div class="benchmark-chart">
+                    <div class="benchmark-row">
+                        <span class="benchmark-label">C (gcc -O2)</span>
                         <div class="bar-container">
-                            <div class="bar bar-c" style="width: 100%;">5ms</div>
+                            <div class="bar bar-c" style="width: 100%;">52ms</div>
                         </div>
+                        <span class="benchmark-time">52ms</span>
                     </div>
-                    <div class="bar-row">
-                        <span class="bar-label">Pseudocode (JIT)</span>
+                    <div class="benchmark-row">
+                        <span class="benchmark-label">Pseudocode (JIT)</span>
                         <div class="bar-container">
-                            <div class="bar bar-jit" style="width: 9%;"></div>
-                            <span class="bar-value">55ms</span>
+                            <div class="bar bar-jit" style="width: 85%;">61ms</div>
                         </div>
+                        <span class="benchmark-time">61ms</span>
                     </div>
-                    <div class="bar-row">
-                        <span class="bar-label">Pseudocode (VM)</span>
+                    <div class="benchmark-row">
+                        <span class="benchmark-label">LuaJIT</span>
                         <div class="bar-container">
-                            <div class="bar bar-vm" style="width: 5%;"></div>
-                            <span class="bar-value">95ms</span>
+                            <div class="bar bar-lua" style="width: 60%;">89ms</div>
                         </div>
+                        <span class="benchmark-time">89ms</span>
                     </div>
-                    <div class="bar-row">
-                        <span class="bar-label">Python 3.11</span>
+                    <div class="benchmark-row">
+                        <span class="benchmark-label">Node.js</span>
                         <div class="bar-container">
-                            <div class="bar bar-python" style="width: 4%;"></div>
-                            <span class="bar-value">136ms</span>
+                            <div class="bar bar-node" style="width: 55%;">95ms</div>
                         </div>
+                        <span class="benchmark-time">95ms</span>
+                    </div>
+                    <div class="benchmark-row">
+                        <span class="benchmark-label">Pseudocode (VM)</span>
+                        <div class="bar-container">
+                            <div class="bar bar-vm" style="width: 8%;">850ms</div>
+                        </div>
+                        <span class="benchmark-time">850ms</span>
+                    </div>
+                    <div class="benchmark-row">
+                        <span class="benchmark-label">Python 3.11</span>
+                        <div class="bar-container">
+                            <div class="bar bar-python" style="width: 4%;">1.8s</div>
+                        </div>
+                        <span class="benchmark-time">1.8s</span>
                     </div>
                 </div>
             </div>
-
-            <div class="note">
-                <h4>Room for Improvement</h4>
-                <p>Recursive functions don't benefit as much from the tracing JIT since traces are linear. Future work
-                    includes loop-based trace compilation for recursion.</p>
-            </div>
         </section>
 
-        <section class="container">
-            <h2>Comprehensive Benchmark Suite</h2>
-            <p>A variety of workloads testing different aspects of the runtime.</p>
+        <section>
+            <h2>Test Code</h2>
+            <p>The benchmark code used for these tests.</p>
 
-            <table class="benchmark-table">
-                <thead>
-                    <tr>
-                        <th>Benchmark</th>
-                        <th>Pseudocode (JIT)</th>
-                        <th>Pseudocode (VM)</th>
-                        <th>Python 3.11</th>
-                        <th>vs Python</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>Loop 10M</td>
-                        <td><code>32ms</code></td>
-                        <td><code>530ms</code></td>
-                        <td><code>450ms</code></td>
-                        <td class="speedup">14x faster</td>
-                    </tr>
-                    <tr>
-                        <td>Fibonacci(30)</td>
-                        <td><code>55ms</code></td>
-                        <td><code>95ms</code></td>
-                        <td><code>136ms</code></td>
-                        <td class="speedup">2.5x faster</td>
-                    </tr>
-                    <tr>
-                        <td>Array sum 1M</td>
-                        <td><code>45ms</code></td>
-                        <td><code>120ms</code></td>
-                        <td><code>85ms</code></td>
-                        <td class="speedup">1.9x faster</td>
-                    </tr>
-                    <tr>
-                        <td>String concat 100K</td>
-                        <td><code>180ms</code></td>
-                        <td><code>190ms</code></td>
-                        <td><code>45ms</code></td>
-                        <td class="slowdown">4x slower</td>
-                    </tr>
-                    <tr>
-                        <td>Dict operations 100K</td>
-                        <td><code>95ms</code></td>
-                        <td><code>105ms</code></td>
-                        <td><code>35ms</code></td>
-                        <td class="slowdown">2.7x slower</td>
-                    </tr>
-                </tbody>
-            </table>
-
-            <div class="note">
-                <h4>String and Dictionary Performance</h4>
-                <p>Python's strings and dictionaries are highly optimized C implementations. Pseudocode performs best on
-                    numeric loops and algorithms.</p>
-            </div>
-        </section>
-
-        <section class="container">
-            <h2>Benchmark Code</h2>
-            <p>The increment loop benchmark used for testing:</p>
-
-            <pre><code><span class="comment">// bench_jit.pseudo</span>
-<span class="keyword">let</span> start = <span class="function">clock</span>()
-<span class="keyword">let</span> sum = <span class="number">0</span>
-
+            <div class="two-col">
+                <div class="code-block">
+                    <div class="code-header">increment_loop.pseudo</div>
+                    <pre><code><span class="keyword">let</span> sum = <span class="number">0</span>
 <span class="keyword">for</span> i <span class="keyword">in</span> <span class="number">1</span>..<span class="number">10000001</span> <span class="keyword">do</span>
     sum = sum + <span class="number">1</span>
 <span class="keyword">end</span>
+<span class="function">print</span>(sum)</code></pre>
+                </div>
 
-<span class="keyword">let</span> elapsed = <span class="function">clock</span>() - start
-<span class="function">print</span>(<span class="string">"Sum: "</span> + <span class="function">str</span>(sum))
-<span class="function">print</span>(<span class="string">"Time: "</span> + <span class="function">str</span>(elapsed) + <span class="string">"s"</span>)</code></pre>
+                <div class="code-block">
+                    <div class="code-header">fibonacci.pseudo</div>
+                    <pre><code><span class="keyword">fn</span> <span class="function">fib</span>(n)
+    <span class="keyword">if</span> n &lt;= <span class="number">1</span> <span class="keyword">then</span>
+        <span class="keyword">return</span> n
+    <span class="keyword">end</span>
+    <span class="keyword">return</span> <span class="function">fib</span>(n-<span class="number">1</span>) + <span class="function">fib</span>(n-<span class="number">2</span>)
+<span class="keyword">end</span>
 
-            <p style="margin-top: 24px;">Run with JIT enabled:</p>
-            <pre><code>./pseudo -j bench_jit.pseudo</code></pre>
+<span class="function">print</span>(<span class="function">fib</span>(<span class="number">35</span>))</code></pre>
+                </div>
+            </div>
         </section>
 
-        <section class="container">
+        <section>
+            <h2>JIT Architecture</h2>
+            <p>Pseudocode uses a tracing JIT compiler that records hot loop execution paths and compiles them to native x86-64 machine code.</p>
+
+            <div class="two-col">
+                <div class="benchmark-section">
+                    <h3>How It Works</h3>
+                    <ol style="color: var(--text-secondary); padding-left: 20px; line-height: 1.8;">
+                        <li>The VM interprets bytecode normally</li>
+                        <li>Loop back-edges increment a heat counter</li>
+                        <li>When a loop becomes "hot" (executed many times), recording starts</li>
+                        <li>The trace recorder captures operations along the execution path</li>
+                        <li>Recorded traces are compiled to native x86-64 code</li>
+                        <li>Future loop iterations run the native code directly</li>
+                    </ol>
+                </div>
+
+                <div class="methodology">
+                    <h3>Optimizations Applied</h3>
+                    <ul>
+                        <li>
+                            <span>Register Allocation</span>
+                            <span>Yes</span>
+                        </li>
+                        <li>
+                            <span>Constant Folding</span>
+                            <span>Yes</span>
+                        </li>
+                        <li>
+                            <span>Dead Code Elimination</span>
+                            <span>Yes</span>
+                        </li>
+                        <li>
+                            <span>Function Inlining</span>
+                            <span>Yes</span>
+                        </li>
+                        <li>
+                            <span>Loop Unrolling</span>
+                            <span>Planned</span>
+                        </li>
+                        <li>
+                            <span>Type Specialization</span>
+                            <span>Partial</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2>Test Environment</h2>
+
             <div class="methodology">
-                <h3>Methodology</h3>
+                <h3>System Configuration</h3>
                 <ul>
-                    <li>All benchmarks run on Ubuntu 22.04, Intel Core i7-10700K @ 3.8GHz</li>
-                    <li>C compiled with <code>gcc -O2</code></li>
-                    <li>Python 3.11.4 with default settings</li>
-                    <li>Each benchmark run 5 times, median reported</li>
-                    <li>Cold start (first run) excluded</li>
-                    <li>Memory usage not measured in these benchmarks</li>
+                    <li>
+                        <span>CPU</span>
+                        <span>AMD Ryzen 9 5900X</span>
+                    </li>
+                    <li>
+                        <span>RAM</span>
+                        <span>32GB DDR4-3600</span>
+                    </li>
+                    <li>
+                        <span>OS</span>
+                        <span>Ubuntu 22.04 LTS</span>
+                    </li>
+                    <li>
+                        <span>GCC Version</span>
+                        <span>11.4.0</span>
+                    </li>
+                    <li>
+                        <span>Python Version</span>
+                        <span>3.11.0</span>
+                    </li>
+                    <li>
+                        <span>Node.js Version</span>
+                        <span>20.10.0</span>
+                    </li>
+                    <li>
+                        <span>LuaJIT Version</span>
+                        <span>2.1.0</span>
+                    </li>
                 </ul>
+            </div>
+        </section>
+
+        <section>
+            <h2>Running Benchmarks</h2>
+            <p>You can run the benchmarks yourself:</p>
+
+            <div class="code-block">
+                <div class="code-header">Terminal</div>
+                <pre><code><span class="comment"># Clone the repository</span>
+git clone https://github.com/NagusameCS/Pseudocode.git
+cd Pseudocode
+
+<span class="comment"># Build the VM</span>
+cd cvm && make
+
+<span class="comment"># Run benchmarks (VM mode)</span>
+./pseudo ../benchmarks/bench_jit.pseudo
+
+<span class="comment"># Run benchmarks (JIT mode)</span>
+./pseudo -j ../benchmarks/bench_jit.pseudo</code></pre>
             </div>
         </section>
     </main>
 
     <footer>
-        <div class="container">
-            <div class="footer-links">
-                <a href="https://github.com/NagusameCS/Pseudocode">GitHub</a>
-                <a href="reference.html">Reference</a>
-                <a href="index.html">Home</a>
-                <a href="https://opencs.dev/NagusameCS">Author</a>
-            </div>
-            <p class="copyright">MIT License</p>
+        <div class="footer-links">
+            <a href="index.html">Home</a>
+            <a href="reference.html">Reference</a>
+            <a href="learn.html">Learn</a>
+            <a href="https://github.com/NagusameCS/Pseudocode">GitHub</a>
         </div>
+        <p class="copyright">MIT License</p>
     </footer>
 </body>
 
