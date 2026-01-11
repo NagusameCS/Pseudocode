@@ -163,9 +163,11 @@ class InlinePseudocodeDebugAdapter implements vscode.DebugAdapter {
         this.sendResponse(request);
 
         // Start the process
+        const isWindows = process.platform === 'win32';
         this.process = spawn(vmPath, ['--debug', program, ...args], {
             cwd,
-            stdio: ['pipe', 'pipe', 'pipe']
+            stdio: ['pipe', 'pipe', 'pipe'],
+            shell: isWindows
         });
 
         this.process.stdout?.on('data', (data: Buffer) => {

@@ -10,7 +10,9 @@
     <link rel="icon" href="favicon.ico" type="image/x-icon">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
 
     <style>
         :root {
@@ -293,12 +295,30 @@
         }
 
         /* Syntax highlighting */
-        .keyword { color: #ff7b72; }
-        .function { color: #d2a8ff; }
-        .string { color: #a5d6ff; }
-        .number { color: #79c0ff; }
-        .comment { color: #8b949e; font-style: italic; }
-        .operator { color: #ff7b72; }
+        .keyword {
+            color: #ff7b72;
+        }
+
+        .function {
+            color: #d2a8ff;
+        }
+
+        .string {
+            color: #a5d6ff;
+        }
+
+        .number {
+            color: #79c0ff;
+        }
+
+        .comment {
+            color: #8b949e;
+            font-style: italic;
+        }
+
+        .operator {
+            color: #ff7b72;
+        }
 
         /* Benchmarks */
         .benchmarks-container {
@@ -352,10 +372,21 @@
             color: var(--bg-primary);
         }
 
-        .bar-c { background: var(--success); }
-        .bar-pseudo-jit { background: var(--accent); }
-        .bar-pseudo-vm { background: var(--purple); }
-        .bar-python { background: var(--warning); }
+        .bar-c {
+            background: var(--success);
+        }
+
+        .bar-pseudo-jit {
+            background: var(--accent);
+        }
+
+        .bar-pseudo-vm {
+            background: var(--purple);
+        }
+
+        .bar-python {
+            background: var(--warning);
+        }
 
         .benchmark-info {
             padding: 24px;
@@ -507,6 +538,7 @@
                 opacity: 0;
                 transform: translateY(20px);
             }
+
             to {
                 opacity: 1;
                 transform: translateY(0);
@@ -517,9 +549,17 @@
             animation: fadeInUp 0.6s ease-out forwards;
         }
 
-        .animate-delay-1 { animation-delay: 0.1s; }
-        .animate-delay-2 { animation-delay: 0.2s; }
-        .animate-delay-3 { animation-delay: 0.3s; }
+        .animate-delay-1 {
+            animation-delay: 0.1s;
+        }
+
+        .animate-delay-2 {
+            animation-delay: 0.2s;
+        }
+
+        .animate-delay-3 {
+            animation-delay: 0.3s;
+        }
 
         /* Technical Achievements */
         .achievements-grid {
@@ -591,10 +631,12 @@
             <span class="version-badge animate-fadeInUp">v1.1 — x86-64 JIT Compiler</span>
             <h1 class="animate-fadeInUp animate-delay-1">Write Code Like You Think</h1>
             <p class="animate-fadeInUp animate-delay-2">
-                A programming language with intuitive, readable syntax designed to look like textbook pseudocode. Runs on a bytecode VM with x86-64 JIT compilation.
+                A programming language with intuitive, readable syntax designed to look like textbook pseudocode. Runs
+                on a bytecode VM with x86-64 JIT compilation.
             </p>
             <div class="hero-buttons animate-fadeInUp animate-delay-3">
-                <a href="https://marketplace.visualstudio.com/items?itemName=NagusameCS.pseudocode-lang" class="btn btn-primary" target="_blank">
+                <a href="https://marketplace.visualstudio.com/items?itemName=NagusameCS.pseudocode-lang"
+                    class="btn btn-primary" target="_blank">
                     Get VS Code Extension
                 </a>
                 <a href="https://github.com/NagusameCS/Pseudocode" class="btn btn-secondary" target="_blank">
@@ -729,7 +771,8 @@
             </p>
             <div class="benchmarks-container">
                 <div class="benchmark-chart">
-                    <h3 style="margin-bottom: 24px; font-size: 1rem; color: var(--text-secondary);">10M Increment Loop</h3>
+                    <h3 style="margin-bottom: 24px; font-size: 1rem; color: var(--text-secondary);">10M Increment Loop
+                    </h3>
                     <div class="benchmark-bar">
                         <span class="benchmark-label">C (gcc -O2)</span>
                         <div class="bar-container">
@@ -758,12 +801,15 @@
                 <div class="benchmark-info">
                     <h3>Tracing JIT Compiler</h3>
                     <p>
-                        Pseudocode uses a tracing JIT that records hot loop execution paths and compiles them to native x86-64 machine code.
+                        Pseudocode uses a tracing JIT that records hot loop execution paths and compiles them to native
+                        x86-64 machine code.
                     </p>
                     <p>
-                        For simple numeric loops, the JIT achieves performance comparable to optimized C. Complex operations like string manipulation run through the VM.
+                        For simple numeric loops, the JIT achieves performance comparable to optimized C. Complex
+                        operations like string manipulation run through the VM.
                     </p>
-                    <a href="benchmarks.html" class="btn btn-secondary" style="margin-top: 16px;">View All Benchmarks</a>
+                    <a href="benchmarks.html" class="btn btn-secondary" style="margin-top: 16px;">View All
+                        Benchmarks</a>
                 </div>
             </div>
         </section>
@@ -776,7 +822,8 @@
             <div class="achievements-grid">
                 <div class="achievement-card">
                     <h3>Tracing JIT Architecture</h3>
-                    <p>Records execution traces at runtime and compiles hot paths to native machine code with register allocation.</p>
+                    <p>Records execution traces at runtime and compiles hot paths to native machine code with register
+                        allocation.</p>
                 </div>
                 <div class="achievement-card">
                     <h3>NaN-Boxing Value Representation</h3>
@@ -788,7 +835,8 @@
                 </div>
                 <div class="achievement-card">
                     <h3>One-pass Bytecode Compiler</h3>
-                    <p>Single-pass compilation from source to bytecode with constant folding and peephole optimizations.</p>
+                    <p>Single-pass compilation from source to bytecode with constant folding and peephole optimizations.
+                    </p>
                 </div>
             </div>
         </section>
@@ -827,7 +875,8 @@
                 <a href="reference.html">Reference</a>
                 <a href="technical.html">Technical Docs</a>
                 <a href="learn.html">Learn</a>
-                <a href="https://marketplace.visualstudio.com/items?itemName=NagusameCS.pseudocode-lang">VS Code Extension</a>
+                <a href="https://marketplace.visualstudio.com/items?itemName=NagusameCS.pseudocode-lang">VS Code
+                    Extension</a>
                 <a href="https://opencs.dev/NagusameCS">Author</a>
             </div>
             <p class="copyright">MIT License</p>

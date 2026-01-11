@@ -227,7 +227,10 @@ export async function startRepl(vmPath: string | null): Promise<void> {
 
         fs.writeFileSync(tmpFile, wrappedCode);
 
-        const proc = spawn(vmPath!, [tmpFile]);
+        const isWindows = process.platform === 'win32';
+        const proc = spawn(vmPath!, [tmpFile], {
+            shell: isWindows
+        });
 
         proc.stdout.on('data', (data: Buffer) => {
             const output = data.toString();

@@ -186,64 +186,84 @@ async function findVmPath(): Promise<string | null> {
         return configuredPath;
     }
 
+    // On Windows, look for .exe extension
+    const isWindows = process.platform === 'win32';
+    const exeNames = isWindows ? ['pseudo.exe', 'pseudo'] : ['pseudo'];
+
     // Check workspace folders for compiled VM
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (workspaceFolders) {
         for (const folder of workspaceFolders) {
-            // Check cvm/pseudo (main VM location)
-            const vmInCvm = path.join(folder.uri.fsPath, 'cvm', 'pseudo');
-            if (fs.existsSync(vmInCvm)) {
-                return vmInCvm;
-            }
+            for (const exeName of exeNames) {
+                // Check cvm/pseudo (main VM location)
+                const vmInCvm = path.join(folder.uri.fsPath, 'cvm', exeName);
+                if (fs.existsSync(vmInCvm)) {
+                    return vmInCvm;
+                }
 
-            // Check cvm/pseudo_debug (debug build)
-            const vmDebug = path.join(folder.uri.fsPath, 'cvm', 'pseudo_debug');
-            if (fs.existsSync(vmDebug)) {
-                return vmDebug;
-            }
+                // Check cvm/pseudo_debug (debug build)
+                const vmDebugName = isWindows ? exeName.replace('pseudo', 'pseudo_debug') : 'pseudo_debug';
+                const vmDebug = path.join(folder.uri.fsPath, 'cvm', vmDebugName);
+                if (fs.existsSync(vmDebug)) {
+                    return vmDebug;
+                }
 
-            // Check bin/pseudo (installed location)
-            const vmInBin = path.join(folder.uri.fsPath, 'bin', 'pseudo');
-            if (fs.existsSync(vmInBin)) {
-                return vmInBin;
-            }
+                // Check bin/pseudo (installed location)
+                const vmInBin = path.join(folder.uri.fsPath, 'bin', exeName);
+                if (fs.existsSync(vmInBin)) {
+                    return vmInBin;
+                }
 
-            // Check root pseudo
-            const vmInRoot = path.join(folder.uri.fsPath, 'pseudo');
-            if (fs.existsSync(vmInRoot)) {
-                return vmInRoot;
-            }
+                // Check root pseudo
+                const vmInRoot = path.join(folder.uri.fsPath, exeName);
+                if (fs.existsSync(vmInRoot)) {
+                    return vmInRoot;
+                }
 
-            // Check build/pseudo (CMake build)
-            const vmInBuild = path.join(folder.uri.fsPath, 'build', 'pseudo');
-            if (fs.existsSync(vmInBuild)) {
-                return vmInBuild;
+                // Check build/pseudo (CMake build)
+                const vmInBuild = path.join(folder.uri.fsPath, 'build', exeName);
+                if (fs.existsSync(vmInBuild)) {
+                    return vmInBuild;
+                }
             }
         }
     }
 
-    // Check common installation paths
-    const commonPaths = [
-        '/usr/local/bin/pseudo',
-        '/usr/bin/pseudo',
-        path.join(process.env.HOME || '', '.local', 'bin', 'pseudo'),
-        path.join(process.env.HOME || '', 'bin', 'pseudo')
-    ];
+    // Check common installation paths (Unix)
+    if (!isWindows) {
+        const commonPaths = [
+            '/usr/local/bin/pseudo',
+            '/usr/bin/pseudo',
+            path.join(process.env.HOME || '', '.local', 'bin', 'pseudo'),
+            path.join(process.env.HOME || '', 'bin', 'pseudo')
+        ];
 
-    for (const p of commonPaths) {
-        if (fs.existsSync(p)) {
-            return p;
+        for (const p of commonPaths) {
+            if (fs.existsSync(p)) {
+                return p;
+            }
         }
     }
 
-    // Check if pseudo is in PATH (Linux/macOS)
+    // Check if pseudo is in PATH
     return new Promise((resolve) => {
-        const cmd = process.platform === 'win32' ? 'where pseudo' : 'which pseudo';
+        const cmd = isWindows ? 'where pseudo.exe' : 'which pseudo';
         exec(cmd, (error, stdout) => {
             if (!error && stdout.trim()) {
-                resolve(stdout.trim().split('\n')[0]);
+                resolve(stdout.trim().split('\n')[0].trim());
             } else {
-                resolve(null);
+                // Try without .exe on Windows as fallback
+                if (isWindows) {
+                    exec('where pseudo', (error2, stdout2) => {
+                        if (!error2 && stdout2.trim()) {
+                            resolve(stdout2.trim().split('\n')[0].trim());
+                        } else {
+                            resolve(null);
+                        }
+                    });
+                } else {
+                    resolve(null);
+                }
             }
         });
     });
@@ -276,19 +296,24 @@ function runPseudocode(vmPath: string, filePath: string): void {
 
     args.push(filePath);
 
-    const process = spawn(vmPath, args, {
-        cwd: path.dirname(filePath)
+    // On Windows, need to handle paths with spaces properly
+    const isWindows = process.platform === 'win32';
+    
+    const childProcess = spawn(vmPath, args, {
+        cwd: path.dirname(filePath),
+        shell: isWindows,  // Use shell on Windows to handle paths properly
+        windowsVerbatimArguments: false
     });
 
-    process.stdout.on('data', (data: Buffer) => {
+    childProcess.stdout.on('data', (data: Buffer) => {
         outputChannel.append(data.toString());
     });
 
-    process.stderr.on('data', (data: Buffer) => {
+    childProcess.stderr.on('data', (data: Buffer) => {
         outputChannel.append(data.toString());
     });
 
-    process.on('close', (code: number) => {
+    childProcess.on('close', (code: number) => {
         outputChannel.appendLine('');
         outputChannel.appendLine('─'.repeat(50));
 
@@ -304,7 +329,7 @@ function runPseudocode(vmPath: string, filePath: string): void {
         }
     });
 
-    process.on('error', (err: Error) => {
+    childProcess.on('error', (err: Error) => {
         outputChannel.appendLine(`Error: ${err.message}`);
     });
 }
@@ -316,20 +341,20 @@ function buildVm(cvmPath: string): void {
     outputChannel.appendLine('Building Pseudocode VM...');
     outputChannel.appendLine('─'.repeat(50));
 
-    const process = spawn('make', ['clean', 'pgo'], {
+    const buildProcess = spawn('make', ['clean', 'pgo'], {
         cwd: cvmPath,
         shell: true
     });
 
-    process.stdout.on('data', (data: Buffer) => {
+    buildProcess.stdout.on('data', (data: Buffer) => {
         outputChannel.append(data.toString());
     });
 
-    process.stderr.on('data', (data: Buffer) => {
+    buildProcess.stderr.on('data', (data: Buffer) => {
         outputChannel.append(data.toString());
     });
 
-    process.on('close', (code: number) => {
+    buildProcess.on('close', (code: number) => {
         outputChannel.appendLine('');
         outputChannel.appendLine('─'.repeat(50));
 

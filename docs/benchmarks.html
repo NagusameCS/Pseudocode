@@ -9,7 +9,9 @@
     <link rel="icon" href="favicon.ico" type="image/x-icon">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
 
     <style>
         :root {
@@ -98,7 +100,8 @@
             transition: color 0.2s;
         }
 
-        nav a:hover, nav a.active {
+        nav a:hover,
+        nav a.active {
             color: var(--text-primary);
         }
 
@@ -137,7 +140,7 @@
             margin-bottom: 12px;
         }
 
-        section > p {
+        section>p {
             color: var(--text-secondary);
             margin-bottom: 32px;
             max-width: 700px;
@@ -213,10 +216,21 @@
             font-weight: 500;
         }
 
-        .bar-c { background: var(--success); }
-        .bar-jit { background: var(--accent); }
-        .bar-vm { background: var(--purple); }
-        .bar-python { background: var(--warning); }
+        .bar-c {
+            background: var(--success);
+        }
+
+        .bar-jit {
+            background: var(--accent);
+        }
+
+        .bar-vm {
+            background: var(--purple);
+        }
+
+        .bar-python {
+            background: var(--warning);
+        }
 
         /* Table */
         .benchmark-table {
@@ -318,10 +332,21 @@
             font-family: var(--font-mono);
         }
 
-        .keyword { color: #ff7b72; }
-        .function { color: #d2a8ff; }
-        .number { color: #79c0ff; }
-        .comment { color: #8b949e; }
+        .keyword {
+            color: #ff7b72;
+        }
+
+        .function {
+            color: #d2a8ff;
+        }
+
+        .number {
+            color: #79c0ff;
+        }
+
+        .comment {
+            color: #8b949e;
+        }
 
         /* Footer */
         footer {
@@ -354,9 +379,18 @@
 
         /* Responsive */
         @media (max-width: 768px) {
-            nav { display: none; }
-            .bar-label { width: 100px; font-size: 0.8rem; }
-            .benchmark-card { padding: 24px; }
+            nav {
+                display: none;
+            }
+
+            .bar-label {
+                width: 100px;
+                font-size: 0.8rem;
+            }
+
+            .benchmark-card {
+                padding: 24px;
+            }
         }
     </style>
 </head>
@@ -423,7 +457,8 @@
 
             <div class="note">
                 <h4>JIT vs VM</h4>
-                <p>The JIT achieves ~16x speedup over the bytecode VM for simple numeric loops by eliminating interpreter overhead and generating register-allocated native code.</p>
+                <p>The JIT achieves ~16x speedup over the bytecode VM for simple numeric loops by eliminating
+                    interpreter overhead and generating register-allocated native code.</p>
             </div>
         </section>
 
@@ -467,7 +502,8 @@
 
             <div class="note">
                 <h4>Room for Improvement</h4>
-                <p>Recursive functions don't benefit as much from the tracing JIT since traces are linear. Future work includes loop-based trace compilation for recursion.</p>
+                <p>Recursive functions don't benefit as much from the tracing JIT since traces are linear. Future work
+                    includes loop-based trace compilation for recursion.</p>
             </div>
         </section>
 
@@ -526,7 +562,8 @@
 
             <div class="note">
                 <h4>String and Dictionary Performance</h4>
-                <p>Python's strings and dictionaries are highly optimized C implementations. Pseudocode performs best on numeric loops and algorithms.</p>
+                <p>Python's strings and dictionaries are highly optimized C implementations. Pseudocode performs best on
+                    numeric loops and algorithms.</p>
             </div>
         </section>
 

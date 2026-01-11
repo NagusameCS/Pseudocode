@@ -9,7 +9,9 @@
     <link rel="icon" href="favicon.ico" type="image/x-icon">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
 
     <style>
         :root {
@@ -222,7 +224,8 @@
             font-size: 0.95rem;
         }
 
-        .instructions ul, .instructions ol {
+        .instructions ul,
+        .instructions ol {
             color: var(--text-secondary);
             margin-bottom: 16px;
             padding-left: 20px;
@@ -431,11 +434,25 @@
         }
 
         /* Syntax highlighting colors */
-        .keyword { color: #ff7b72; }
-        .function { color: #d2a8ff; }
-        .string { color: #a5d6ff; }
-        .number { color: #79c0ff; }
-        .comment { color: #8b949e; }
+        .keyword {
+            color: #ff7b72;
+        }
+
+        .function {
+            color: #d2a8ff;
+        }
+
+        .string {
+            color: #a5d6ff;
+        }
+
+        .number {
+            color: #79c0ff;
+        }
+
+        .comment {
+            color: #8b949e;
+        }
 
         /* Responsive */
         @media (max-width: 1200px) {
@@ -448,12 +465,15 @@
             .sidebar {
                 display: none;
             }
+
             .main {
                 margin-left: 0;
             }
+
             .lesson-content {
                 flex-direction: column;
             }
+
             .instructions {
                 width: 100%;
                 border-right: none;
@@ -475,7 +495,8 @@
                 <div class="progress-bar">
                     <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
                 </div>
-                <div class="progress-text"><span id="completed-count">0</span> of <span id="total-count">0</span> lessons completed</div>
+                <div class="progress-text"><span id="completed-count">0</span> of <span id="total-count">0</span>
+                    lessons completed</div>
             </div>
 
             <div id="course-nav">
@@ -505,12 +526,14 @@
                         </div>
                     </div>
                     <div class="editor-container">
-                        <textarea class="code-editor" id="code-editor" spellcheck="false" placeholder="// Write your code here..."></textarea>
+                        <textarea class="code-editor" id="code-editor" spellcheck="false"
+                            placeholder="// Write your code here..."></textarea>
                     </div>
                     <div class="output-section">
                         <div class="output-header">
                             <span class="output-title">Output</span>
-                            <button class="btn btn-secondary" onclick="clearOutput()" style="padding: 4px 10px; font-size: 0.75rem;">Clear</button>
+                            <button class="btn btn-secondary" onclick="clearOutput()"
+                                style="padding: 4px 10px; font-size: 0.75rem;">Clear</button>
                         </div>
                         <div class="output-content" id="output"></div>
                     </div>
@@ -826,7 +849,7 @@
                 if (lesson && lesson.validate(result.output)) {
                     completedLessons.add(currentLessonId);
                     localStorage.setItem('pseudocode-learn-progress', JSON.stringify([...completedLessons]));
-                    
+
                     banner.className = 'result-banner success';
                     message.textContent = 'Correct! Well done!';
                     renderNav();
@@ -847,31 +870,31 @@
             let output = [];
             let variables = {};
             let functions = {};
-            
+
             const lines = code.split('\n');
             let i = 0;
 
             function evaluate(expr) {
                 expr = expr.trim();
-                
+
                 // String literal
                 if ((expr.startsWith('"') && expr.endsWith('"')) ||
                     (expr.startsWith("'") && expr.endsWith("'"))) {
                     return expr.slice(1, -1);
                 }
-                
+
                 // Number literal
                 if (!isNaN(parseFloat(expr)) && isFinite(expr)) {
                     return parseFloat(expr);
                 }
-                
+
                 // Array literal
                 if (expr.startsWith('[') && expr.endsWith(']')) {
                     const inner = expr.slice(1, -1);
                     if (inner.trim() === '') return [];
                     return inner.split(',').map(e => evaluate(e.trim()));
                 }
-                
+
                 // Array access
                 const arrayMatch = expr.match(/^(\w+)\[(.+)\]$/);
                 if (arrayMatch) {
@@ -879,13 +902,13 @@
                     const idx = evaluate(arrayMatch[2]);
                     return arr[idx];
                 }
-                
+
                 // Function call
                 const funcMatch = expr.match(/^(\w+)\((.*)?\)$/);
                 if (funcMatch) {
                     const fname = funcMatch[1];
                     const argsStr = funcMatch[2] || '';
-                    
+
                     if (fname === 'print') {
                         const val = evaluate(argsStr);
                         output.push(String(val));
@@ -898,26 +921,26 @@
                     if (fname === 'str') {
                         return String(evaluate(argsStr));
                     }
-                    
+
                     // User-defined function
                     if (functions[fname]) {
                         const fn = functions[fname];
                         const args = argsStr.split(',').map(a => evaluate(a.trim()));
-                        const oldVars = {...variables};
+                        const oldVars = { ...variables };
                         fn.params.forEach((p, i) => variables[p] = args[i]);
                         const result = executeBlock(fn.body);
                         variables = oldVars;
                         return result;
                     }
                 }
-                
+
                 // Binary operations
                 for (const op of ['+', '-', '*', '/', '>=', '<=', '>', '<', '==', '!=']) {
                     const opIdx = findOperator(expr, op);
                     if (opIdx !== -1) {
                         const left = evaluate(expr.slice(0, opIdx));
                         const right = evaluate(expr.slice(opIdx + op.length));
-                        switch(op) {
+                        switch (op) {
                             case '+': return typeof left === 'string' ? left + right : left + right;
                             case '-': return left - right;
                             case '*': return left * right;
@@ -931,15 +954,15 @@
                         }
                     }
                 }
-                
+
                 // Variable
                 if (variables.hasOwnProperty(expr)) {
                     return variables[expr];
                 }
-                
+
                 return expr;
             }
-            
+
             function findOperator(expr, op) {
                 let depth = 0;
                 for (let i = expr.length - 1; i >= 0; i--) {
@@ -956,11 +979,11 @@
                 for (let j = 0; j < blockLines.length; j++) {
                     const line = blockLines[j].trim();
                     if (!line || line.startsWith('//')) continue;
-                    
+
                     if (line.startsWith('return ')) {
                         return evaluate(line.slice(7));
                     }
-                    
+
                     executeLine(line, blockLines, j);
                 }
                 return null;
@@ -968,7 +991,7 @@
 
             function executeLine(line, contextLines, contextIdx) {
                 if (!line || line.startsWith('//')) return;
-                
+
                 // let declaration
                 if (line.startsWith('let ')) {
                     const eqIdx = line.indexOf('=');
@@ -977,30 +1000,30 @@
                     variables[name] = value;
                     return;
                 }
-                
+
                 // Assignment
                 const assignMatch = line.match(/^(\w+)\s*=\s*(.+)$/);
                 if (assignMatch && !line.startsWith('let ') && !line.startsWith('if ') && !line.startsWith('for ')) {
                     variables[assignMatch[1]] = evaluate(assignMatch[2]);
                     return;
                 }
-                
+
                 // Function call (standalone)
                 if (line.match(/^\w+\(.*\)$/)) {
                     evaluate(line);
                     return;
                 }
             }
-            
+
             // Main execution loop
             while (i < lines.length) {
                 let line = lines[i].trim();
-                
+
                 if (!line || line.startsWith('//')) {
                     i++;
                     continue;
                 }
-                
+
                 // Function definition
                 if (line.startsWith('fn ')) {
                     const match = line.match(/^fn\s+(\w+)\((.*?)\)/);
@@ -1018,7 +1041,7 @@
                     i++;
                     continue;
                 }
-                
+
                 // For loop
                 if (line.startsWith('for ')) {
                     const match = line.match(/^for\s+(\w+)\s+in\s+(.+)\s+do$/);
@@ -1026,7 +1049,7 @@
                         const varName = match[1];
                         const iterExpr = match[2].trim();
                         let iterable;
-                        
+
                         // Range
                         const rangeMatch = iterExpr.match(/^(\d+)\.\.(\d+)$/);
                         if (rangeMatch) {
@@ -1037,7 +1060,7 @@
                         } else {
                             iterable = evaluate(iterExpr);
                         }
-                        
+
                         const bodyLines = [];
                         i++;
                         let depth = 1;
@@ -1048,7 +1071,7 @@
                             if (depth > 0) bodyLines.push(lines[i]);
                             i++;
                         }
-                        
+
                         for (const val of iterable) {
                             variables[varName] = val;
                             executeBlock(bodyLines);
@@ -1056,7 +1079,7 @@
                         continue;
                     }
                 }
-                
+
                 // While loop
                 if (line.startsWith('while ')) {
                     const match = line.match(/^while\s+(.+)\s+do$/);
@@ -1073,7 +1096,7 @@
                             if (depth > 0) bodyLines.push(lines[i]);
                             i++;
                         }
-                        
+
                         let safety = 0;
                         while (evaluate(condition) && safety < 1000) {
                             executeBlock(bodyLines);
@@ -1082,7 +1105,7 @@
                         continue;
                     }
                 }
-                
+
                 // If statement
                 if (line.startsWith('if ')) {
                     const match = line.match(/^if\s+(.+)\s+then$/);
@@ -1093,7 +1116,7 @@
                         let inElse = false;
                         i++;
                         let depth = 1;
-                        
+
                         while (i < lines.length && depth > 0) {
                             const l = lines[i].trim();
                             if (l.match(/^if\s/) && l.match(/\sthen$/)) depth++;
@@ -1109,7 +1132,7 @@
                             }
                             i++;
                         }
-                        
+
                         if (evaluate(condition)) {
                             executeBlock(thenBody);
                         } else if (elseBody.length > 0) {
@@ -1118,11 +1141,11 @@
                         continue;
                     }
                 }
-                
+
                 executeLine(line, lines, i);
                 i++;
             }
-            
+
             return { output: output.join('\n') };
         }
 
@@ -1151,7 +1174,7 @@
             const allLessons = getAllLessons();
             const completed = completedLessons.size;
             const total = allLessons.length;
-            
+
             document.getElementById('completed-count').textContent = completed;
             document.getElementById('total-count').textContent = total;
             document.getElementById('progress-fill').style.width = `${(completed / total) * 100}%`;
