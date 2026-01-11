@@ -2648,21 +2648,21 @@ static void binary(bool can_assign)
         if (IS_INT(v2) || IS_NUM(v2))
         {
             double n2 = IS_INT(v2) ? (double)as_int(v2) : as_num(v2);
-            
+
             /* x + 0 -> x: remove the constant and skip the add */
             if ((op_type == TOKEN_PLUS || op_type == TOKEN_MINUS) && n2 == 0.0)
             {
                 chunk->count = second_operand.bytecode_pos;
                 return; /* Result is already on stack */
             }
-            
+
             /* x * 1 -> x, x / 1 -> x: remove the constant and skip the op */
             if ((op_type == TOKEN_STAR || op_type == TOKEN_SLASH) && n2 == 1.0)
             {
                 chunk->count = second_operand.bytecode_pos;
                 return;
             }
-            
+
             /* x * 0 -> 0: remove both operands and push 0 */
             if (op_type == TOKEN_STAR && n2 == 0.0)
             {
@@ -2672,7 +2672,7 @@ static void binary(bool can_assign)
             }
         }
     }
-    
+
     /* Check first operand for 0 * x -> 0 */
     if (first_operand.is_constant && op_type == TOKEN_STAR)
     {
@@ -2715,7 +2715,8 @@ static void binary(bool can_assign)
                 {
                     /* Find the shift amount */
                     int shift = 0;
-                    while ((1 << shift) < multiplier) shift++;
+                    while ((1 << shift) < multiplier)
+                        shift++;
                     /* Rewind to remove the constant, emit shift */
                     chunk->count = second_operand.bytecode_pos;
                     emit_constant(val_int(shift));
@@ -2737,7 +2738,8 @@ static void binary(bool can_assign)
                 {
                     /* Find the shift amount */
                     int shift = 0;
-                    while ((1 << shift) < divisor) shift++;
+                    while ((1 << shift) < divisor)
+                        shift++;
                     /* Rewind to remove the constant, emit shift */
                     chunk->count = second_operand.bytecode_pos;
                     emit_constant(val_int(shift));
@@ -3023,9 +3025,37 @@ static void super_(bool can_assign)
     consume(TOKEN_IDENT, "Expect superclass method name.");
     uint8_t method_name = identifier_constant(&parser.previous);
 
-    /* Push 'self' (slot 0) then emit super access */
+    /* Push 'self' (slot 0) */
     emit_bytes(OP_GET_LOCAL, 0);
-    emit_bytes(OP_GET_SUPER, method_name);
+
+    /* Check if this is a direct invoke: super.method(...) */
+    if (match(TOKEN_LPAREN))
+    {
+        /* Parse arguments */
+        uint8_t arg_count = 0;
+        if (!check(TOKEN_RPAREN))
+        {
+            do
+            {
+                expression();
+                if (arg_count == 255)
+                {
+                    error("Cannot have more than 255 arguments.");
+                }
+                arg_count++;
+            } while (match(TOKEN_COMMA));
+        }
+        consume(TOKEN_RPAREN, "Expect ')' after arguments.");
+
+        /* Emit fused super invoke - more efficient than GET_SUPER + CALL */
+        emit_bytes(OP_SUPER_INVOKE, method_name);
+        emit_byte(arg_count);
+    }
+    else
+    {
+        /* Just getting the bound method: super.method */
+        emit_bytes(OP_GET_SUPER, method_name);
+    }
 }
 
 /* Parse 'yield' expression for generators */

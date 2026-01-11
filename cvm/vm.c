@@ -2958,7 +2958,7 @@ InterpretResult vm_run(VM *vm)
         uint16_t offset = READ_SHORT();
         Value b = POP();
         Value a = POP();
-        if (a == b)  /* != is false when equal */
+        if (a == b) /* != is false when equal */
             ip += offset;
         DISPATCH();
     }
@@ -7238,13 +7238,86 @@ InterpretResult vm_run(VM *vm)
 
     CASE(super_invoke) :
     {
-        /* OP_SUPER_INVOKE: Invoke superclass method */
+        /* OP_SUPER_INVOKE: Invoke superclass method directly */
         ObjString *method_name = AS_STRING(READ_CONST());
         uint8_t arg_count = *ip++;
-        (void)method_name;
-        (void)arg_count;
-        /* TODO: Implement super invoke */
-        DISPATCH();
+        Value instance_val = PEEK(arg_count);
+
+        if (!IS_INSTANCE(instance_val))
+        {
+            runtime_error(vm, "Cannot use 'super' on non-instance.");
+            return INTERPRET_RUNTIME_ERROR;
+        }
+
+        ObjInstance *instance = AS_INSTANCE(instance_val);
+        ObjClass *superclass = instance->klass->superclass;
+
+        if (superclass == NULL)
+        {
+            runtime_error(vm, "Class has no superclass.");
+            return INTERPRET_RUNTIME_ERROR;
+        }
+
+        /* Look up method in superclass */
+        for (uint16_t i = 0; i < superclass->method_count; i++)
+        {
+            if (superclass->method_names[i] == method_name ||
+                (superclass->method_names[i]->length == method_name->length &&
+                 memcmp(superclass->method_names[i]->chars, method_name->chars, method_name->length) == 0))
+            {
+                /* Found method - call it */
+                Value method_val = superclass->methods[i];
+                ObjFunction *method = NULL;
+                ObjClosure *method_closure = NULL;
+
+                if (IS_FUNCTION(method_val))
+                {
+                    method = AS_FUNCTION(method_val);
+                }
+                else if (IS_CLOSURE(method_val))
+                {
+                    method_closure = AS_CLOSURE(method_val);
+                    method = method_closure->function;
+                }
+                else
+                {
+                    vm->sp = sp;
+                    runtime_error(vm, "Superclass method is not callable.");
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+
+                /* Check arity */
+                if (arg_count != method->arity)
+                {
+                    vm->sp = sp;
+                    runtime_error(vm, "Expected %d arguments but got %d.",
+                                  method->arity, arg_count);
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+
+                /* Push new call frame */
+                if (vm->frame_count == FRAMES_MAX)
+                {
+                    vm->sp = sp;
+                    runtime_error(vm, "Stack overflow.");
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+
+                CallFrame *frame = &vm->frames[vm->frame_count++];
+                frame->function = method;
+                frame->closure = method_closure;
+                frame->ip = ip;
+                frame->slots = sp - arg_count - 1; /* -1 for instance */
+                frame->is_init = false;
+                bp = frame->slots;
+
+                ip = vm->chunk.code + method->code_start;
+                DISPATCH();
+            }
+        }
+
+        runtime_error(vm, "Undefined superclass method '%s'.", method_name->chars);
+        return INTERPRET_RUNTIME_ERROR;
     }
 
 #if !USE_COMPUTED_GOTO

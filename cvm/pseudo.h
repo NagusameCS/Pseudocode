@@ -549,8 +549,8 @@ typedef enum
     OP_ARRAY,
     OP_INDEX,
     OP_INDEX_SET,
-    OP_INDEX_FAST,      /* Unchecked array index - for JIT when bounds proven safe */
-    OP_INDEX_SET_FAST,  /* Unchecked array index set */
+    OP_INDEX_FAST,     /* Unchecked array index - for JIT when bounds proven safe */
+    OP_INDEX_SET_FAST, /* Unchecked array index set */
     OP_LEN,
     OP_PUSH,
     OP_POP_ARRAY,
@@ -895,10 +895,10 @@ typedef struct
 
 typedef struct
 {
-    ObjClass *cached_class;   /* Class this cache is for */
-    uint16_t cached_slot;     /* Field/method slot index */
-    ObjString *cached_name;   /* Cached property name for validation */
-    bool is_method;           /* True if this is a method, false if field */
+    ObjClass *cached_class; /* Class this cache is for */
+    uint16_t cached_slot;   /* Field/method slot index */
+    ObjString *cached_name; /* Cached property name for validation */
+    bool is_method;         /* True if this is a method, false if field */
 } InlineCache;
 
 typedef struct
