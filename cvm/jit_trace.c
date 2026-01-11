@@ -1761,3 +1761,89 @@ double jit_coverage(void)
         return 0.0;
     return 100.0 * jit_state.bytecodes_jit / total;
 }
+/* ============================================================
+ * On-Stack Replacement (OSR)
+ * ============================================================
+ * OSR allows entering JIT-compiled code mid-loop execution.
+ * This is useful when a loop becomes hot while already running.
+ */
+
+/*
+ * Check if we can OSR into a trace at the given PC.
+ * Returns the trace index if OSR is possible, -1 otherwise.
+ */
+int jit_check_osr(uint8_t *pc, Value *bp)
+{
+    (void)bp; /* May be used for state validation in the future */
+
+    if (!jit_state.enabled)
+        return -1;
+
+    /* Look for a compiled trace at this PC */
+    uint32_t idx = hash_ptr(pc);
+    HotLoopEntry *e = &jit_state.hotloops[idx];
+
+    if (e->ip == pc && e->trace_idx >= 0)
+    {
+        CompiledTrace *trace = &jit_state.traces[e->trace_idx];
+        if (trace->is_compiled && trace->is_valid)
+        {
+            return e->trace_idx;
+        }
+    }
+
+    return -1;
+}
+
+/*
+ * Perform OSR entry into a trace.
+ * This transfers execution from the interpreter to JIT-compiled code.
+ *
+ * The key insight is that at a loop header:
+ * 1. All local variables are already in their slots on the stack
+ * 2. The JIT code expects the same layout
+ * 3. We just need to call the JIT code with the current bp
+ *
+ * After the JIT returns, we continue in the interpreter.
+ */
+void jit_osr_enter(int trace_idx, Value *bp, uint8_t *pc)
+{
+    (void)pc; /* Not needed - trace knows its entry point */
+
+    if (trace_idx < 0 || trace_idx >= (int)jit_state.num_traces)
+        return;
+
+    CompiledTrace *trace = &jit_state.traces[trace_idx];
+    if (!trace->is_compiled || !trace->is_valid || !trace->native_code)
+        return;
+
+    if (jit_state.debug)
+    {
+        fprintf(stderr, "[JIT-OSR] Entering trace %d at PC %p\n",
+                trace_idx, trace->entry_pc);
+    }
+
+    /* Execute the trace */
+    jit_execute_trace(trace_idx, bp);
+
+    /* When we return here, either:
+     * 1. The loop completed normally
+     * 2. A side exit occurred and we need to continue in interpreter
+     */
+}
+
+/*
+ * Try to OSR at a loop back-edge.
+ * Called from the interpreter when jumping backwards.
+ * Returns true if OSR was performed.
+ */
+bool jit_try_osr(uint8_t *loop_header, Value *bp)
+{
+    int trace_idx = jit_check_osr(loop_header, bp);
+    if (trace_idx >= 0)
+    {
+        jit_osr_enter(trace_idx, bp, loop_header);
+        return true;
+    }
+    return false;
+}

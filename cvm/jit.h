@@ -176,6 +176,22 @@ void *codegen_direct_loop(
 typedef int64_t (*JitLoopFunc)(int64_t *locals);
 
 /* ============================================================
+ * On-Stack Replacement (OSR)
+ * ============================================================
+ * OSR allows entering JIT-compiled code mid-loop execution.
+ */
+
+/* Check if we can OSR into a trace at the given PC */
+/* Returns trace index if OSR is possible, -1 otherwise */
+int jit_check_osr(uint8_t *pc, Value *bp);
+
+/* Perform OSR entry into a trace */
+void jit_osr_enter(int trace_idx, Value *bp, uint8_t *pc);
+
+/* Try to OSR at a loop back-edge - returns true if OSR was performed */
+bool jit_try_osr(uint8_t *loop_header, Value *bp);
+
+/* ============================================================
  * Legacy JIT Functions (for explicit intrinsics)
  * ============================================================ */
 
