@@ -24,6 +24,7 @@ extern bool has_imports(const char* source);
 
 /* Global VM for signal handling */
 static VM* global_vm = NULL;
+static bool debug_mode = false;
 
 static void signal_handler(int sig) {
     (void)sig;
@@ -86,6 +87,7 @@ static void run_file(const char *path)
 
     VM vm;
     vm_init(&vm);
+    vm.debug_mode = debug_mode;
     global_vm = &vm;
 
     InterpretResult result = vm_interpret(&vm, source);
@@ -338,7 +340,8 @@ int main(int argc, char *argv[])
                 /* JIT is default, but accept the flag */
                 file_arg = i + 1;
             } else if (strcmp(argv[i], "-d") == 0 || strcmp(argv[i], "--debug") == 0) {
-                /* Debug mode - TODO: implement */
+                /* Debug mode - enable bytecode tracing */
+                debug_mode = true;
                 file_arg = i + 1;
             }
         }

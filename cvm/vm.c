@@ -47,6 +47,7 @@ void vm_init(VM *vm)
     vm->bytes_allocated = 0;
     vm->next_gc = 1024 * 1024;
     vm->open_upvalues = NULL;
+    vm->debug_mode = false;
 
     vm->globals.keys = NULL;
     vm->globals.values = NULL;
@@ -838,6 +839,42 @@ static void print_value(Value value)
         }                                                  \
     } while (0)
 
+/* Debug: Opcode name lookup table */
+static const char *opcode_names[] = {
+    [OP_CONST] = "CONST", [OP_CONST_LONG] = "CONST_LONG", [OP_NIL] = "NIL",
+    [OP_TRUE] = "TRUE", [OP_FALSE] = "FALSE", [OP_POP] = "POP",
+    [OP_GET_LOCAL] = "GET_LOCAL", [OP_SET_LOCAL] = "SET_LOCAL",
+    [OP_GET_GLOBAL] = "GET_GLOBAL", [OP_SET_GLOBAL] = "SET_GLOBAL",
+    [OP_ADD] = "ADD", [OP_SUB] = "SUB", [OP_MUL] = "MUL", [OP_DIV] = "DIV",
+    [OP_EQ] = "EQ", [OP_NEQ] = "NEQ", [OP_LT] = "LT", [OP_GT] = "GT",
+    [OP_JMP] = "JMP", [OP_JMP_FALSE] = "JMP_FALSE", [OP_LOOP] = "LOOP",
+    [OP_CALL] = "CALL", [OP_RETURN] = "RETURN", [OP_PRINT] = "PRINT",
+    [OP_ARRAY] = "ARRAY", [OP_INDEX] = "INDEX", [OP_LEN] = "LEN",
+};
+
+static void debug_trace_op(VM *vm, uint8_t *ip, Value *sp)
+{
+    if (!vm->debug_mode) return;
+    
+    int offset = (int)(ip - vm->chunk.code);
+    uint8_t op = *ip;
+    const char *name = (op < sizeof(opcode_names)/sizeof(opcode_names[0]) && opcode_names[op]) 
+                       ? opcode_names[op] : "???";
+    
+    fprintf(stderr, "[%04d] %-12s  stack: [", offset, name);
+    for (Value *slot = vm->stack; slot < sp; slot++) {
+        if (slot > vm->stack) fprintf(stderr, ", ");
+        if (IS_INT(*slot)) fprintf(stderr, "%d", as_int(*slot));
+        else if (IS_NUM(*slot)) fprintf(stderr, "%.2f", as_num(*slot));
+        else if (IS_TRUE(*slot)) fprintf(stderr, "true");
+        else if (IS_FALSE(*slot)) fprintf(stderr, "false");
+        else if (IS_NIL(*slot)) fprintf(stderr, "nil");
+        else if (IS_STRING(*slot)) fprintf(stderr, "\"%s\"", AS_STRING(*slot)->chars);
+        else fprintf(stderr, "<obj>");
+    }
+    fprintf(stderr, "]\n");
+}
+
 InterpretResult vm_run(VM *vm)
 {
     register uint8_t *ip = vm->chunk.code;
@@ -1177,18 +1214,19 @@ InterpretResult vm_run(VM *vm)
         [OP_IMPORT_AS] = &&op_import_as,
     };
 
-#define DISPATCH() goto *dispatch_table[*ip++]
+#define DISPATCH() do { if (vm->debug_mode) debug_trace_op(vm, ip, sp); goto *dispatch_table[*ip++]; } while(0)
 #define CASE(name) op_##name
 
     DISPATCH();
 
 #else
 /* Traditional switch dispatch */
-#define DISPATCH() continue
+#define DISPATCH() do { if (vm->debug_mode) debug_trace_op(vm, ip, sp); continue; } while(0)
 #define CASE(name) case OP_##name
 
     for (;;)
     {
+        if (vm->debug_mode) debug_trace_op(vm, ip, sp);
         switch (*ip++)
         {
 #endif

@@ -942,6 +942,9 @@ typedef struct
     InlineCache ic_cache[IC_MAX_CACHES];
     uint16_t ic_count;
 
+    /* Debug mode */
+    bool debug_mode;
+
     /* GC */
     Obj *objects;
     size_t bytes_allocated;
