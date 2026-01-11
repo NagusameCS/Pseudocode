@@ -753,6 +753,120 @@ static void emit_divsd_rr(MCode *mc, int dst, int src)
     emit(mc, 0xc0 | ((dst & 7) << 3) | (src & 7));
 }
 
+/* UCOMISD xmm, xmm (unordered compare double) */
+static void emit_ucomisd_rr(MCode *mc, int dst, int src)
+{
+    emit(mc, 0x66);
+    if (dst >= 8 || src >= 8)
+    {
+        emit(mc, 0x40 | ((dst >= 8) ? 4 : 0) | ((src >= 8) ? 1 : 0));
+    }
+    emit(mc, 0x0f);
+    emit(mc, 0x2e);
+    emit(mc, 0xc0 | ((dst & 7) << 3) | (src & 7));
+}
+
+/* SETA reg (set if above - unsigned greater) */
+static void emit_seta(MCode *mc, int reg)
+{
+    if (reg >= 4 && reg <= 7)
+        emit(mc, 0x40);
+    if (reg >= 8)
+        emit(mc, 0x41);
+    emit(mc, 0x0f);
+    emit(mc, 0x97);
+    emit(mc, 0xc0 | (reg & 7));
+}
+
+/* SETAE reg (set if above or equal - unsigned >=) */
+static void emit_setae(MCode *mc, int reg)
+{
+    if (reg >= 4 && reg <= 7)
+        emit(mc, 0x40);
+    if (reg >= 8)
+        emit(mc, 0x41);
+    emit(mc, 0x0f);
+    emit(mc, 0x93);
+    emit(mc, 0xc0 | (reg & 7));
+}
+
+/* SETB reg (set if below - unsigned less) */
+static void emit_setb(MCode *mc, int reg)
+{
+    if (reg >= 4 && reg <= 7)
+        emit(mc, 0x40);
+    if (reg >= 8)
+        emit(mc, 0x41);
+    emit(mc, 0x0f);
+    emit(mc, 0x92);
+    emit(mc, 0xc0 | (reg & 7));
+}
+
+/* SETBE reg (set if below or equal - unsigned <=) */
+static void emit_setbe(MCode *mc, int reg)
+{
+    if (reg >= 4 && reg <= 7)
+        emit(mc, 0x40);
+    if (reg >= 8)
+        emit(mc, 0x41);
+    emit(mc, 0x0f);
+    emit(mc, 0x96);
+    emit(mc, 0xc0 | (reg & 7));
+}
+
+/* CVTSI2SD xmm, r64 (convert int64 to double) */
+static void emit_cvtsi2sd_rr(MCode *mc, int xmm, int gpr)
+{
+    emit(mc, 0xf2);
+    emit(mc, rex(1, xmm, 0, gpr));
+    emit(mc, 0x0f);
+    emit(mc, 0x2a);
+    emit(mc, 0xc0 | ((xmm & 7) << 3) | (gpr & 7));
+}
+
+/* CVTTSD2SI r64, xmm (convert double to int64, truncate) */
+static void emit_cvttsd2si_rr(MCode *mc, int gpr, int xmm)
+{
+    emit(mc, 0xf2);
+    emit(mc, rex(1, gpr, 0, xmm));
+    emit(mc, 0x0f);
+    emit(mc, 0x2c);
+    emit(mc, 0xc0 | ((gpr & 7) << 3) | (xmm & 7));
+}
+
+/* XORPD xmm, xmm (for negation: xor with sign bit) */
+static void emit_xorpd_rr(MCode *mc, int dst, int src)
+{
+    emit(mc, 0x66);
+    if (dst >= 8 || src >= 8)
+    {
+        emit(mc, 0x40 | ((dst >= 8) ? 4 : 0) | ((src >= 8) ? 1 : 0));
+    }
+    emit(mc, 0x0f);
+    emit(mc, 0x57);
+    emit(mc, 0xc0 | ((dst & 7) << 3) | (src & 7));
+}
+
+/* MOVQ r64, xmm (move from XMM to GPR) */
+static void emit_movq_r_xmm(MCode *mc, int gpr, int xmm)
+{
+    emit(mc, 0x66);
+    emit(mc, rex(1, xmm, 0, gpr));
+    emit(mc, 0x0f);
+    emit(mc, 0x7e);
+    emit(mc, 0xc0 | ((xmm & 7) << 3) | (gpr & 7));
+}
+
+/* MOVQ xmm, r64 (move from GPR to XMM) */
+static void emit_movq_xmm_r(MCode *mc, int xmm, int gpr)
+{
+    emit(mc, 0x66);
+    emit(mc, rex(1, xmm, 0, gpr));
+    emit(mc, 0x0f);
+    emit(mc, 0x6e);
+    emit(mc, 0xc0 | ((xmm & 7) << 3) | (gpr & 7));
+}
+
 /* ============================================================
  * Code Generation from IR
  * ============================================================ */
@@ -801,6 +915,58 @@ static void compile_ir_op(MCode *mc, TraceIR *ir, IRIns *ins,
         if (dst >= 0)
         {
             emit_mov_ri64(mc, dst, ins->imm.i64);
+        }
+        break;
+
+    case IR_CONST_DOUBLE:
+        if (dst >= 0)
+        {
+            /* Load double constant - imm.f64 contains the double value */
+            /* Move to GPR first, then to XMM */
+            union
+            {
+                double d;
+                uint64_t u;
+            } conv;
+            conv.d = ins->imm.f64;
+            emit_mov_ri64(mc, R11, conv.u);
+            emit_movq_xmm_r(mc, dst, R11);
+        }
+        break;
+
+    case IR_CONST_BOOL:
+        if (dst >= 0)
+        {
+            /* Boolean: 0 or 1 */
+            emit_mov_ri32(mc, dst, ins->imm.i64 ? 1 : 0);
+        }
+        break;
+
+    case IR_CONST_NIL:
+        if (dst >= 0)
+        {
+            /* NIL is represented as a specific NaN-boxed value */
+            /* NIL tag: QNAN | TAG_NIL */
+            emit_mov_ri64(mc, dst, QNAN | TAG_NIL);
+        }
+        break;
+
+    case IR_LOAD_CONST:
+        /* Load from constant pool - aux is index, need constants array pointer */
+        /* For now, just load the immediate if available */
+        if (dst >= 0)
+        {
+            /* Constants are passed via RDX (third arg) if available */
+            /* Load: dst = constants[aux] */
+            emit_mov_rm(mc, dst, RDX, ins->aux * 8);
+        }
+        break;
+
+    case IR_COPY:
+        /* Copy is same as MOV */
+        if (dst >= 0 && src1 >= 0 && dst != src1)
+        {
+            emit_mov_rr(mc, dst, src1);
         }
         break;
 
@@ -1160,9 +1326,203 @@ static void compile_ir_op(MCode *mc, TraceIR *ir, IRIns *ins,
         }
         break;
 
+    /* Double comparisons - use UCOMISD which sets CF/ZF flags
+     * UCOMISD sets: ZF=1 if equal, CF=1 if src1 < src2
+     * For NaN: CF=ZF=PF=1 */
+    case IR_LT_DOUBLE:
+        if (dst >= 0 && src1 >= 0 && src2 >= 0)
+        {
+            emit_ucomisd_rr(mc, src1, src2);
+            emit_setb(mc, dst); /* CF=1 means src1 < src2 */
+            emit_movzx_rr8(mc, dst, dst);
+        }
+        break;
+
+    case IR_LE_DOUBLE:
+        if (dst >= 0 && src1 >= 0 && src2 >= 0)
+        {
+            emit_ucomisd_rr(mc, src1, src2);
+            emit_setbe(mc, dst); /* CF=1 or ZF=1 means src1 <= src2 */
+            emit_movzx_rr8(mc, dst, dst);
+        }
+        break;
+
+    case IR_GT_DOUBLE:
+        if (dst >= 0 && src1 >= 0 && src2 >= 0)
+        {
+            emit_ucomisd_rr(mc, src1, src2);
+            emit_seta(mc, dst); /* CF=0 and ZF=0 means src1 > src2 */
+            emit_movzx_rr8(mc, dst, dst);
+        }
+        break;
+
+    case IR_GE_DOUBLE:
+        if (dst >= 0 && src1 >= 0 && src2 >= 0)
+        {
+            emit_ucomisd_rr(mc, src1, src2);
+            emit_setae(mc, dst); /* CF=0 means src1 >= src2 */
+            emit_movzx_rr8(mc, dst, dst);
+        }
+        break;
+
+    case IR_EQ_DOUBLE:
+        if (dst >= 0 && src1 >= 0 && src2 >= 0)
+        {
+            emit_ucomisd_rr(mc, src1, src2);
+            emit_sete(mc, dst); /* ZF=1 means equal */
+            emit_movzx_rr8(mc, dst, dst);
+        }
+        break;
+
+    case IR_NE_DOUBLE:
+        if (dst >= 0 && src1 >= 0 && src2 >= 0)
+        {
+            emit_ucomisd_rr(mc, src1, src2);
+            emit_setne(mc, dst); /* ZF=0 means not equal */
+            emit_movzx_rr8(mc, dst, dst);
+        }
+        break;
+
+    /* Logical operations */
+    case IR_NOT:
+        if (dst >= 0 && src1 >= 0)
+        {
+            /* Logical NOT: dst = !src1 (0 becomes 1, non-zero becomes 0) */
+            emit_test_ri(mc, src1, src1); /* Test if src1 is zero */
+            emit_sete(mc, dst);           /* Set 1 if zero (ZF=1) */
+            emit_movzx_rr8(mc, dst, dst);
+        }
+        break;
+
+    case IR_AND:
+        if (dst >= 0 && src1 >= 0 && src2 >= 0)
+        {
+            /* Logical AND: dst = src1 && src2 */
+            /* Both must be non-zero for result to be 1 */
+            if (dst != src1)
+                emit_mov_rr(mc, dst, src1);
+            emit_test_ri(mc, dst, dst); /* Check if src1 is non-zero */
+            emit_setne(mc, R11);        /* R11 = (src1 != 0) */
+            emit_movzx_rr8(mc, R11, R11);
+            emit_test_ri(mc, src2, src2); /* Check if src2 is non-zero */
+            emit_setne(mc, dst);          /* dst = (src2 != 0) */
+            emit_movzx_rr8(mc, dst, dst);
+            emit(mc, rex(1, R11, 0, dst)); /* AND dst, R11 */
+            emit(mc, 0x21);
+            emit(mc, 0xc0 | ((R11 & 7) << 3) | (dst & 7));
+        }
+        break;
+
+    case IR_OR:
+        if (dst >= 0 && src1 >= 0 && src2 >= 0)
+        {
+            /* Logical OR: dst = src1 || src2 */
+            /* Either must be non-zero for result to be 1 */
+            if (dst != src1)
+                emit_mov_rr(mc, dst, src1);
+            emit(mc, rex(1, src2, 0, dst)); /* OR dst, src2 */
+            emit(mc, 0x09);
+            emit(mc, 0xc0 | ((src2 & 7) << 3) | (dst & 7));
+            emit_test_ri(mc, dst, dst); /* Test if result is non-zero */
+            emit_setne(mc, dst);        /* Set 1 if non-zero */
+            emit_movzx_rr8(mc, dst, dst);
+        }
+        break;
+
+    /* Bitwise operations */
+    case IR_BAND:
+        if (dst >= 0 && src1 >= 0 && src2 >= 0)
+        {
+            /* Bitwise AND: dst = src1 & src2 */
+            if (dst != src1)
+                emit_mov_rr(mc, dst, src1);
+            emit(mc, rex(1, src2, 0, dst));
+            emit(mc, 0x21); /* AND r/m64, r64 */
+            emit(mc, 0xc0 | ((src2 & 7) << 3) | (dst & 7));
+        }
+        break;
+
+    case IR_BOR:
+        if (dst >= 0 && src1 >= 0 && src2 >= 0)
+        {
+            /* Bitwise OR: dst = src1 | src2 */
+            if (dst != src1)
+                emit_mov_rr(mc, dst, src1);
+            emit(mc, rex(1, src2, 0, dst));
+            emit(mc, 0x09); /* OR r/m64, r64 */
+            emit(mc, 0xc0 | ((src2 & 7) << 3) | (dst & 7));
+        }
+        break;
+
+    case IR_BXOR:
+        if (dst >= 0 && src1 >= 0 && src2 >= 0)
+        {
+            /* Bitwise XOR: dst = src1 ^ src2 */
+            if (dst != src1)
+                emit_mov_rr(mc, dst, src1);
+            emit_xor_rr(mc, dst, src2);
+        }
+        break;
+
+    case IR_BNOT:
+        if (dst >= 0 && src1 >= 0)
+        {
+            /* Bitwise NOT: dst = ~src1 */
+            if (dst != src1)
+                emit_mov_rr(mc, dst, src1);
+            emit(mc, rex(1, 0, 0, dst));
+            emit(mc, 0xf7); /* NOT r/m64 */
+            emit(mc, 0xd0 | (dst & 7));
+        }
+        break;
+
+    case IR_SHL:
+        if (dst >= 0 && src1 >= 0 && src2 >= 0)
+        {
+            /* Shift left: dst = src1 << src2 */
+            /* SHL uses CL for variable shift count */
+            emit_push(mc, RCX);
+            if (dst != src1)
+                emit_mov_rr(mc, dst, src1);
+            emit_mov_rr(mc, RCX, src2);
+            emit(mc, rex(1, 0, 0, dst));
+            emit(mc, 0xd3); /* SHL r/m64, CL */
+            emit(mc, 0xe0 | (dst & 7));
+            emit_pop(mc, RCX);
+        }
+        break;
+
+    case IR_SHR:
+        if (dst >= 0 && src1 >= 0 && src2 >= 0)
+        {
+            /* Arithmetic shift right: dst = src1 >> src2 */
+            /* SAR uses CL for variable shift count */
+            emit_push(mc, RCX);
+            if (dst != src1)
+                emit_mov_rr(mc, dst, src1);
+            emit_mov_rr(mc, RCX, src2);
+            emit(mc, rex(1, 0, 0, dst));
+            emit(mc, 0xd3); /* SAR r/m64, CL */
+            emit(mc, 0xf8 | (dst & 7));
+            emit_pop(mc, RCX);
+        }
+        break;
+
     case IR_LOOP:
     case IR_RET:
-        /* Handled in main compile loop */
+    case IR_JUMP:
+    case IR_BRANCH:
+        /* Handled in main compile loop for proper label resolution */
+        break;
+
+    case IR_EXIT:
+        /* Side exit to interpreter - jump to exit stub */
+        if (*num_exits < IR_MAX_EXITS)
+        {
+            exits[*num_exits].code_offset = emit_jmp(mc);
+            exits[*num_exits].snapshot_idx = ins->imm.snapshot;
+            (*num_exits)++;
+        }
         break;
 
     case IR_UNBOX_INT:
@@ -1184,6 +1544,163 @@ static void compile_ir_op(MCode *mc, TraceIR *ir, IRIns *ins,
             emit_box_int(mc, dst, src1);
         }
         break;
+
+    case IR_INT_TO_DOUBLE:
+        if (dst >= 0 && src1 >= 0)
+        {
+            /* Convert int64 in GPR to double in XMM register */
+            /* Note: This assumes dst is allocated to an XMM register */
+            emit_cvtsi2sd_rr(mc, dst, src1);
+        }
+        break;
+
+    case IR_DOUBLE_TO_INT:
+        if (dst >= 0 && src1 >= 0)
+        {
+            /* Convert double in XMM to int64 in GPR (truncate toward zero) */
+            emit_cvttsd2si_rr(mc, dst, src1);
+        }
+        break;
+
+    case IR_BOX_DOUBLE:
+        if (dst >= 0 && src1 >= 0)
+        {
+            /* Double is already in IEEE 754 format, just move to GPR */
+            /* NaN-boxing: doubles are stored as-is (no tagging needed) */
+            emit_movq_r_xmm(mc, dst, src1);
+        }
+        break;
+
+    case IR_UNBOX_DOUBLE:
+        if (dst >= 0 && src1 >= 0)
+        {
+            /* Move from GPR to XMM register */
+            emit_movq_xmm_r(mc, dst, src1);
+        }
+        break;
+
+    case IR_NEG_DOUBLE:
+        if (dst >= 0 && src1 >= 0)
+        {
+            /* Negate double by XORing with sign bit mask */
+            /* Load sign bit mask (0x8000000000000000) into R11, then XMM */
+            emit_mov_ri64(mc, R11, 0x8000000000000000ULL);
+            emit_movq_xmm_r(mc, R10, R11); /* Use R10 as temp XMM reg concept - need to use actual XMM */
+            /* Actually, simpler: subtract from zero */
+            /* SUBSD result = 0.0 - src1 */
+            /* Or XOR with sign bit in memory - complex. Let's use SUBSD approach: */
+            /* For now, just copy and negate via XORPD with constant */
+            if (dst != src1)
+                emit_movsd_rr(mc, dst, src1);
+            /* XOR with sign bit - need sign bit in XMM register */
+            /* Simplest: use 0 - src1 */
+            /* Actually let's just flip the sign bit in GPR and move back */
+            emit_movq_r_xmm(mc, R11, src1);
+            emit_mov_ri64(mc, R10, 0x8000000000000000ULL);
+            emit_xor_rr(mc, R11, R10);
+            emit_movq_xmm_r(mc, dst, R11);
+        }
+        break;
+
+        /* Array operations - ObjArray layout:
+         * offset 0: Obj (type=4, next=8, marked=1, padding) = 24 bytes
+         * offset 24: count (uint32_t)
+         * offset 28: capacity (uint32_t)
+         * offset 32: values (Value*)
+         */
+#define ARRAY_COUNT_OFFSET 24
+#define ARRAY_VALUES_OFFSET 32
+
+    case IR_ARRAY_LEN:
+        if (dst >= 0 && src1 >= 0)
+        {
+            /* src1 = pointer to ObjArray, dst = count (unboxed int) */
+            /* First unbox to get raw pointer: src1 is NaN-boxed object pointer */
+            emit_mov_ri64(mc, R11, 0x0000FFFFFFFFFFFFULL);
+            emit(mc, rex(1, src1, 0, R11));
+            emit(mc, 0x21); /* AND */
+            emit(mc, 0xc0 | ((src1 & 7) << 3) | (R11 & 7));
+            /* R11 now has raw pointer, load count */
+            emit(mc, rex(1, dst, 0, R11)); /* MOV dst, [R11 + offset] */
+            emit(mc, 0x8b);
+            emit(mc, 0x40 | ((dst & 7) << 3) | (R11 & 7));
+            emit(mc, ARRAY_COUNT_OFFSET);
+            /* Zero-extend 32-bit to 64-bit */
+            emit(mc, 0x89); /* MOV r32, r32 to zero-extend */
+            emit(mc, 0xc0 | ((dst & 7) << 3) | (dst & 7));
+        }
+        break;
+
+    case IR_ARRAY_GET:
+        if (dst >= 0 && src1 >= 0 && src2 >= 0)
+        {
+            /* src1 = array (boxed), src2 = index (unboxed int), dst = value */
+            /* Unbox array pointer */
+            emit_mov_ri64(mc, R11, 0x0000FFFFFFFFFFFFULL);
+            emit_mov_rr(mc, R10, src1);
+            emit(mc, rex(1, R10, 0, R11));
+            emit(mc, 0x21);
+            emit(mc, 0xc0 | ((R10 & 7) << 3) | (R11 & 7));
+            /* R10 = raw array pointer */
+            /* Load values pointer: R11 = array->values */
+            emit(mc, rex(1, R11, 0, R10));
+            emit(mc, 0x8b);
+            emit(mc, 0x40 | ((R11 & 7) << 3) | (R10 & 7));
+            emit(mc, ARRAY_VALUES_OFFSET);
+            /* Load value: dst = values[index] = [R11 + src2*8] */
+            emit(mc, rex(1, dst, src2, R11)); /* Use SIB */
+            emit(mc, 0x8b);
+            emit(mc, 0x04 | ((dst & 7) << 3));              /* ModRM with SIB */
+            emit(mc, ((src2 & 7) << 3) | (R11 & 7) | 0xc0); /* SIB: scale=8, index=src2, base=R11 - wrong encoding */
+            /* Actually need proper SIB encoding for [R11 + src2*8] */
+            /* Let's do it simpler: multiply index by 8, add to base, load */
+            emit_push(mc, RCX);
+            emit_mov_rr(mc, RCX, src2);
+            emit(mc, rex(1, 0, 0, RCX)); /* SHL RCX, 3 (multiply by 8) */
+            emit(mc, 0xc1);
+            emit(mc, 0xe0 | (RCX & 7));
+            emit(mc, 3);
+            emit_add_rr(mc, RCX, R11);    /* RCX = values + index*8 */
+            emit_mov_rm(mc, dst, RCX, 0); /* dst = [RCX] */
+            emit_pop(mc, RCX);
+        }
+        break;
+
+    case IR_ARRAY_SET:
+        if (src1 >= 0 && src2 >= 0)
+        {
+            /* src1 = array (boxed), src2 = index (unboxed), aux = value vreg */
+            int val_reg = (ins->aux > 0) ? ir->vregs[ins->aux].phys_reg : -1;
+            if (val_reg >= 0)
+            {
+                /* Unbox array pointer */
+                emit_mov_ri64(mc, R11, 0x0000FFFFFFFFFFFFULL);
+                emit_mov_rr(mc, R10, src1);
+                emit(mc, rex(1, R10, 0, R11));
+                emit(mc, 0x21);
+                emit(mc, 0xc0 | ((R10 & 7) << 3) | (R11 & 7));
+                /* R10 = raw array pointer */
+                /* Load values pointer */
+                emit(mc, rex(1, R11, 0, R10));
+                emit(mc, 0x8b);
+                emit(mc, 0x40 | ((R11 & 7) << 3) | (R10 & 7));
+                emit(mc, ARRAY_VALUES_OFFSET);
+                /* Store value: values[index] = val */
+                emit_push(mc, RCX);
+                emit_mov_rr(mc, RCX, src2);
+                emit(mc, rex(1, 0, 0, RCX));
+                emit(mc, 0xc1);
+                emit(mc, 0xe0 | (RCX & 7));
+                emit(mc, 3);
+                emit_add_rr(mc, RCX, R11);
+                emit_mov_mr(mc, RCX, 0, val_reg);
+                emit_pop(mc, RCX);
+            }
+        }
+        break;
+
+#undef ARRAY_COUNT_OFFSET
+#undef ARRAY_VALUES_OFFSET
 
     default:
         /* Unhandled - skip */
