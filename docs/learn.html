@@ -1,0 +1,1165 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Learn Pseudocode — Interactive Tutorial</title>
+    <meta name="description" content="Learn Pseudocode with interactive lessons and exercises.">
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #21262d;
+            --text-primary: #f0f6fc;
+            --text-secondary: #8b949e;
+            --text-muted: #6e7681;
+            --accent: #58a6ff;
+            --accent-hover: #79b8ff;
+            --border: #30363d;
+            --success: #3fb950;
+            --warning: #d29922;
+            --error: #f85149;
+            --purple: #a371f7;
+            --code-bg: #0d1117;
+            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            --font-mono: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        /* Layout */
+        .layout {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            position: fixed;
+            top: 0;
+            bottom: 0;
+            overflow-y: auto;
+            padding: 24px 0;
+        }
+
+        .sidebar-header {
+            padding: 0 20px 24px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 24px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--text-primary);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin-bottom: 8px;
+        }
+
+        .logo img {
+            width: 28px;
+            height: 28px;
+        }
+
+        .sidebar-header p {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+
+        .progress-bar {
+            height: 6px;
+            background: var(--bg-tertiary);
+            border-radius: 3px;
+            margin-top: 16px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--success);
+            border-radius: 3px;
+            transition: width 0.3s;
+        }
+
+        .progress-text {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .course-section {
+            margin-bottom: 24px;
+        }
+
+        .section-title {
+            padding: 0 20px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .lesson-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 20px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .lesson-link:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .lesson-link.active {
+            background: rgba(88, 166, 255, 0.1);
+            color: var(--accent);
+            border-left: 2px solid var(--accent);
+        }
+
+        .lesson-link.completed {
+            color: var(--success);
+        }
+
+        .lesson-status {
+            width: 18px;
+            height: 18px;
+            border: 2px solid var(--border);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.65rem;
+            flex-shrink: 0;
+        }
+
+        .lesson-link.completed .lesson-status {
+            background: var(--success);
+            border-color: var(--success);
+            color: var(--bg-primary);
+        }
+
+        .lesson-link.active .lesson-status {
+            border-color: var(--accent);
+        }
+
+        /* Main Content */
+        .main {
+            margin-left: 280px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .lesson-header {
+            padding: 24px 48px;
+            border-bottom: 1px solid var(--border);
+            background: var(--bg-secondary);
+        }
+
+        .lesson-header h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .lesson-header p {
+            color: var(--text-secondary);
+        }
+
+        .lesson-content {
+            display: flex;
+            flex: 1;
+        }
+
+        /* Instructions */
+        .instructions {
+            width: 400px;
+            padding: 32px;
+            overflow-y: auto;
+            border-right: 1px solid var(--border);
+        }
+
+        .instructions h2 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+        .instructions p {
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+            font-size: 0.95rem;
+        }
+
+        .instructions ul, .instructions ol {
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+            padding-left: 20px;
+            font-size: 0.95rem;
+        }
+
+        .instructions li {
+            margin-bottom: 8px;
+        }
+
+        .instructions code {
+            font-family: var(--font-mono);
+            background: var(--bg-tertiary);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+
+        .example-code {
+            background: var(--code-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            overflow-x: auto;
+        }
+
+        .hint {
+            background: rgba(163, 113, 247, 0.1);
+            border-left: 3px solid var(--purple);
+            padding: 12px 16px;
+            border-radius: 0 8px 8px 0;
+            margin: 16px 0;
+        }
+
+        .hint-title {
+            font-weight: 600;
+            font-size: 0.85rem;
+            margin-bottom: 4px;
+            color: var(--purple);
+        }
+
+        .hint p {
+            margin: 0;
+            font-size: 0.9rem;
+        }
+
+        /* Editor */
+        .editor-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .editor-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .file-name {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .editor-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            text-decoration: none;
+            transition: all 0.2s;
+            cursor: pointer;
+            border: none;
+            font-family: var(--font-sans);
+        }
+
+        .btn-primary {
+            background: var(--success);
+            color: var(--bg-primary);
+        }
+
+        .btn-primary:hover {
+            background: #4dd463;
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--text-secondary);
+        }
+
+        .editor-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .code-editor {
+            flex: 1;
+            background: var(--code-bg);
+            font-family: var(--font-mono);
+            font-size: 14px;
+            line-height: 1.6;
+            padding: 16px;
+            color: var(--text-primary);
+            border: none;
+            resize: none;
+            outline: none;
+            overflow: auto;
+        }
+
+        .code-editor::placeholder {
+            color: var(--text-muted);
+        }
+
+        /* Output */
+        .output-section {
+            height: 200px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .output-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 16px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .output-title {
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .output-content {
+            flex: 1;
+            padding: 16px;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            overflow: auto;
+            background: var(--code-bg);
+        }
+
+        .output-success {
+            color: var(--success);
+        }
+
+        .output-error {
+            color: var(--error);
+        }
+
+        /* Result Banner */
+        .result-banner {
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            display: none;
+        }
+
+        .result-banner.success {
+            background: rgba(63, 185, 80, 0.1);
+            border-top: 1px solid var(--success);
+            display: flex;
+        }
+
+        .result-banner.error {
+            background: rgba(248, 81, 73, 0.1);
+            border-top: 1px solid var(--error);
+            display: flex;
+        }
+
+        .result-message {
+            font-weight: 500;
+        }
+
+        .result-banner.success .result-message {
+            color: var(--success);
+        }
+
+        .result-banner.error .result-message {
+            color: var(--error);
+        }
+
+        /* Syntax highlighting colors */
+        .keyword { color: #ff7b72; }
+        .function { color: #d2a8ff; }
+        .string { color: #a5d6ff; }
+        .number { color: #79c0ff; }
+        .comment { color: #8b949e; }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .instructions {
+                width: 320px;
+            }
+        }
+
+        @media (max-width: 900px) {
+            .sidebar {
+                display: none;
+            }
+            .main {
+                margin-left: 0;
+            }
+            .lesson-content {
+                flex-direction: column;
+            }
+            .instructions {
+                width: 100%;
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="layout">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <a href="index.html" class="logo">
+                    <img src="favicon.ico" alt="Pseudocode">
+                    Learn Pseudocode
+                </a>
+                <p>Interactive Tutorial</p>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+                </div>
+                <div class="progress-text"><span id="completed-count">0</span> of <span id="total-count">0</span> lessons completed</div>
+            </div>
+
+            <div id="course-nav">
+                <!-- Generated by JavaScript -->
+            </div>
+        </aside>
+
+        <main class="main">
+            <div class="lesson-header">
+                <h1 id="lesson-title">Welcome</h1>
+                <p id="lesson-subtitle">Start your journey with Pseudocode</p>
+            </div>
+
+            <div class="lesson-content">
+                <div class="instructions">
+                    <div id="instructions-content">
+                        <!-- Generated by JavaScript -->
+                    </div>
+                </div>
+
+                <div class="editor-section">
+                    <div class="editor-header">
+                        <span class="file-name">lesson.pseudo</span>
+                        <div class="editor-actions">
+                            <button class="btn btn-secondary" onclick="resetCode()">Reset</button>
+                            <button class="btn btn-primary" onclick="runCode()">Run Code</button>
+                        </div>
+                    </div>
+                    <div class="editor-container">
+                        <textarea class="code-editor" id="code-editor" spellcheck="false" placeholder="// Write your code here..."></textarea>
+                    </div>
+                    <div class="output-section">
+                        <div class="output-header">
+                            <span class="output-title">Output</span>
+                            <button class="btn btn-secondary" onclick="clearOutput()" style="padding: 4px 10px; font-size: 0.75rem;">Clear</button>
+                        </div>
+                        <div class="output-content" id="output"></div>
+                    </div>
+                    <div class="result-banner" id="result-banner">
+                        <span class="result-message" id="result-message"></span>
+                        <button class="btn btn-primary" id="next-btn" onclick="nextLesson()">Next Lesson</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Course structure
+        const course = {
+            sections: [
+                {
+                    title: "Getting Started",
+                    lessons: [
+                        {
+                            id: "hello-world",
+                            title: "Hello, World!",
+                            subtitle: "Your first Pseudocode program",
+                            instructions: `
+                                <h2>Welcome to Pseudocode!</h2>
+                                <p>Pseudocode is a programming language designed to be readable and intuitive. Let's start with the classic "Hello, World!" program.</p>
+                                <p>In Pseudocode, you use the <code>print()</code> function to display text:</p>
+                                <div class="example-code"><span class="function">print</span>(<span class="string">"Hello, World!"</span>)</div>
+                                <h2>Your Task</h2>
+                                <p>Write a program that prints <code>"Hello, World!"</code> to the output.</p>
+                                <div class="hint">
+                                    <div class="hint-title">Hint</div>
+                                    <p>Strings in Pseudocode use double quotes.</p>
+                                </div>
+                            `,
+                            starterCode: `// Print "Hello, World!" below\n`,
+                            solution: `print("Hello, World!")`,
+                            validate: (output) => output.includes("Hello, World!")
+                        },
+                        {
+                            id: "variables",
+                            title: "Variables",
+                            subtitle: "Storing and using data",
+                            instructions: `
+                                <h2>Variables</h2>
+                                <p>Variables store data that you can use later. In Pseudocode, you create variables with <code>let</code>:</p>
+                                <div class="example-code"><span class="keyword">let</span> name = <span class="string">"Alice"</span>
+<span class="keyword">let</span> age = <span class="number">25</span>
+<span class="function">print</span>(name)</div>
+                                <h2>Your Task</h2>
+                                <ol>
+                                    <li>Create a variable called <code>message</code> with the value <code>"Learning Pseudocode"</code></li>
+                                    <li>Print the variable</li>
+                                </ol>
+                            `,
+                            starterCode: `// Create a variable called 'message'\n\n// Print the variable\n`,
+                            solution: `let message = "Learning Pseudocode"\nprint(message)`,
+                            validate: (output) => output.includes("Learning Pseudocode")
+                        },
+                        {
+                            id: "math",
+                            title: "Math Operations",
+                            subtitle: "Arithmetic in Pseudocode",
+                            instructions: `
+                                <h2>Math Operations</h2>
+                                <p>Pseudocode supports all common math operations:</p>
+                                <div class="example-code"><span class="keyword">let</span> sum = <span class="number">10</span> + <span class="number">5</span>     <span class="comment">// 15</span>
+<span class="keyword">let</span> diff = <span class="number">10</span> - <span class="number">5</span>    <span class="comment">// 5</span>
+<span class="keyword">let</span> product = <span class="number">10</span> * <span class="number">5</span> <span class="comment">// 50</span>
+<span class="keyword">let</span> quotient = <span class="number">10</span> / <span class="number">5</span> <span class="comment">// 2</span></div>
+                                <h2>Your Task</h2>
+                                <p>Calculate and print <code>7 * 8</code></p>
+                            `,
+                            starterCode: `// Calculate 7 * 8 and print the result\n`,
+                            solution: `print(7 * 8)`,
+                            validate: (output) => output.includes("56")
+                        }
+                    ]
+                },
+                {
+                    title: "Control Flow",
+                    lessons: [
+                        {
+                            id: "if-statements",
+                            title: "If Statements",
+                            subtitle: "Making decisions in code",
+                            instructions: `
+                                <h2>If Statements</h2>
+                                <p>Use <code>if</code> to execute code conditionally:</p>
+                                <div class="example-code"><span class="keyword">let</span> age = <span class="number">18</span>
+
+<span class="keyword">if</span> age >= <span class="number">18</span> <span class="keyword">then</span>
+    <span class="function">print</span>(<span class="string">"Adult"</span>)
+<span class="keyword">else</span>
+    <span class="function">print</span>(<span class="string">"Minor"</span>)
+<span class="keyword">end</span></div>
+                                <h2>Your Task</h2>
+                                <p>Create a variable <code>score</code> with value <code>85</code>. If the score is 70 or higher, print <code>"Pass"</code>. Otherwise, print <code>"Fail"</code>.</p>
+                            `,
+                            starterCode: `let score = 85\n\n// Add your if statement here\n`,
+                            solution: `let score = 85\n\nif score >= 70 then\n    print("Pass")\nelse\n    print("Fail")\nend`,
+                            validate: (output) => output.includes("Pass")
+                        },
+                        {
+                            id: "for-loops",
+                            title: "For Loops",
+                            subtitle: "Repeating code with ranges",
+                            instructions: `
+                                <h2>For Loops</h2>
+                                <p>Use <code>for</code> to repeat code for each value in a range:</p>
+                                <div class="example-code"><span class="keyword">for</span> i <span class="keyword">in</span> <span class="number">1</span>..<span class="number">6</span> <span class="keyword">do</span>
+    <span class="function">print</span>(i)
+<span class="keyword">end</span>
+<span class="comment">// Prints: 1 2 3 4 5</span></div>
+                                <p>Note: The range <code>1..6</code> includes 1 but excludes 6.</p>
+                                <h2>Your Task</h2>
+                                <p>Print the numbers 1 through 5 using a for loop.</p>
+                            `,
+                            starterCode: `// Print numbers 1 to 5\n`,
+                            solution: `for i in 1..6 do\n    print(i)\nend`,
+                            validate: (output) => output.includes("1") && output.includes("2") && output.includes("3") && output.includes("4") && output.includes("5")
+                        },
+                        {
+                            id: "while-loops",
+                            title: "While Loops",
+                            subtitle: "Repeating while a condition is true",
+                            instructions: `
+                                <h2>While Loops</h2>
+                                <p>Use <code>while</code> to repeat code as long as a condition is true:</p>
+                                <div class="example-code"><span class="keyword">let</span> count = <span class="number">0</span>
+
+<span class="keyword">while</span> count < <span class="number">3</span> <span class="keyword">do</span>
+    <span class="function">print</span>(count)
+    count = count + <span class="number">1</span>
+<span class="keyword">end</span></div>
+                                <h2>Your Task</h2>
+                                <p>Use a while loop to print the numbers 1, 2, and 3.</p>
+                            `,
+                            starterCode: `let n = 1\n\n// Add your while loop here\n`,
+                            solution: `let n = 1\n\nwhile n <= 3 do\n    print(n)\n    n = n + 1\nend`,
+                            validate: (output) => output.includes("1") && output.includes("2") && output.includes("3")
+                        }
+                    ]
+                },
+                {
+                    title: "Functions",
+                    lessons: [
+                        {
+                            id: "basic-functions",
+                            title: "Defining Functions",
+                            subtitle: "Creating reusable code",
+                            instructions: `
+                                <h2>Functions</h2>
+                                <p>Functions let you organize and reuse code:</p>
+                                <div class="example-code"><span class="keyword">fn</span> <span class="function">greet</span>(name)
+    <span class="function">print</span>(<span class="string">"Hello, "</span> + name + <span class="string">"!"</span>)
+<span class="keyword">end</span>
+
+<span class="function">greet</span>(<span class="string">"Alice"</span>)  <span class="comment">// Hello, Alice!</span></div>
+                                <h2>Your Task</h2>
+                                <p>Create a function called <code>square</code> that takes a number and prints its square. Then call it with <code>5</code>.</p>
+                            `,
+                            starterCode: `// Define the square function\n\n// Call it with 5\n`,
+                            solution: `fn square(n)\n    print(n * n)\nend\n\nsquare(5)`,
+                            validate: (output) => output.includes("25")
+                        },
+                        {
+                            id: "return-values",
+                            title: "Return Values",
+                            subtitle: "Getting results from functions",
+                            instructions: `
+                                <h2>Return Values</h2>
+                                <p>Functions can return values using <code>return</code>:</p>
+                                <div class="example-code"><span class="keyword">fn</span> <span class="function">add</span>(a, b)
+    <span class="keyword">return</span> a + b
+<span class="keyword">end</span>
+
+<span class="keyword">let</span> sum = <span class="function">add</span>(<span class="number">3</span>, <span class="number">4</span>)
+<span class="function">print</span>(sum)  <span class="comment">// 7</span></div>
+                                <h2>Your Task</h2>
+                                <p>Create a function <code>double</code> that returns a number multiplied by 2. Call it with <code>7</code> and print the result.</p>
+                            `,
+                            starterCode: `// Define the double function\n\n// Call it and print the result\n`,
+                            solution: `fn double(n)\n    return n * 2\nend\n\nprint(double(7))`,
+                            validate: (output) => output.includes("14")
+                        }
+                    ]
+                },
+                {
+                    title: "Data Structures",
+                    lessons: [
+                        {
+                            id: "arrays",
+                            title: "Arrays",
+                            subtitle: "Working with lists of data",
+                            instructions: `
+                                <h2>Arrays</h2>
+                                <p>Arrays store multiple values in order:</p>
+                                <div class="example-code"><span class="keyword">let</span> numbers = [<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>]
+
+<span class="function">print</span>(numbers[<span class="number">0</span>])  <span class="comment">// 1 (first element)</span>
+<span class="function">print</span>(<span class="function">len</span>(numbers))  <span class="comment">// 5</span></div>
+                                <h2>Your Task</h2>
+                                <p>Create an array called <code>colors</code> with <code>"red"</code>, <code>"green"</code>, <code>"blue"</code>. Print the second element.</p>
+                            `,
+                            starterCode: `// Create the colors array\n\n// Print the second element (index 1)\n`,
+                            solution: `let colors = ["red", "green", "blue"]\nprint(colors[1])`,
+                            validate: (output) => output.includes("green")
+                        },
+                        {
+                            id: "array-iteration",
+                            title: "Iterating Arrays",
+                            subtitle: "Looping through array elements",
+                            instructions: `
+                                <h2>Iterating Arrays</h2>
+                                <p>Use a for loop to iterate over array elements:</p>
+                                <div class="example-code"><span class="keyword">let</span> fruits = [<span class="string">"apple"</span>, <span class="string">"banana"</span>, <span class="string">"cherry"</span>]
+
+<span class="keyword">for</span> fruit <span class="keyword">in</span> fruits <span class="keyword">do</span>
+    <span class="function">print</span>(fruit)
+<span class="keyword">end</span></div>
+                                <h2>Your Task</h2>
+                                <p>Create an array with numbers <code>10, 20, 30</code> and use a for loop to print each number.</p>
+                            `,
+                            starterCode: `// Create the array\n\n// Loop and print each number\n`,
+                            solution: `let numbers = [10, 20, 30]\n\nfor n in numbers do\n    print(n)\nend`,
+                            validate: (output) => output.includes("10") && output.includes("20") && output.includes("30")
+                        }
+                    ]
+                }
+            ]
+        };
+
+        // State
+        let currentLessonId = null;
+        let completedLessons = new Set();
+
+        // Initialize
+        function init() {
+            // Load progress from localStorage
+            const saved = localStorage.getItem('pseudocode-learn-progress');
+            if (saved) {
+                completedLessons = new Set(JSON.parse(saved));
+            }
+
+            // Render navigation
+            renderNav();
+
+            // Load first lesson or last visited
+            const lastLesson = localStorage.getItem('pseudocode-learn-current');
+            const allLessons = getAllLessons();
+            if (lastLesson && allLessons.find(l => l.id === lastLesson)) {
+                loadLesson(lastLesson);
+            } else if (allLessons.length > 0) {
+                loadLesson(allLessons[0].id);
+            }
+
+            updateProgress();
+        }
+
+        function getAllLessons() {
+            return course.sections.flatMap(s => s.lessons);
+        }
+
+        function renderNav() {
+            const nav = document.getElementById('course-nav');
+            nav.innerHTML = course.sections.map(section => `
+                <div class="course-section">
+                    <div class="section-title">${section.title}</div>
+                    ${section.lessons.map(lesson => `
+                        <div class="lesson-link ${completedLessons.has(lesson.id) ? 'completed' : ''} ${currentLessonId === lesson.id ? 'active' : ''}"
+                             onclick="loadLesson('${lesson.id}')">
+                            <span class="lesson-status">${completedLessons.has(lesson.id) ? '✓' : ''}</span>
+                            <span>${lesson.title}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            `).join('');
+        }
+
+        function loadLesson(lessonId) {
+            const allLessons = getAllLessons();
+            const lesson = allLessons.find(l => l.id === lessonId);
+            if (!lesson) return;
+
+            currentLessonId = lessonId;
+            localStorage.setItem('pseudocode-learn-current', lessonId);
+
+            // Update UI
+            document.getElementById('lesson-title').textContent = lesson.title;
+            document.getElementById('lesson-subtitle').textContent = lesson.subtitle;
+            document.getElementById('instructions-content').innerHTML = lesson.instructions;
+            document.getElementById('code-editor').value = lesson.starterCode;
+            document.getElementById('output').textContent = '';
+            document.getElementById('result-banner').className = 'result-banner';
+
+            renderNav();
+        }
+
+        function runCode() {
+            const code = document.getElementById('code-editor').value;
+            const output = document.getElementById('output');
+            const banner = document.getElementById('result-banner');
+            const message = document.getElementById('result-message');
+
+            // Simple interpreter simulation
+            try {
+                const result = simulateRun(code);
+                output.innerHTML = `<span class="output-success">${result.output}</span>`;
+
+                // Check if lesson completed
+                const lesson = getAllLessons().find(l => l.id === currentLessonId);
+                if (lesson && lesson.validate(result.output)) {
+                    completedLessons.add(currentLessonId);
+                    localStorage.setItem('pseudocode-learn-progress', JSON.stringify([...completedLessons]));
+                    
+                    banner.className = 'result-banner success';
+                    message.textContent = 'Correct! Well done!';
+                    renderNav();
+                    updateProgress();
+                } else {
+                    banner.className = 'result-banner error';
+                    message.textContent = 'Not quite. Check your output and try again.';
+                }
+            } catch (e) {
+                output.innerHTML = `<span class="output-error">Error: ${e.message}</span>`;
+                banner.className = 'result-banner error';
+                message.textContent = 'There was an error in your code.';
+            }
+        }
+
+        function simulateRun(code) {
+            // Simple Pseudocode interpreter (limited subset)
+            let output = [];
+            let variables = {};
+            let functions = {};
+            
+            const lines = code.split('\n');
+            let i = 0;
+
+            function evaluate(expr) {
+                expr = expr.trim();
+                
+                // String literal
+                if ((expr.startsWith('"') && expr.endsWith('"')) ||
+                    (expr.startsWith("'") && expr.endsWith("'"))) {
+                    return expr.slice(1, -1);
+                }
+                
+                // Number literal
+                if (!isNaN(parseFloat(expr)) && isFinite(expr)) {
+                    return parseFloat(expr);
+                }
+                
+                // Array literal
+                if (expr.startsWith('[') && expr.endsWith(']')) {
+                    const inner = expr.slice(1, -1);
+                    if (inner.trim() === '') return [];
+                    return inner.split(',').map(e => evaluate(e.trim()));
+                }
+                
+                // Array access
+                const arrayMatch = expr.match(/^(\w+)\[(.+)\]$/);
+                if (arrayMatch) {
+                    const arr = variables[arrayMatch[1]];
+                    const idx = evaluate(arrayMatch[2]);
+                    return arr[idx];
+                }
+                
+                // Function call
+                const funcMatch = expr.match(/^(\w+)\((.*)?\)$/);
+                if (funcMatch) {
+                    const fname = funcMatch[1];
+                    const argsStr = funcMatch[2] || '';
+                    
+                    if (fname === 'print') {
+                        const val = evaluate(argsStr);
+                        output.push(String(val));
+                        return val;
+                    }
+                    if (fname === 'len') {
+                        const val = evaluate(argsStr);
+                        return val.length;
+                    }
+                    if (fname === 'str') {
+                        return String(evaluate(argsStr));
+                    }
+                    
+                    // User-defined function
+                    if (functions[fname]) {
+                        const fn = functions[fname];
+                        const args = argsStr.split(',').map(a => evaluate(a.trim()));
+                        const oldVars = {...variables};
+                        fn.params.forEach((p, i) => variables[p] = args[i]);
+                        const result = executeBlock(fn.body);
+                        variables = oldVars;
+                        return result;
+                    }
+                }
+                
+                // Binary operations
+                for (const op of ['+', '-', '*', '/', '>=', '<=', '>', '<', '==', '!=']) {
+                    const opIdx = findOperator(expr, op);
+                    if (opIdx !== -1) {
+                        const left = evaluate(expr.slice(0, opIdx));
+                        const right = evaluate(expr.slice(opIdx + op.length));
+                        switch(op) {
+                            case '+': return typeof left === 'string' ? left + right : left + right;
+                            case '-': return left - right;
+                            case '*': return left * right;
+                            case '/': return left / right;
+                            case '>=': return left >= right;
+                            case '<=': return left <= right;
+                            case '>': return left > right;
+                            case '<': return left < right;
+                            case '==': return left == right;
+                            case '!=': return left != right;
+                        }
+                    }
+                }
+                
+                // Variable
+                if (variables.hasOwnProperty(expr)) {
+                    return variables[expr];
+                }
+                
+                return expr;
+            }
+            
+            function findOperator(expr, op) {
+                let depth = 0;
+                for (let i = expr.length - 1; i >= 0; i--) {
+                    if (expr[i] === ')' || expr[i] === ']') depth++;
+                    if (expr[i] === '(' || expr[i] === '[') depth--;
+                    if (depth === 0 && expr.slice(i, i + op.length) === op) {
+                        return i;
+                    }
+                }
+                return -1;
+            }
+
+            function executeBlock(blockLines) {
+                for (let j = 0; j < blockLines.length; j++) {
+                    const line = blockLines[j].trim();
+                    if (!line || line.startsWith('//')) continue;
+                    
+                    if (line.startsWith('return ')) {
+                        return evaluate(line.slice(7));
+                    }
+                    
+                    executeLine(line, blockLines, j);
+                }
+                return null;
+            }
+
+            function executeLine(line, contextLines, contextIdx) {
+                if (!line || line.startsWith('//')) return;
+                
+                // let declaration
+                if (line.startsWith('let ')) {
+                    const eqIdx = line.indexOf('=');
+                    const name = line.slice(4, eqIdx).trim();
+                    const value = evaluate(line.slice(eqIdx + 1));
+                    variables[name] = value;
+                    return;
+                }
+                
+                // Assignment
+                const assignMatch = line.match(/^(\w+)\s*=\s*(.+)$/);
+                if (assignMatch && !line.startsWith('let ') && !line.startsWith('if ') && !line.startsWith('for ')) {
+                    variables[assignMatch[1]] = evaluate(assignMatch[2]);
+                    return;
+                }
+                
+                // Function call (standalone)
+                if (line.match(/^\w+\(.*\)$/)) {
+                    evaluate(line);
+                    return;
+                }
+            }
+            
+            // Main execution loop
+            while (i < lines.length) {
+                let line = lines[i].trim();
+                
+                if (!line || line.startsWith('//')) {
+                    i++;
+                    continue;
+                }
+                
+                // Function definition
+                if (line.startsWith('fn ')) {
+                    const match = line.match(/^fn\s+(\w+)\((.*?)\)/);
+                    if (match) {
+                        const fname = match[1];
+                        const params = match[2] ? match[2].split(',').map(p => p.trim()) : [];
+                        const body = [];
+                        i++;
+                        while (i < lines.length && !lines[i].trim().match(/^end$/)) {
+                            body.push(lines[i]);
+                            i++;
+                        }
+                        functions[fname] = { params, body };
+                    }
+                    i++;
+                    continue;
+                }
+                
+                // For loop
+                if (line.startsWith('for ')) {
+                    const match = line.match(/^for\s+(\w+)\s+in\s+(.+)\s+do$/);
+                    if (match) {
+                        const varName = match[1];
+                        const iterExpr = match[2].trim();
+                        let iterable;
+                        
+                        // Range
+                        const rangeMatch = iterExpr.match(/^(\d+)\.\.(\d+)$/);
+                        if (rangeMatch) {
+                            const start = parseInt(rangeMatch[1]);
+                            const end = parseInt(rangeMatch[2]);
+                            iterable = [];
+                            for (let n = start; n < end; n++) iterable.push(n);
+                        } else {
+                            iterable = evaluate(iterExpr);
+                        }
+                        
+                        const bodyLines = [];
+                        i++;
+                        let depth = 1;
+                        while (i < lines.length && depth > 0) {
+                            const l = lines[i].trim();
+                            if (l.match(/^(for|while|if)\s/) && l.match(/\s(do|then)$/)) depth++;
+                            if (l === 'end') depth--;
+                            if (depth > 0) bodyLines.push(lines[i]);
+                            i++;
+                        }
+                        
+                        for (const val of iterable) {
+                            variables[varName] = val;
+                            executeBlock(bodyLines);
+                        }
+                        continue;
+                    }
+                }
+                
+                // While loop
+                if (line.startsWith('while ')) {
+                    const match = line.match(/^while\s+(.+)\s+do$/);
+                    if (match) {
+                        const condition = match[1];
+                        const bodyLines = [];
+                        const startI = i;
+                        i++;
+                        let depth = 1;
+                        while (i < lines.length && depth > 0) {
+                            const l = lines[i].trim();
+                            if (l.match(/^(for|while|if)\s/) && l.match(/\s(do|then)$/)) depth++;
+                            if (l === 'end') depth--;
+                            if (depth > 0) bodyLines.push(lines[i]);
+                            i++;
+                        }
+                        
+                        let safety = 0;
+                        while (evaluate(condition) && safety < 1000) {
+                            executeBlock(bodyLines);
+                            safety++;
+                        }
+                        continue;
+                    }
+                }
+                
+                // If statement
+                if (line.startsWith('if ')) {
+                    const match = line.match(/^if\s+(.+)\s+then$/);
+                    if (match) {
+                        const condition = match[1];
+                        const thenBody = [];
+                        const elseBody = [];
+                        let inElse = false;
+                        i++;
+                        let depth = 1;
+                        
+                        while (i < lines.length && depth > 0) {
+                            const l = lines[i].trim();
+                            if (l.match(/^if\s/) && l.match(/\sthen$/)) depth++;
+                            if (l === 'end') depth--;
+                            if (depth === 1 && l === 'else') {
+                                inElse = true;
+                                i++;
+                                continue;
+                            }
+                            if (depth > 0) {
+                                if (inElse) elseBody.push(lines[i]);
+                                else thenBody.push(lines[i]);
+                            }
+                            i++;
+                        }
+                        
+                        if (evaluate(condition)) {
+                            executeBlock(thenBody);
+                        } else if (elseBody.length > 0) {
+                            executeBlock(elseBody);
+                        }
+                        continue;
+                    }
+                }
+                
+                executeLine(line, lines, i);
+                i++;
+            }
+            
+            return { output: output.join('\n') };
+        }
+
+        function resetCode() {
+            const lesson = getAllLessons().find(l => l.id === currentLessonId);
+            if (lesson) {
+                document.getElementById('code-editor').value = lesson.starterCode;
+                document.getElementById('output').textContent = '';
+                document.getElementById('result-banner').className = 'result-banner';
+            }
+        }
+
+        function clearOutput() {
+            document.getElementById('output').textContent = '';
+        }
+
+        function nextLesson() {
+            const allLessons = getAllLessons();
+            const currentIdx = allLessons.findIndex(l => l.id === currentLessonId);
+            if (currentIdx < allLessons.length - 1) {
+                loadLesson(allLessons[currentIdx + 1].id);
+            }
+        }
+
+        function updateProgress() {
+            const allLessons = getAllLessons();
+            const completed = completedLessons.size;
+            const total = allLessons.length;
+            
+            document.getElementById('completed-count').textContent = completed;
+            document.getElementById('total-count').textContent = total;
+            document.getElementById('progress-fill').style.width = `${(completed / total) * 100}%`;
+        }
+
+        // Initialize on load
+        init();
+    </script>
+</body>
+
+</html>

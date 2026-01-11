@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Technical Documentation — Pseudocode</title>
+    <meta name="description" content="Deep dive into Pseudocode's architecture, compilation pipeline, and JIT implementation.">
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #21262d;
+            --text-primary: #f0f6fc;
+            --text-secondary: #8b949e;
+            --text-muted: #6e7681;
+            --accent: #58a6ff;
+            --accent-hover: #79b8ff;
+            --border: #30363d;
+            --success: #3fb950;
+            --warning: #d29922;
+            --purple: #a371f7;
+            --code-bg: #0d1117;
+            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            --font-mono: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* Header */
+        header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(13, 17, 23, 0.95);
+            backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            z-index: 1000;
+        }
+
+        .header-inner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 64px;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--text-primary);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1.25rem;
+        }
+
+        .logo img {
+            width: 32px;
+            height: 32px;
+        }
+
+        nav {
+            display: flex;
+            gap: 32px;
+        }
+
+        nav a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+        }
+
+        nav a:hover, nav a.active {
+            color: var(--text-primary);
+        }
+
+        /* Main Content */
+        main {
+            padding-top: 64px;
+        }
+
+        .hero {
+            padding: 80px 0 60px;
+            text-align: center;
+        }
+
+        .hero h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+
+        .hero p {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* Article */
+        article {
+            padding: 40px 0 80px;
+        }
+
+        article h2 {
+            font-size: 1.75rem;
+            font-weight: 600;
+            margin: 48px 0 16px;
+            padding-top: 24px;
+            border-top: 1px solid var(--border);
+        }
+
+        article h2:first-of-type {
+            margin-top: 0;
+            padding-top: 0;
+            border-top: none;
+        }
+
+        article h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin: 32px 0 12px;
+            color: var(--accent);
+        }
+
+        article p {
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+        }
+
+        article ul, article ol {
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+            padding-left: 24px;
+        }
+
+        article li {
+            margin-bottom: 8px;
+        }
+
+        article strong {
+            color: var(--text-primary);
+        }
+
+        /* Code */
+        pre {
+            background: var(--code-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            overflow-x: auto;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            margin: 16px 0 24px;
+            line-height: 1.5;
+        }
+
+        code {
+            font-family: var(--font-mono);
+            background: var(--bg-tertiary);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+        }
+
+        .keyword { color: #ff7b72; }
+        .function { color: #d2a8ff; }
+        .string { color: #a5d6ff; }
+        .number { color: #79c0ff; }
+        .comment { color: #8b949e; }
+        .type { color: #7ee787; }
+
+        /* Diagrams */
+        .diagram {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 32px;
+            margin: 24px 0;
+            text-align: center;
+        }
+
+        .pipeline {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .pipeline-stage {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px 20px;
+            font-size: 0.9rem;
+        }
+
+        .pipeline-arrow {
+            color: var(--text-muted);
+            font-size: 1.2rem;
+        }
+
+        /* Cards */
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 16px;
+            margin: 24px 0;
+        }
+
+        .card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .card h4 {
+            font-size: 1rem;
+            margin-bottom: 8px;
+            color: var(--accent);
+        }
+
+        .card p {
+            font-size: 0.9rem;
+            margin: 0;
+        }
+
+        /* Table */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 16px 0 24px;
+        }
+
+        th, td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        td {
+            color: var(--text-secondary);
+        }
+
+        /* Note */
+        .note {
+            background: var(--bg-tertiary);
+            border-left: 3px solid var(--accent);
+            padding: 16px 20px;
+            border-radius: 0 8px 8px 0;
+            margin: 24px 0;
+        }
+
+        .note p {
+            margin: 0;
+        }
+
+        /* TOC */
+        .toc {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 48px;
+        }
+
+        .toc h4 {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 16px;
+        }
+
+        .toc ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .toc li {
+            margin-bottom: 8px;
+        }
+
+        .toc a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+
+        .toc a:hover {
+            color: var(--accent);
+        }
+
+        /* Footer */
+        footer {
+            padding: 48px 0;
+            border-top: 1px solid var(--border);
+            text-align: center;
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 32px;
+            margin-bottom: 16px;
+        }
+
+        .footer-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+
+        .footer-links a:hover {
+            color: var(--text-primary);
+        }
+
+        .copyright {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        @media (max-width: 768px) {
+            nav { display: none; }
+            .pipeline { flex-direction: column; }
+            .pipeline-arrow { transform: rotate(90deg); }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div class="header-inner">
+            <a href="index.html" class="logo">
+                <img src="favicon.ico" alt="Pseudocode">
+                Pseudocode
+            </a>
+            <nav>
+                <a href="index.html">Home</a>
+                <a href="benchmarks.html">Benchmarks</a>
+                <a href="technical.html" class="active">Technical</a>
+                <a href="reference.html">Reference</a>
+                <a href="https://github.com/NagusameCS/Pseudocode" target="_blank">GitHub</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <div class="hero container">
+            <h1>Technical Documentation</h1>
+            <p>A deep dive into Pseudocode's architecture, compilation pipeline, and JIT implementation.</p>
+        </div>
+
+        <article class="container">
+            <div class="toc">
+                <h4>Contents</h4>
+                <ul>
+                    <li><a href="#architecture">Architecture Overview</a></li>
+                    <li><a href="#compilation">Compilation Pipeline</a></li>
+                    <li><a href="#bytecode">Bytecode Format</a></li>
+                    <li><a href="#vm">Virtual Machine</a></li>
+                    <li><a href="#jit">Tracing JIT Compiler</a></li>
+                    <li><a href="#values">Value Representation</a></li>
+                    <li><a href="#gc">Memory Management</a></li>
+                </ul>
+            </div>
+
+            <h2 id="architecture">Architecture Overview</h2>
+            <p>Pseudocode uses a hybrid execution model combining bytecode interpretation with trace-based JIT compilation. Source code is compiled to bytecode and executed by a stack-based virtual machine. Hot loops are detected and compiled to native x86-64 machine code.</p>
+
+            <div class="diagram">
+                <div class="pipeline">
+                    <div class="pipeline-stage">Source Code</div>
+                    <span class="pipeline-arrow">→</span>
+                    <div class="pipeline-stage">Lexer</div>
+                    <span class="pipeline-arrow">→</span>
+                    <div class="pipeline-stage">Compiler</div>
+                    <span class="pipeline-arrow">→</span>
+                    <div class="pipeline-stage">Bytecode</div>
+                    <span class="pipeline-arrow">→</span>
+                    <div class="pipeline-stage">VM / JIT</div>
+                </div>
+            </div>
+
+            <h2 id="compilation">Compilation Pipeline</h2>
+            <p>The compiler is a single-pass design that directly emits bytecode while parsing. This approach trades some optimization opportunities for simplicity and fast compile times.</p>
+
+            <h3>Lexer</h3>
+            <p>The lexer (<code>lexer.c</code>) tokenizes source code into a stream of tokens. Key features:</p>
+            <ul>
+                <li>Single-character lookahead</li>
+                <li>Line and column tracking for error messages</li>
+                <li>String interpolation support</li>
+                <li>Keyword recognition via hash lookup</li>
+            </ul>
+
+            <h3>Compiler</h3>
+            <p>The compiler (<code>compiler.c</code>) implements a Pratt parser for expressions with recursive descent for statements. It emits bytecode directly without building an AST.</p>
+
+            <div class="card-grid">
+                <div class="card">
+                    <h4>Constant Folding</h4>
+                    <p>Compile-time evaluation of constant expressions like <code>2 + 3</code>.</p>
+                </div>
+                <div class="card">
+                    <h4>Local Variables</h4>
+                    <p>Stack-allocated locals with lexical scoping.</p>
+                </div>
+                <div class="card">
+                    <h4>Closures</h4>
+                    <p>Upvalues capture variables from enclosing scopes.</p>
+                </div>
+                <div class="card">
+                    <h4>Loop Optimization</h4>
+                    <p>Specialized opcodes for range-based loops.</p>
+                </div>
+            </div>
+
+            <h2 id="bytecode">Bytecode Format</h2>
+            <p>Pseudocode uses a variable-length bytecode format. Most instructions are 1-3 bytes.</p>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Opcode</th>
+                        <th>Operands</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>OP_CONSTANT</code></td>
+                        <td>index (1-2 bytes)</td>
+                        <td>Push constant from pool</td>
+                    </tr>
+                    <tr>
+                        <td><code>OP_ADD</code></td>
+                        <td>none</td>
+                        <td>Pop two, push sum</td>
+                    </tr>
+                    <tr>
+                        <td><code>OP_GET_LOCAL</code></td>
+                        <td>slot (1 byte)</td>
+                        <td>Push local variable</td>
+                    </tr>
+                    <tr>
+                        <td><code>OP_LOOP</code></td>
+                        <td>offset (2 bytes)</td>
+                        <td>Jump backward</td>
+                    </tr>
+                    <tr>
+                        <td><code>OP_CALL</code></td>
+                        <td>argc (1 byte)</td>
+                        <td>Call function</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h2 id="vm">Virtual Machine</h2>
+            <p>The VM (<code>vm.c</code>) is a stack-based interpreter with a single evaluation stack. It uses computed gotos (GCC/Clang) or a switch statement for opcode dispatch.</p>
+
+            <pre><code><span class="comment">// Simplified dispatch loop</span>
+<span class="keyword">while</span> (running) {
+    <span class="keyword">uint8_t</span> instruction = READ_BYTE();
+    <span class="keyword">switch</span> (instruction) {
+        <span class="keyword">case</span> OP_ADD: {
+            <span class="type">Value</span> b = pop();
+            <span class="type">Value</span> a = pop();
+            push(<span class="function">val_num</span>(<span class="function">as_num</span>(a) + <span class="function">as_num</span>(b)));
+            <span class="keyword">break</span>;
+        }
+        <span class="comment">// ...</span>
+    }
+}</code></pre>
+
+            <h3>Call Stack</h3>
+            <p>Function calls use a separate call frame stack. Each frame tracks:</p>
+            <ul>
+                <li>Return address (instruction pointer)</li>
+                <li>Stack base pointer</li>
+                <li>Closure reference</li>
+            </ul>
+
+            <h2 id="jit">Tracing JIT Compiler</h2>
+            <p>The JIT (<code>jit.c</code>, <code>trace_recorder.c</code>, <code>trace_codegen.c</code>) compiles hot loops to native x86-64 code using a tracing approach.</p>
+
+            <h3>How It Works</h3>
+            <ol>
+                <li><strong>Profiling:</strong> Loop back-edges increment a counter</li>
+                <li><strong>Recording:</strong> When hot (>100 iterations), record a trace</li>
+                <li><strong>IR Generation:</strong> Convert trace to intermediate representation</li>
+                <li><strong>Register Allocation:</strong> Linear scan allocation</li>
+                <li><strong>Code Generation:</strong> Emit x86-64 using DynASM</li>
+            </ol>
+
+            <div class="note">
+                <p><strong>Trace Recording:</strong> The recorder follows the actual execution path, capturing guards for type checks and branches. This creates a linear trace optimized for the common case.</p>
+            </div>
+
+            <h3>IR Operations</h3>
+            <pre><code><span class="keyword">typedef enum</span> {
+    IR_CONST,      <span class="comment">// Load constant</span>
+    IR_LOAD,       <span class="comment">// Load from slot</span>
+    IR_STORE,      <span class="comment">// Store to slot</span>
+    IR_ADD,        <span class="comment">// Arithmetic</span>
+    IR_SUB,
+    IR_MUL,
+    IR_DIV,
+    IR_LT,         <span class="comment">// Comparison</span>
+    IR_LE,
+    IR_GUARD,      <span class="comment">// Type/value guard</span>
+    IR_CALL_INLINE <span class="comment">// Inlined function call</span>
+} <span class="type">IROpcode</span>;</code></pre>
+
+            <h3>Function Inlining</h3>
+            <p>Small functions (≤20 IR instructions) are automatically inlined during JIT compilation. This eliminates call overhead for helper functions in hot loops.</p>
+
+            <h2 id="values">Value Representation</h2>
+            <p>Pseudocode uses NaN-boxing to represent all values in 64 bits. IEEE 754 doubles have a large space of NaN representations that can encode pointers and tagged values.</p>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Type</th>
+                        <th>Representation</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Number</td>
+                        <td>Raw IEEE 754 double</td>
+                    </tr>
+                    <tr>
+                        <td>Nil</td>
+                        <td>Quiet NaN with tag 0x1</td>
+                    </tr>
+                    <tr>
+                        <td>Boolean</td>
+                        <td>Quiet NaN with tag 0x2/0x3</td>
+                    </tr>
+                    <tr>
+                        <td>Object</td>
+                        <td>Quiet NaN with 48-bit pointer</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <pre><code><span class="comment">// NaN-boxing implementation</span>
+<span class="keyword">#define</span> QNAN     <span class="number">0x7ffc000000000000</span>
+<span class="keyword">#define</span> TAG_NIL  <span class="number">1</span>
+<span class="keyword">#define</span> TAG_FALSE <span class="number">2</span>
+<span class="keyword">#define</span> TAG_TRUE  <span class="number">3</span>
+
+<span class="keyword">#define</span> <span class="function">IS_NUM</span>(v)  (((v) & QNAN) != QNAN)
+<span class="keyword">#define</span> <span class="function">as_num</span>(v)  <span class="function">val_to_num</span>(v)
+<span class="keyword">#define</span> <span class="function">val_num</span>(n) <span class="function">num_to_val</span>(n)</code></pre>
+
+            <h2 id="gc">Memory Management</h2>
+            <p>Pseudocode uses a simple mark-and-sweep garbage collector. All heap objects are linked in a list for traversal during collection.</p>
+
+            <h3>Object Types</h3>
+            <ul>
+                <li><strong>OBJ_STRING:</strong> Immutable strings with cached hash</li>
+                <li><strong>OBJ_ARRAY:</strong> Dynamic arrays with capacity doubling</li>
+                <li><strong>OBJ_DICT:</strong> Hash tables with open addressing</li>
+                <li><strong>OBJ_FUNCTION:</strong> Compiled function with bytecode chunk</li>
+                <li><strong>OBJ_CLOSURE:</strong> Function with captured upvalues</li>
+                <li><strong>OBJ_CLASS:</strong> Class with method table</li>
+                <li><strong>OBJ_INSTANCE:</strong> Object instance with field table</li>
+            </ul>
+
+            <h3>GC Triggers</h3>
+            <p>Collection is triggered when heap size exceeds a threshold (default 8MB). The threshold grows after each collection to amortize GC cost.</p>
+        </article>
+    </main>
+
+    <footer>
+        <div class="container">
+            <div class="footer-links">
+                <a href="https://github.com/NagusameCS/Pseudocode">GitHub</a>
+                <a href="reference.html">Reference</a>
+                <a href="index.html">Home</a>
+                <a href="https://opencs.dev/NagusameCS">Author</a>
+            </div>
+            <p class="copyright">MIT License</p>
+        </div>
+    </footer>
+</body>
+
+</html>
