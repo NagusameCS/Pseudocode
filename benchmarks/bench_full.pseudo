@@ -1,0 +1,214 @@
+// Pseudocode Language - Full Benchmark Suite
+// Compare with bench_c.c and bench_python.py
+
+print("=== Pseudocode Full Benchmark Suite ===")
+print("")
+
+// 1. Empty loop (100M for fair comparison)
+fn bench_empty_loop()
+    let start = time()
+    let x = 0
+    for i in 0..100000000 do
+        x = x + 1
+    end
+    let elapsed = (time() - start) * 1000
+    print("1. Empty loop (1e8):      " + str(elapsed) + " ms  (x=" + str(x) + ")")
+end
+
+// 2. Function call cost
+fn add_one(x)
+    return x + 1
+end
+
+fn bench_function_call()
+    let start = time()
+    let x = 0
+    for i in 0..10000000 do
+        x = add_one(x)
+    end
+    let elapsed = (time() - start) * 1000
+    print("2. Function call (1e7):   " + str(elapsed) + " ms  (x=" + str(x) + ")")
+end
+
+// 3. Integer arithmetic
+fn bench_int_arith()
+    let start = time()
+    let x = 1
+    for i in 0..100000000 do
+        x = x * 3 + 7
+    end
+    let elapsed = (time() - start) * 1000
+    print("3. Int arithmetic (1e8):  " + str(elapsed) + " ms  (x=" + str(x % 1000000) + ")")
+end
+
+// 4. Array traversal (read)
+fn bench_array_read()
+    let arr = []
+    for i in 0..1000000 do
+        push(arr, i)
+    end
+    
+    let start = time()
+    let s = 0
+    for i in 0..1000000 do
+        s = s + arr[i]
+    end
+    let elapsed = (time() - start) * 1000
+    print("4. Array read (1e6):      " + str(elapsed) + " ms  (sum=" + str(s) + ")")
+end
+
+// 5. Array write
+fn bench_array_write()
+    let arr = []
+    for i in 0..1000000 do
+        push(arr, 0)
+    end
+    
+    let start = time()
+    for i in 0..1000000 do
+        arr[i] = i
+    end
+    let elapsed = (time() - start) * 1000
+    print("5. Array write (1e6):     " + str(elapsed) + " ms  (arr[0]=" + str(arr[0]) + ")")
+end
+
+// 6. Object access
+class Point
+    fn init(x, y)
+        self.x = x
+        self.y = y
+    end
+end
+
+fn bench_object_access()
+    let p = Point(1, 2)
+    let start = time()
+    for i in 0..10000000 do
+        p.x = p.x + 1
+    end
+    let elapsed = (time() - start) * 1000
+    print("6. Object access (1e7):   " + str(elapsed) + " ms  (p.x=" + str(p.x) + ")")
+end
+
+// 7. Branching
+fn bench_branching()
+    let start = time()
+    let x = 0
+    for i in 0..100000000 do
+        if i % 2 == 0 then
+            x = x + 1
+        else
+            x = x - 1
+        end
+    end
+    let elapsed = (time() - start) * 1000
+    print("7. Branching (1e8):       " + str(elapsed) + " ms  (x=" + str(x) + ")")
+end
+
+// 8. Allocation
+fn bench_allocation()
+    let start = time()
+    for i in 0..1000000 do
+        let p = Point(i, i + 1)
+    end
+    let elapsed = (time() - start) * 1000
+    print("8. Allocation (1e6):      " + str(elapsed) + " ms")
+end
+
+// 9. Recursion (Fibonacci)
+fn fib(n)
+    if n < 2 then
+        return n
+    end
+    return fib(n - 1) + fib(n - 2)
+end
+
+fn bench_recursion()
+    let start = time()
+    let result = fib(35)
+    let elapsed = (time() - start) * 1000
+    print("9. Fibonacci(35):         " + str(elapsed) + " ms  (result=" + str(result) + ")")
+end
+
+// 10. Mixed workload
+fn bench_mixed()
+    let arr = []
+    for i in 0..1000000 do
+        push(arr, 0)
+    end
+    
+    let start = time()
+    for i in 1..1000000 do
+        if i % 3 == 0 then
+            arr[i] = i * 2
+        else
+            arr[i] = arr[i - 1] + 1
+        end
+    end
+    let elapsed = (time() - start) * 1000
+    print("10. Mixed (1e6):          " + str(elapsed) + " ms  (arr[last]=" + str(arr[999999]) + ")")
+end
+
+// 11. Prime sieve
+fn bench_primes()
+    let start = time()
+    let sieve = []
+    let n = 100000
+    for i in 0..n do
+        push(sieve, true)
+    end
+    
+    let p = 2
+    while p * p < n do
+        if sieve[p] then
+            let i = p * p
+            while i < n do
+                sieve[i] = false
+                i = i + p
+            end
+        end
+        p = p + 1
+    end
+    
+    let count = 0
+    for i in 2..n do
+        if sieve[i] then
+            count = count + 1
+        end
+    end
+    let elapsed = (time() - start) * 1000
+    print("11. Prime sieve (100k):   " + str(elapsed) + " ms  (primes=" + str(count) + ")")
+end
+
+// 12. Vector sum (math)
+fn bench_vector_sum()
+    let arr = []
+    for i in 0..1000000 do
+        push(arr, i * 0.5)
+    end
+    
+    let start = time()
+    let s = 0.0
+    for i in 0..1000000 do
+        s = s + arr[i]
+    end
+    let elapsed = (time() - start) * 1000
+    print("12. Vector sum (1e6):     " + str(elapsed) + " ms  (sum=" + str(s) + ")")
+end
+
+// Run all benchmarks
+bench_empty_loop()
+bench_function_call()
+bench_int_arith()
+bench_array_read()
+bench_array_write()
+bench_object_access()
+bench_branching()
+bench_allocation()
+bench_recursion()
+bench_mixed()
+bench_primes()
+bench_vector_sum()
+
+print("")
+print("=== Done ===")

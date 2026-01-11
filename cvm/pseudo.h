@@ -144,11 +144,20 @@ typedef enum
     OBJ_BOUND_METHOD, /* Method bound to instance */
 } ObjType;
 
+/* Escape state for escape analysis optimization */
+typedef enum {
+    ESCAPE_UNKNOWN = 0,      /* Not yet analyzed */
+    ESCAPE_NO_ESCAPE,        /* Object does not escape function */
+    ESCAPE_ARG_ESCAPE,       /* Escapes via function argument */
+    ESCAPE_GLOBAL_ESCAPE,    /* Escapes to global scope */
+} EscapeState;
+
 typedef struct Obj
 {
     ObjType type;
     struct Obj *next; /* GC linked list */
     bool marked;
+    uint8_t escape_state;    /* EscapeState for escape analysis */
 } Obj;
 
 typedef struct
@@ -175,6 +184,10 @@ typedef struct
     int32_t end;
 } ObjRange;
 
+/* Inline threshold - functions smaller than this are candidates for inlining */
+#define INLINE_THRESHOLD 50       /* Max bytecode size for inlining */
+#define INLINE_MAX_DEPTH 3        /* Max inline nesting depth */
+
 typedef struct
 {
     Obj obj;
@@ -182,6 +195,8 @@ typedef struct
     uint16_t locals_count;
     uint16_t upvalue_count;
     uint32_t code_start;
+    uint32_t code_length;         /* Length of bytecode for inlining */
+    bool can_inline;              /* Pre-computed inlinability flag */
     ObjString *name;
 } ObjFunction;
 
@@ -512,8 +527,11 @@ typedef enum
     OP_SET_FIELD,    /* Set instance field: const_idx (slot) */
     OP_GET_FIELD_IC, /* Get field with inline cache: const_idx, ic_slot */
     OP_SET_FIELD_IC, /* Set field with inline cache: const_idx, ic_slot */
+    OP_GET_FIELD_PIC,/* Get field with polymorphic IC: const_idx, pic_slot */
+    OP_SET_FIELD_PIC,/* Set field with polymorphic IC: const_idx, pic_slot */
     OP_INVOKE,       /* Invoke method: const_idx (name), arg_count */
     OP_INVOKE_IC,    /* Invoke with inline cache: const_idx, arg_count, ic_slot */
+    OP_INVOKE_PIC,   /* Invoke with polymorphic IC: const_idx, arg_count, pic_slot */
     OP_SUPER_INVOKE, /* Invoke super method: const_idx (name), arg_count */
     OP_GET_SUPER,    /* Get method from superclass for super.method() */
     OP_STATIC,       /* Add static property/method to class */
@@ -556,6 +574,17 @@ typedef enum
     OP_POP_ARRAY,
     OP_SLICE,  /* Array slicing */
     OP_CONCAT, /* Array/string concat */
+
+    /* SIMD Array Operations - Use SSE/AVX when available */
+    OP_ARRAY_ADD,      /* Element-wise add: arr1 + arr2 or arr + scalar */
+    OP_ARRAY_SUB,      /* Element-wise subtract */
+    OP_ARRAY_MUL,      /* Element-wise multiply */
+    OP_ARRAY_DIV,      /* Element-wise divide */
+    OP_ARRAY_SUM,      /* Sum all elements (SIMD reduction) */
+    OP_ARRAY_DOT,      /* Dot product of two arrays */
+    OP_ARRAY_MAP,      /* Map function over array */
+    OP_ARRAY_FILTER,   /* Filter array with predicate */
+    OP_ARRAY_REDUCE,   /* Reduce array with accumulator */
 
     /* Iterators */
     OP_RANGE,
@@ -892,6 +921,7 @@ typedef struct
 /* ============ Inline Caching ============ */
 /* Monomorphic inline cache for property access - O(1) lookup after first hit */
 #define IC_MAX_CACHES 256
+#define PIC_MAX_ENTRIES 4  /* Polymorphic IC handles up to 4 class shapes */
 
 typedef struct
 {
@@ -900,6 +930,18 @@ typedef struct
     ObjString *cached_name; /* Cached property name for validation */
     bool is_method;         /* True if this is a method, false if field */
 } InlineCache;
+
+/* Polymorphic Inline Cache - handles 2-4 common class shapes */
+typedef struct
+{
+    struct {
+        ObjClass *klass;    /* Class for this entry */
+        uint16_t slot;      /* Slot index for this class */
+    } entries[PIC_MAX_ENTRIES];
+    ObjString *name;        /* Property name (shared across entries) */
+    uint8_t count;          /* Number of cached entries (0-4) */
+    bool is_method;         /* True if caching methods */
+} PolyInlineCache;
 
 typedef struct
 {
@@ -941,6 +983,10 @@ typedef struct
     /* Inline caching for fast property access */
     InlineCache ic_cache[IC_MAX_CACHES];
     uint16_t ic_count;
+
+    /* Polymorphic inline caching for multi-shape property access */
+    PolyInlineCache pic_cache[IC_MAX_CACHES];
+    uint16_t pic_count;
 
     /* Debug mode */
     bool debug_mode;

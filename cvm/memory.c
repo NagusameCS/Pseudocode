@@ -102,6 +102,8 @@ ObjFunction *new_function(VM *vm)
     function->locals_count = 0;
     function->upvalue_count = 0;
     function->code_start = 0;
+    function->code_length = 0;
+    function->can_inline = false;
     function->name = NULL;
     return function;
 }
