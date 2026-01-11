@@ -1,7 +1,7 @@
 # Pseudocode Language Extension
 
 <p align="center">
-  <img src="images/icon.svg" alt="Pseudocode Logo" width="128" height="128">
+  <img src="images/icon.png" alt="Pseudocode Logo" width="128" height="128">
 </p>
 
 <p align="center">
