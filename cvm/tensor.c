@@ -14,6 +14,16 @@
 #include <string.h>
 #include <math.h>
 
+/* Platform-specific aligned allocation */
+#ifdef _WIN32
+#include <malloc.h>
+#define aligned_alloc_impl(alignment, size) _aligned_malloc(size, alignment)
+#define aligned_free_impl(ptr) _aligned_free(ptr)
+#else
+#define aligned_alloc_impl(alignment, size) ({ void *p; posix_memalign(&p, alignment, size) == 0 ? p : NULL; })
+#define aligned_free_impl(ptr) free(ptr)
+#endif
+
 /* Alias for memory allocation */
 #define reallocate pseudo_realloc
 
@@ -34,12 +44,7 @@ static void tensor_free_data(ObjTensor *tensor);
 static double *alloc_aligned(size_t count)
 {
     /* Align to 32 bytes for AVX */
-    void *ptr = NULL;
-    if (posix_memalign(&ptr, 32, count * sizeof(double)) != 0)
-    {
-        return NULL;
-    }
-    return (double *)ptr;
+    return (double *)aligned_alloc_impl(32, count * sizeof(double));
 }
 
 /* ============ Tensor Creation ============ */

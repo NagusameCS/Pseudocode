@@ -2,6 +2,21 @@
 
 All notable changes to the Pseudocode Language extension will be documented in this file.
 
+## [1.5.0] - 2026-01-11
+
+### Fixed
+- **Major Performance Improvements** — Significantly reduced lag while typing:
+  - Debounced diagnostics (300ms delay) to prevent parsing on every keystroke
+  - Cached completion items with version-aware invalidation
+  - Optimized symbol parsing with document version tracking
+  - Reduced inlay hints processing for faster response
+- **Cross-Platform Compatibility** — Improved VM detection on Windows, Linux, and macOS
+- **VM Build Fix** — Added missing `free_object` declaration for proper compilation
+
+### Changed
+- Reduced file size thresholds for better performance on large files
+- Static completion items (keywords, builtins) are now pre-built once and reused
+
 ## [1.4.0] - 2025-01-11
 
 ### Added

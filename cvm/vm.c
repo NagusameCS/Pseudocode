@@ -18,11 +18,23 @@
 #include <time.h>
 #include <math.h>
 #include <stdarg.h>
+#include <ctype.h>
+#include <errno.h>
+
+/* Platform-specific includes */
+#ifdef _WIN32
+#include <windows.h>
+#include <direct.h>
+#include <io.h>
+#define mkdir(path, mode) _mkdir(path)
+#define realpath(path, resolved) _fullpath(resolved, path, PATH_MAX)
+#define setenv(name, value, overwrite) _putenv_s(name, value)
+#define PATH_MAX MAX_PATH
+#else
 #include <unistd.h>
 #include <dirent.h>
 #include <sys/stat.h>
-#include <ctype.h>
-#include <errno.h>
+#endif
 
 /* SIMD intrinsics for vectorized operations */
 #if defined(__AVX__)
@@ -35,9 +47,14 @@
 #define SIMD_WIDTH 1 /* Scalar fallback */
 #endif
 
-/* PCRE2 for regex support */
+/* PCRE2 for regex support - can be disabled with -DNO_PCRE2 */
+#ifndef NO_PCRE2
 #define PCRE2_CODE_UNIT_WIDTH 8
 #include <pcre2.h>
+#define HAS_PCRE2 1
+#else
+#define HAS_PCRE2 0
+#endif
 
 /* Use computed gotos if available (GCC/Clang) */
 #if defined(__GNUC__) || defined(__clang__)
@@ -4866,7 +4883,7 @@ InterpretResult vm_run(VM *vm)
 
     /* ============ REGEX ============ */
     /* Full regex support using PCRE2 */
-
+#if HAS_PCRE2
     CASE(regex_match) :
     {
         Value pattern_val = POP();
@@ -5070,6 +5087,35 @@ InterpretResult vm_run(VM *vm)
         PUSH(val_obj(result));
         DISPATCH();
     }
+#else /* NO PCRE2 - stub implementations */
+    CASE(regex_match) :
+    {
+        POP(); /* pattern */
+        POP(); /* text */
+        PUSH(VAL_FALSE);
+        DISPATCH();
+    }
+
+    CASE(regex_find) :
+    {
+        POP(); /* pattern */
+        POP(); /* text */
+        vm->sp = sp;
+        ObjArray *arr = new_array(vm, 0);
+        sp = vm->sp;
+        PUSH(val_obj(arr));
+        DISPATCH();
+    }
+
+    CASE(regex_replace) :
+    {
+        POP(); /* replacement */
+        POP(); /* pattern */
+        Value text_val = POP();
+        PUSH(text_val); /* return original text unchanged */
+        DISPATCH();
+    }
+#endif /* HAS_PCRE2 */
 
     /* ============ HASHING ============ */
 

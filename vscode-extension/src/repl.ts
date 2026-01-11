@@ -228,7 +228,8 @@ export async function startRepl(vmPath: string | null): Promise<void> {
         fs.writeFileSync(tmpFile, wrappedCode);
 
         const isWindows = process.platform === 'win32';
-        const proc = spawn(vmPath!, [tmpFile], {
+        // Always use JIT for better REPL performance
+        const proc = spawn(vmPath!, ['-j', tmpFile], {
             shell: isWindows
         });
 

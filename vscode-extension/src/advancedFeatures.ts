@@ -28,9 +28,20 @@ interface FileSymbols {
     references: Map<string, vscode.Location[]>;
 }
 
-const symbolCache = new Map<string, FileSymbols>();
+interface CachedSymbols {
+    version: number;
+    symbols: FileSymbols;
+}
+
+const symbolCache = new Map<string, CachedSymbols>();
 
 function parseDocument(document: vscode.TextDocument): FileSymbols {
+    // Check if we have a valid cached version
+    const cached = symbolCache.get(document.uri.toString());
+    if (cached && cached.version === document.version) {
+        return cached.symbols;
+    }
+    
     const symbols: FileSymbols = {
         functions: new Map(),
         variables: new Map(),
@@ -41,7 +52,7 @@ function parseDocument(document: vscode.TextDocument): FileSymbols {
         const text = document.getText();
         
         // Skip very large files to prevent performance issues
-        if (text.length > 500000) {
+        if (text.length > 200000) {
             return symbols;
         }
         
@@ -130,7 +141,7 @@ function parseDocument(document: vscode.TextDocument): FileSymbols {
         }
     }
 
-    symbolCache.set(document.uri.toString(), symbols);
+    symbolCache.set(document.uri.toString(), { version: document.version, symbols });
     } catch (error) {
         console.error('Parse document error:', error);
     }
@@ -138,9 +149,7 @@ function parseDocument(document: vscode.TextDocument): FileSymbols {
 }
 
 function getSymbols(document: vscode.TextDocument): FileSymbols {
-    const cached = symbolCache.get(document.uri.toString());
-    if (cached) return cached;
-    return parseDocument(document);
+    return parseDocument(document);  // parseDocument now handles caching
 }
 
 // ============ Code Lens Provider ============
@@ -430,20 +439,37 @@ const tokenModifiers = ['declaration', 'definition', 'readonly', 'modification']
 
 export const semanticTokensLegend = new vscode.SemanticTokensLegend(tokenTypes, tokenModifiers);
 
+// Cache for semantic tokens
+interface SemanticTokenCache {
+    version: number;
+    tokens: vscode.SemanticTokens;
+}
+const semanticTokensCache = new Map<string, SemanticTokenCache>();
+
 export class PseudocodeSemanticTokensProvider implements vscode.DocumentSemanticTokensProvider {
     provideDocumentSemanticTokens(document: vscode.TextDocument): vscode.ProviderResult<vscode.SemanticTokens> {
         try {
+            const uri = document.uri.toString();
+            const cached = semanticTokensCache.get(uri);
+            
+            // Return cached if version matches
+            if (cached && cached.version === document.version) {
+                return cached.tokens;
+            }
+            
             const text = document.getText();
-            // Skip very large files to prevent performance issues
-            if (text.length > 500000) {
+            // Skip large files to prevent performance issues (reduced threshold)
+            if (text.length > 50000) {
                 return new vscode.SemanticTokensBuilder(semanticTokensLegend).build();
             }
             
             const builder = new vscode.SemanticTokensBuilder(semanticTokensLegend);
-            const symbols = parseDocument(document);
             const lines = text.split('\n');
+            
+            // Limit lines to process for very long files
+            const maxLines = Math.min(lines.length, 2000);
 
-        for (let i = 0; i < lines.length; i++) {
+        for (let i = 0; i < maxLines; i++) {
             const line = lines[i];
 
             // Function definitions
@@ -470,7 +496,9 @@ export class PseudocodeSemanticTokensProvider implements vscode.DocumentSemantic
             }
         }
 
-            return builder.build();
+            const tokens = builder.build();
+            semanticTokensCache.set(uri, { version: document.version, tokens });
+            return tokens;
         } catch (error) {
             console.error('Semantic tokens error:', error);
             return new vscode.SemanticTokensBuilder(semanticTokensLegend).build();
@@ -695,15 +723,22 @@ export function registerAdvancedFeatures(context: vscode.ExtensionContext): void
     const statusBar = createStatusBar();
     context.subscriptions.push(statusBar);
 
-    // Update status bar on document change
+    // Debounced status bar updates to prevent lag
+    let statusBarTimeout: NodeJS.Timeout | undefined;
+    
+    // Update status bar on document change (debounced)
     context.subscriptions.push(
-        vscode.window.onDidChangeActiveTextEditor(() => updateStatusBar())
+        vscode.window.onDidChangeActiveTextEditor(() => {
+            if (statusBarTimeout) clearTimeout(statusBarTimeout);
+            statusBarTimeout = setTimeout(() => updateStatusBar(), 200);
+        })
     );
     context.subscriptions.push(
         vscode.workspace.onDidChangeTextDocument((e) => {
             if (e.document.languageId === 'pseudocode') {
-                parseDocument(e.document); // Refresh cache
-                updateStatusBar(e.document);
+                // Don't parse on every keystroke - let providers handle their own caching
+                if (statusBarTimeout) clearTimeout(statusBarTimeout);
+                statusBarTimeout = setTimeout(() => updateStatusBar(e.document), 500);
             }
         })
     );

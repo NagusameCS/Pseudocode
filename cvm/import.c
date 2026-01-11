@@ -10,9 +10,30 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
+
+/* Platform-specific includes */
+#ifdef _WIN32
+#include <windows.h>
+#include <direct.h>
+#define PATH_MAX MAX_PATH
+#define realpath(path, resolved) _fullpath(resolved, path, PATH_MAX)
+static char *dirname(char *path) {
+    static char dir[PATH_MAX];
+    char *last_sep = strrchr(path, '\\');
+    if (!last_sep) last_sep = strrchr(path, '/');
+    if (last_sep) {
+        size_t len = last_sep - path;
+        strncpy(dir, path, len);
+        dir[len] = '\0';
+        return dir;
+    }
+    return ".";
+}
+#else
 #include <libgen.h>
 #include <unistd.h>
-#include <limits.h>
+#endif
 
 #define MAX_IMPORTS 256
 #define MAX_PATH_LEN 4096

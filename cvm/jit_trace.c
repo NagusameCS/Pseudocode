@@ -18,8 +18,19 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include <sys/mman.h>
 #include <time.h>
+
+/* Platform-specific memory mapping */
+#ifdef _WIN32
+#include <windows.h>
+#define mmap_executable(size) VirtualAlloc(NULL, size, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE)
+#define munmap_executable(ptr, size) VirtualFree(ptr, 0, MEM_RELEASE)
+#else
+#include <sys/mman.h>
+#define mmap_executable(size) mmap(NULL, size, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0)
+#define munmap_executable(ptr, size) munmap(ptr, size)
+#endif
+
 #include "pseudo.h"
 #include "trace_ir.h"
 

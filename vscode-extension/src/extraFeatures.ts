@@ -156,19 +156,41 @@ const BUILTIN_SIGNATURES: Record<string, string[]> = {
     'vec_mean': ['vector'],
 };
 
-// Cache for user-defined function signatures
-const userFunctionSignatures = new Map<string, string[]>();
+// Cache for user-defined function signatures with version tracking
+interface FunctionCache {
+    version: number;
+    signatures: Map<string, string[]>;
+}
+const userFunctionCache = new Map<string, FunctionCache>();
 
-function updateUserFunctions(document: vscode.TextDocument) {
+function updateUserFunctions(document: vscode.TextDocument): Map<string, string[]> {
+    const uri = document.uri.toString();
+    const cached = userFunctionCache.get(uri);
+    
+    // Return cached if version matches
+    if (cached && cached.version === document.version) {
+        return cached.signatures;
+    }
+    
+    const signatures = new Map<string, string[]>();
     const text = document.getText();
+    
+    // Skip large files
+    if (text.length > 100000) {
+        return signatures;
+    }
+    
     const fnRegex = /^fn\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(([^)]*)\)/gm;
     let match;
 
     while ((match = fnRegex.exec(text)) !== null) {
         const name = match[1];
         const params = match[2].split(',').map(p => p.trim()).filter(p => p);
-        userFunctionSignatures.set(name, params);
+        signatures.set(name, params);
     }
+    
+    userFunctionCache.set(uri, { version: document.version, signatures });
+    return signatures;
 }
 
 // ============ Inlay Hints Provider ============
@@ -180,17 +202,29 @@ export class PseudocodeInlayHintsProvider implements vscode.InlayHintsProvider {
     ): vscode.ProviderResult<vscode.InlayHint[]> {
         try {
             const hints: vscode.InlayHint[] = [];
+            
+            // Only provide hints for small visible ranges to reduce lag
+            const lineCount = range.end.line - range.start.line;
+            if (lineCount > 100) {
+                return hints;
+            }
+            
             const text = document.getText(range);
             
             // Skip very large ranges to prevent performance issues
-            if (text.length > 100000) {
+            if (text.length > 10000) {
+                return hints;
+            }
+            
+            // Skip if range is too small (likely inside a function call being typed)
+            if (text.length < 3) {
                 return hints;
             }
             
             const startOffset = document.offsetAt(range.start);
 
-        // Update user function cache
-        updateUserFunctions(document);
+        // Get cached user function signatures
+        const userFunctionSignatures = updateUserFunctions(document);
 
         // Find function calls
         const callRegex = /([a-zA-Z_][a-zA-Z0-9_]*)\s*\(([^)]*)\)/g;

@@ -550,6 +550,48 @@ const KEYWORDS = [
     'match', 'case'
 ];
 
+// ============ Completion Cache ============
+
+interface CompletionCache {
+    version: number;
+    uri: string;
+    items: vscode.CompletionItem[];
+    timestamp: number;
+}
+
+let completionCache: CompletionCache | null = null;
+const CACHE_EXPIRY_MS = 2000; // Cache for 2 seconds
+
+// Pre-built static items for keywords and builtins
+let staticCompletionItems: vscode.CompletionItem[] | null = null;
+
+function getStaticCompletionItems(): vscode.CompletionItem[] {
+    if (staticCompletionItems) return staticCompletionItems;
+    
+    staticCompletionItems = [];
+    
+    // Keywords
+    for (const keyword of KEYWORDS) {
+        const item = new vscode.CompletionItem(keyword, vscode.CompletionItemKind.Keyword);
+        item.detail = 'keyword';
+        staticCompletionItems.push(item);
+    }
+
+    // Built-in functions
+    for (const [name, info] of Object.entries(BUILTINS)) {
+        const item = new vscode.CompletionItem(name, vscode.CompletionItemKind.Function);
+        item.detail = info.signature;
+        item.documentation = new vscode.MarkdownString(info.description);
+        if (info.example) {
+            item.documentation.appendCodeblock(info.example, 'pseudocode');
+        }
+        item.insertText = new vscode.SnippetString(`${name}($1)`);
+        staticCompletionItems.push(item);
+    }
+    
+    return staticCompletionItems;
+}
+
 // ============ Completion Provider ============
 
 export class PseudocodeCompletionProvider implements vscode.CompletionItemProvider {
@@ -557,30 +599,24 @@ export class PseudocodeCompletionProvider implements vscode.CompletionItemProvid
         document: vscode.TextDocument,
         position: vscode.Position
     ): vscode.CompletionItem[] {
-        const items: vscode.CompletionItem[] = [];
-        const linePrefix = document.lineAt(position).text.substr(0, position.character);
-
-        // Keywords
-        for (const keyword of KEYWORDS) {
-            const item = new vscode.CompletionItem(keyword, vscode.CompletionItemKind.Keyword);
-            item.detail = 'keyword';
-            items.push(item);
+        const items: vscode.CompletionItem[] = [...getStaticCompletionItems()];
+        
+        // Check cache for document-specific items
+        const now = Date.now();
+        if (completionCache && 
+            completionCache.uri === document.uri.toString() &&
+            completionCache.version === document.version &&
+            now - completionCache.timestamp < CACHE_EXPIRY_MS) {
+            return [...items, ...completionCache.items];
         }
-
-        // Built-in functions
-        for (const [name, info] of Object.entries(BUILTINS)) {
-            const item = new vscode.CompletionItem(name, vscode.CompletionItemKind.Function);
-            item.detail = info.signature;
-            item.documentation = new vscode.MarkdownString(info.description);
-            if (info.example) {
-                item.documentation.appendCodeblock(info.example, 'pseudocode');
-            }
-            item.insertText = new vscode.SnippetString(`${name}($1)`);
-            items.push(item);
-        }
-
-        // Local variables and functions from document
+        
+        const documentItems: vscode.CompletionItem[] = [];
         const text = document.getText();
+        
+        // Skip very large files
+        if (text.length > 200000) {
+            return items;
+        }
 
         // Find variable declarations: let x = ... or const x = ...
         const varRegex = /(?:let|const)\s+([a-zA-Z_][a-zA-Z0-9_]*)/g;
@@ -592,7 +628,7 @@ export class PseudocodeCompletionProvider implements vscode.CompletionItemProvid
                 seenVars.add(varName);
                 const item = new vscode.CompletionItem(varName, vscode.CompletionItemKind.Variable);
                 item.detail = 'local variable';
-                items.push(item);
+                documentItems.push(item);
             }
         }
 
@@ -607,11 +643,19 @@ export class PseudocodeCompletionProvider implements vscode.CompletionItemProvid
                 const item = new vscode.CompletionItem(fnName, vscode.CompletionItemKind.Function);
                 item.detail = `fn ${fnName}(${params})`;
                 item.insertText = new vscode.SnippetString(`${fnName}($1)`);
-                items.push(item);
+                documentItems.push(item);
             }
         }
+        
+        // Update cache
+        completionCache = {
+            version: document.version,
+            uri: document.uri.toString(),
+            items: documentItems,
+            timestamp: now
+        };
 
-        return items;
+        return [...items, ...documentItems];
     }
 }
 

@@ -79,6 +79,19 @@
 2. Press `Ctrl+P` / `Cmd+P`
 3. Type `ext install NagusameCS.pseudocode-lang`
 
+### Platform Support
+
+The extension includes pre-built VM binaries for:
+- ✅ macOS ARM64 (Apple Silicon)
+- ✅ macOS x64 (Intel)
+
+For other platforms (Windows, Linux), you'll need to build the VM from source:
+
+```bash
+cd cvm
+make release
+```
+
 ### From Source
 
 ```bash

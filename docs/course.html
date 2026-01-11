@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pseudocode Course — Interactive Learning Environment</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <meta name="description" content="Learn Pseudocode through an interactive Jupyter-like environment. Free course with 18 lessons covering basics to advanced topics.">
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+    <style>
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #21262d;
+            --bg-cell: #0d1117;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --text-tertiary: #6e7681;
+            --accent: #a78bfa;
+            --accent-dim: #7c5cbf;
+            --border: #30363d;
+            --success: #3fb950;
+            --error: #f85149;
+            --warning: #d29922;
+            --link: #58a6ff;
+            --cell-border: #30363d;
+            --cell-active: #388bfd26;
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+        
+        /* Header */
+        header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            z-index: 100;
+            height: 56px;
+        }
+        
+        .header-inner {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 56px;
+            padding: 0 24px;
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+        
+        .logo {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+        
+        .logo:hover { text-decoration: none; }
+        
+        nav { display: flex; align-items: center; gap: 32px; }
+        nav ul { display: flex; gap: 24px; list-style: none; }
+        nav a { color: var(--text-secondary); font-size: 14px; font-weight: 500; text-decoration: none; transition: color 0.15s; }
+        nav a:hover { color: var(--text-primary); }
+        nav a.active { color: var(--accent); }
+        
+        .auth-section { display: flex; align-items: center; gap: 12px; }
+        .user-info { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+        .user-avatar { width: 28px; height: 28px; border-radius: 50%; }
+        
+        .btn { padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; transition: all 0.15s; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-primary { background: var(--accent); color: #fff; }
+        .btn-primary:hover { background: var(--accent-dim); }
+        .btn-secondary { background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border); }
+        .btn-secondary:hover { border-color: var(--text-tertiary); }
+        .btn-google { background: #fff; color: #333; }
+        .btn-google:hover { background: #f0f0f0; }
+        
+        /* Layout */
+        .layout { display: flex; margin-top: 56px; min-height: calc(100vh - 56px); }
+        
+        /* Sidebar */
+        .sidebar {
+            width: 300px;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            position: fixed;
+            top: 56px; left: 0; bottom: 0;
+            overflow-y: auto;
+            padding: 20px 0;
+        }
+        
+        .progress-container { padding: 0 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+        .progress-label { font-size: 12px; color: var(--text-tertiary); margin-bottom: 8px; display: flex; justify-content: space-between; }
+        .progress-bar { background: var(--bg-tertiary); height: 6px; border-radius: 3px; overflow: hidden; }
+        .progress-fill { background: linear-gradient(90deg, var(--accent), var(--success)); height: 100%; border-radius: 3px; transition: width 0.3s ease; }
+        
+        .sidebar-section { margin-bottom: 8px; }
+        .sidebar-section h3 {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            padding: 12px 20px 8px;
+        }
+        
+        .lesson-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 20px;
+            cursor: pointer;
+            transition: all 0.15s;
+            font-size: 14px;
+            color: var(--text-secondary);
+            border-left: 2px solid transparent;
+        }
+        
+        .lesson-item:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+        .lesson-item.active { background: var(--cell-active); border-left-color: var(--accent); color: var(--text-primary); }
+        .lesson-item.completed { color: var(--success); }
+        
+        .lesson-check {
+            width: 20px; height: 20px;
+            border: 2px solid var(--border);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 11px; font-weight: 600;
+            flex-shrink: 0;
+        }
+        
+        .lesson-item.completed .lesson-check { background: var(--success); border-color: var(--success); color: #fff; }
+        .lesson-item.active .lesson-check { border-color: var(--accent); color: var(--accent); }
+        
+        /* Main Content */
+        main {
+            flex: 1;
+            margin-left: 300px;
+            padding: 32px 48px;
+            max-width: 1000px;
+        }
+        
+        .lesson-header { margin-bottom: 32px; }
+        .lesson-header h1 { font-size: 2rem; font-weight: 600; margin-bottom: 8px; }
+        .lesson-meta { display: flex; align-items: center; gap: 16px; color: var(--text-tertiary); font-size: 14px; }
+        .lesson-meta span { display: flex; align-items: center; gap: 4px; }
+        
+        .lesson-content { margin-bottom: 32px; }
+        .lesson-content p { color: var(--text-secondary); margin-bottom: 16px; line-height: 1.7; }
+        .lesson-content h2 { font-size: 1.5rem; color: var(--text-primary); margin: 32px 0 16px; }
+        .lesson-content h3 { font-size: 1.125rem; color: var(--text-primary); margin: 24px 0 12px; }
+        .lesson-content code { font-family: 'JetBrains Mono', 'Fira Code', monospace; background: var(--bg-tertiary); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+        .lesson-content ul, .lesson-content ol { padding-left: 24px; color: var(--text-secondary); margin-bottom: 16px; }
+        .lesson-content li { margin-bottom: 8px; }
+        .lesson-content a { color: var(--link); }
+        
+        /* Jupyter Cell */
+        .jupyter-notebook { margin: 24px 0; }
+        
+        .jupyter-cell {
+            background: var(--bg-cell);
+            border: 1px solid var(--cell-border);
+            border-radius: 8px;
+            margin-bottom: 16px;
+            overflow: hidden;
+            transition: border-color 0.15s;
+        }
+        
+        .jupyter-cell:hover { border-color: var(--text-tertiary); }
+        .jupyter-cell.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+        
+        .cell-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: var(--bg-tertiary);
+            border-bottom: 1px solid var(--cell-border);
+        }
+        
+        .cell-info { display: flex; align-items: center; gap: 12px; }
+        .cell-type { font-size: 11px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.05em; }
+        .cell-number { font-size: 12px; color: var(--text-tertiary); font-family: monospace; }
+        
+        .cell-actions { display: flex; gap: 8px; }
+        
+        .run-btn {
+            background: var(--success);
+            color: #fff;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.15s;
+        }
+        
+        .run-btn:hover { filter: brightness(1.1); }
+        .run-btn:active { transform: scale(0.98); }
+        .run-btn.running { background: var(--warning); }
+        
+        .cell-input-wrapper {
+            position: relative;
+            background: var(--bg-cell);
+        }
+        
+        .cell-input {
+            width: 100%;
+            min-height: 100px;
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            padding: 16px;
+            resize: vertical;
+            outline: none;
+            tab-size: 4;
+        }
+        
+        .cell-input::placeholder { color: var(--text-tertiary); }
+        
+        .cell-output-wrapper {
+            border-top: 1px solid var(--cell-border);
+            background: var(--bg-secondary);
+        }
+        
+        .cell-output {
+            padding: 16px;
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-break: break-word;
+            min-height: 44px;
+            color: var(--text-secondary);
+        }
+        
+        .cell-output.success { color: var(--text-primary); }
+        .cell-output.error { color: var(--error); background: rgba(248, 81, 73, 0.1); }
+        .cell-output.running { color: var(--warning); }
+        .cell-output:empty::before { content: 'Click "Run" to execute'; color: var(--text-tertiary); font-style: italic; }
+        
+        /* Info Boxes */
+        .info-box {
+            background: rgba(167, 139, 250, 0.1);
+            border: 1px solid rgba(167, 139, 250, 0.3);
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin: 20px 0;
+        }
+        
+        .info-box.tip { background: rgba(63, 185, 80, 0.1); border-color: rgba(63, 185, 80, 0.3); }
+        .info-box.warning { background: rgba(210, 153, 34, 0.1); border-color: rgba(210, 153, 34, 0.3); }
+        
+        .info-box-title { font-weight: 600; font-size: 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+        .info-box p { margin: 0; font-size: 14px; color: var(--text-secondary); }
+        
+        /* Challenge */
+        .challenge {
+            background: linear-gradient(135deg, rgba(210, 153, 34, 0.1), rgba(167, 139, 250, 0.1));
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 24px 0;
+        }
+        
+        .challenge h4 { color: var(--warning); margin-bottom: 8px; font-size: 15px; }
+        .challenge p { color: var(--text-secondary); font-size: 14px; margin: 0; }
+        
+        /* Navigation */
+        .lesson-nav {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 48px;
+            padding-top: 32px;
+            border-top: 1px solid var(--border);
+        }
+        
+        .nav-btn {
+            display: flex;
+            flex-direction: column;
+            padding: 16px 24px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            min-width: 180px;
+        }
+        
+        .nav-btn:hover { border-color: var(--accent); background: var(--bg-tertiary); }
+        .nav-btn-label { font-size: 12px; color: var(--text-tertiary); margin-bottom: 4px; }
+        .nav-btn-title { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+        
+        /* Table */
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--border); font-size: 14px; }
+        th { color: var(--text-tertiary); font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; background: var(--bg-secondary); }
+        td code { color: var(--accent); }
+        
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .sidebar { display: none; }
+            main { margin-left: 0; padding: 24px; max-width: 100%; }
+        }
+        
+        @media (max-width: 768px) {
+            nav ul { display: none; }
+            .header-inner { padding: 0 16px; }
+            main { padding: 16px; }
+        }
+        
+        /* Syntax Highlighting */
+        .keyword { color: #ff7b72; }
+        .function { color: #d2a8ff; }
+        .string { color: #a5d6ff; }
+        .number { color: #79c0ff; }
+        .comment { color: #8b949e; }
+        .builtin { color: #ffa657; }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-inner">
+            <a href="index.html" class="logo">
+                <img src="favicon.svg" alt="" width="24" height="24" style="border-radius: 5px;">
+                Pseudocode
+            </a>
+            <nav>
+                <ul>
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="course.html" class="active">Course</a></li>
+                    <li><a href="examples.html">Examples</a></li>
+                    <li><a href="reference.html">Reference</a></li>
+                    <li><a href="https://github.com/NagusameCS/Pseudocode">GitHub</a></li>
+                </ul>
+            </nav>
+            <div class="auth-section">
+                <div id="user-info" class="user-info" style="display: none;">
+                    <img id="user-avatar" class="user-avatar" src="" alt="">
+                    <span id="user-name"></span>
+                    <button class="btn btn-secondary" onclick="signOut()">Sign Out</button>
+                </div>
+                <button id="sign-in-btn" class="btn btn-google" onclick="signInWithGoogle()">
+                    <svg width="16" height="16" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+                    Sign in to save progress
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div class="layout">
+        <aside class="sidebar">
+            <div class="progress-container">
+                <div class="progress-label">
+                    <span>Course Progress</span>
+                    <span id="progress-text">0 / 18 lessons</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+                </div>
+            </div>
+            
+            <div class="sidebar-section">
+                <h3>🚀 Getting Started</h3>
+                <div class="lesson-item active" data-lesson="0"><span class="lesson-check">1</span> Hello World</div>
+                <div class="lesson-item" data-lesson="1"><span class="lesson-check">2</span> Variables</div>
+                <div class="lesson-item" data-lesson="2"><span class="lesson-check">3</span> Data Types</div>
+                <div class="lesson-item" data-lesson="3"><span class="lesson-check">4</span> Operators</div>
+            </div>
+            
+            <div class="sidebar-section">
+                <h3>🔀 Control Flow</h3>
+                <div class="lesson-item" data-lesson="4"><span class="lesson-check">5</span> If Statements</div>
+                <div class="lesson-item" data-lesson="5"><span class="lesson-check">6</span> For Loops</div>
+                <div class="lesson-item" data-lesson="6"><span class="lesson-check">7</span> While Loops</div>
+                <div class="lesson-item" data-lesson="7"><span class="lesson-check">8</span> Pattern Matching</div>
+            </div>
+            
+            <div class="sidebar-section">
+                <h3>⚡ Functions</h3>
+                <div class="lesson-item" data-lesson="8"><span class="lesson-check">9</span> Defining Functions</div>
+                <div class="lesson-item" data-lesson="9"><span class="lesson-check">10</span> Parameters & Return</div>
+                <div class="lesson-item" data-lesson="10"><span class="lesson-check">11</span> Closures</div>
+                <div class="lesson-item" data-lesson="11"><span class="lesson-check">12</span> Higher-Order</div>
+            </div>
+            
+            <div class="sidebar-section">
+                <h3>📦 Data Structures</h3>
+                <div class="lesson-item" data-lesson="12"><span class="lesson-check">13</span> Arrays</div>
+                <div class="lesson-item" data-lesson="13"><span class="lesson-check">14</span> Dictionaries</div>
+                <div class="lesson-item" data-lesson="14"><span class="lesson-check">15</span> Classes & OOP</div>
+            </div>
+            
+            <div class="sidebar-section">
+                <h3>🎓 Advanced</h3>
+                <div class="lesson-item" data-lesson="15"><span class="lesson-check">16</span> File I/O</div>
+                <div class="lesson-item" data-lesson="16"><span class="lesson-check">17</span> HTTP & JSON</div>
+                <div class="lesson-item" data-lesson="17"><span class="lesson-check">18</span> Functional Style</div>
+            </div>
+        </aside>
+
+        <main id="lesson-container">
+            <!-- Lesson content loaded dynamically -->
+        </main>
+    </div>
+
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDffhyYD6FtBy3qdkV8V0G-O_rZjaTD4CA",
+            authDomain: "pseudocode-lang.firebaseapp.com",
+            projectId: "pseudocode-lang",
+            storageBucket: "pseudocode-lang.firebasestorage.app",
+            messagingSenderId: "579861791340",
+            appId: "1:579861791340:web:4f6e5beb2224353c984e49"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        
+        let currentUser = null;
+        let completedLessons = new Set();
+        let currentLesson = 0;
+
+        // Auth Functions
+        function signInWithGoogle() {
+            auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(console.error);
+        }
+        
+        function signOut() { 
+            auth.signOut(); 
+        }
+        
+        auth.onAuthStateChanged(async user => {
+            currentUser = user;
+            if (user) {
+                document.getElementById('sign-in-btn').style.display = 'none';
+                document.getElementById('user-info').style.display = 'flex';
+                document.getElementById('user-avatar').src = user.photoURL || '';
+                document.getElementById('user-name').textContent = user.displayName?.split(' ')[0] || 'User';
+                
+                try {
+                    const doc = await db.collection('progress').doc(user.uid).get();
+                    if (doc.exists) {
+                        completedLessons = new Set(doc.data().completed || []);
+                        currentLesson = doc.data().currentLesson || 0;
+                    }
+                } catch (e) {
+                    console.error('Error loading progress:', e);
+                }
+            } else {
+                document.getElementById('sign-in-btn').style.display = 'flex';
+                document.getElementById('user-info').style.display = 'none';
+                completedLessons = new Set(JSON.parse(localStorage.getItem('completedLessons') || '[]'));
+                currentLesson = parseInt(localStorage.getItem('currentLesson') || '0');
+            }
+            updateUI();
+            renderLesson(currentLesson);
+        });
+        
+        async function saveProgress() {
+            if (currentUser) {
+                try {
+                    await db.collection('progress').doc(currentUser.uid).set({
+                        completed: Array.from(completedLessons),
+                        currentLesson: currentLesson,
+                        lastUpdated: new Date()
+                    });
+                } catch (e) {
+                    console.error('Error saving progress:', e);
+                }
+            } else {
+                localStorage.setItem('completedLessons', JSON.stringify(Array.from(completedLessons)));
+                localStorage.setItem('currentLesson', currentLesson.toString());
+            }
+        }
+        
+        function updateUI() {
+            document.querySelectorAll('.lesson-item').forEach((el, i) => {
+                el.classList.toggle('completed', completedLessons.has(i));
+                el.classList.toggle('active', i === currentLesson);
+            });
+            
+            const progress = (completedLessons.size / 18 * 100).toFixed(0);
+            document.getElementById('progress-fill').style.width = progress + '%';
+            document.getElementById('progress-text').textContent = `${completedLessons.size} / 18 lessons`;
+        }
+
+        // Lesson Data
+        const lessons = [
+            {
+                title: "Hello World",
+                description: "Write your first Pseudocode program and learn the basics of output.",
+                duration: "3 min",
+                content: `
+                    <p>Welcome to Pseudocode! Let's start by writing the classic "Hello, World!" program. In Pseudocode, you use the <code>print()</code> function to output text.</p>
+                    <p>Notice that Pseudocode doesn't require semicolons at the end of lines — just write clean, readable code!</p>
+                `,
+                cells: [
+                    { code: '// Your first Pseudocode program\nprint("Hello, World!")', expected: 'Hello, World!' },
+                    { code: '// You can print multiple values\nprint("Welcome to", "Pseudocode!")', expected: 'Welcome to Pseudocode!' }
+                ],
+                challenge: "Try changing the message to your own greeting!"
+            },
+            {
+                title: "Variables",
+                description: "Learn how to store and manipulate data using variables.",
+                duration: "5 min",
+                content: `
+                    <p>Use <code>let</code> to declare variables. Pseudocode is dynamically typed, so you don't need to specify types.</p>
+                    <p>After declaring a variable, you can reassign it without <code>let</code>.</p>
+                `,
+                cells: [
+                    { code: 'let name = "Alice"\nlet age = 25\nprint(name + " is " + str(age) + " years old")', expected: 'Alice is 25 years old' },
+                    { code: '// Reassignment\nlet x = 10\nprint(x)\nx = 20\nprint(x)', expected: '10\n20' }
+                ],
+                challenge: "Create variables for your name and favorite number, then print them together."
+            },
+            {
+                title: "Data Types",
+                description: "Explore the different types of values in Pseudocode.",
+                duration: "5 min",
+                content: `
+                    <p>Pseudocode supports several data types:</p>
+                    <ul>
+                        <li><strong>Numbers</strong> — integers and floating-point (<code>42</code>, <code>3.14</code>)</li>
+                        <li><strong>Strings</strong> — text in quotes (<code>"hello"</code>)</li>
+                        <li><strong>Booleans</strong> — <code>true</code> or <code>false</code></li>
+                        <li><strong>Nil</strong> — represents "no value"</li>
+                        <li><strong>Arrays</strong> — ordered collections (<code>[1, 2, 3]</code>)</li>
+                        <li><strong>Dictionaries</strong> — key-value pairs (<code>{"key": "value"}</code>)</li>
+                    </ul>
+                `,
+                cells: [
+                    { code: 'print(type(42))\nprint(type("hello"))\nprint(type(true))\nprint(type(nil))', expected: 'number\nstring\nbool\nnil' },
+                    { code: 'let arr = [1, 2, 3]\nlet dict = {"name": "Bob"}\nprint(type(arr))\nprint(type(dict))', expected: 'array\ndict' }
+                ],
+                challenge: "Use the type() function to check what type different values are."
+            },
+            {
+                title: "Operators",
+                description: "Master arithmetic, comparison, and logical operators.",
+                duration: "5 min",
+                content: `
+                    <p>Pseudocode supports all common operators:</p>
+                    <table>
+                        <tr><th>Category</th><th>Operators</th></tr>
+                        <tr><td>Arithmetic</td><td><code>+</code> <code>-</code> <code>*</code> <code>/</code> <code>%</code></td></tr>
+                        <tr><td>Comparison</td><td><code>==</code> <code>!=</code> <code><</code> <code>></code> <code><=</code> <code>>=</code></td></tr>
+                        <tr><td>Logical</td><td><code>and</code> <code>or</code> <code>not</code></td></tr>
+                    </table>
+                `,
+                cells: [
+                    { code: 'print(10 + 5)\nprint(10 - 3)\nprint(4 * 3)\nprint(15 / 3)\nprint(17 % 5)', expected: '15\n7\n12\n5\n2' },
+                    { code: 'print(10 > 5)\nprint(3 == 3)\nprint(true and false)\nprint(true or false)', expected: 'true\ntrue\nfalse\ntrue' }
+                ],
+                challenge: "Calculate the area of a rectangle with width 7 and height 5."
+            },
+            {
+                title: "If Statements",
+                description: "Control program flow with conditional statements.",
+                duration: "6 min",
+                content: `
+                    <p>Use <code>if/then/end</code> for conditionals. You can add <code>elif</code> and <code>else</code> for multiple branches.</p>
+                    <p>Remember: conditions must be followed by <code>then</code>, and blocks are closed with <code>end</code>.</p>
+                `,
+                cells: [
+                    { code: 'let score = 85\n\nif score >= 90 then\n    print("A - Excellent!")\nelif score >= 80 then\n    print("B - Good job!")\nelse\n    print("Keep trying!")\nend', expected: 'B - Good job!' },
+                    { code: 'let age = 20\nlet has_id = true\n\nif age >= 18 and has_id then\n    print("Access granted")\nend', expected: 'Access granted' }
+                ],
+                challenge: "Write a program that checks if a number is positive, negative, or zero."
+            },
+            {
+                title: "For Loops",
+                description: "Iterate over ranges and collections with for loops.",
+                duration: "6 min",
+                content: `
+                    <p>Use <code>for/in/do</code> to iterate. The range <code>a..b</code> goes from <code>a</code> to <code>b-1</code> (exclusive end).</p>
+                    <p>You can also iterate over arrays directly.</p>
+                `,
+                cells: [
+                    { code: '// Range loop (0 to 4)\nfor i in 0..5 do\n    print(i)\nend', expected: '0\n1\n2\n3\n4' },
+                    { code: '// Loop over array\nlet fruits = ["apple", "banana", "cherry"]\nfor fruit in fruits do\n    print("I like " + fruit)\nend', expected: 'I like apple\nI like banana\nI like cherry' }
+                ],
+                challenge: "Print the squares of numbers 1 through 5."
+            },
+            {
+                title: "While Loops",
+                description: "Repeat code while a condition is true.",
+                duration: "5 min",
+                content: `
+                    <p>Use <code>while/do/end</code> to repeat code as long as a condition is true.</p>
+                    <p>Be careful to update your loop variable to avoid infinite loops!</p>
+                `,
+                cells: [
+                    { code: 'let count = 0\n\nwhile count < 5 do\n    print("Count: " + str(count))\n    count = count + 1\nend', expected: 'Count: 0\nCount: 1\nCount: 2\nCount: 3\nCount: 4' },
+                    { code: '// Countdown\nlet n = 5\nwhile n > 0 do\n    print(n)\n    n = n - 1\nend\nprint("Liftoff!")', expected: '5\n4\n3\n2\n1\nLiftoff!' }
+                ],
+                challenge: "Write a while loop that doubles a number until it exceeds 100."
+            },
+            {
+                title: "Pattern Matching",
+                description: "Use match/case for elegant multi-way branching.",
+                duration: "5 min",
+                content: `
+                    <p>Pattern matching with <code>match/case</code> is a powerful alternative to long if/elif chains.</p>
+                    <p>Use <code>_</code> as a wildcard to match anything, and guards with <code>if</code> for conditions.</p>
+                `,
+                cells: [
+                    { code: 'let day = 3\n\nmatch day\n    case 1 then print("Monday")\n    case 2 then print("Tuesday")\n    case 3 then print("Wednesday")\n    case _ then print("Other day")\nend', expected: 'Wednesday' },
+                    { code: 'let n = -5\n\nmatch n\n    case 0 then print("zero")\n    case n if n < 0 then print("negative")\n    case _ then print("positive")\nend', expected: 'negative' }
+                ],
+                challenge: "Create a match statement that categorizes ages into 'child', 'teen', 'adult'."
+            },
+            {
+                title: "Defining Functions",
+                description: "Create reusable code blocks with functions.",
+                duration: "6 min",
+                content: `
+                    <p>Define functions with <code>fn</code> and close with <code>end</code>. Functions can take parameters and be called by name.</p>
+                `,
+                cells: [
+                    { code: 'fn greet(name)\n    print("Hello, " + name + "!")\nend\n\ngreet("World")\ngreet("Alice")', expected: 'Hello, World!\nHello, Alice!' },
+                    { code: 'fn say_hello()\n    print("Hello!")\nend\n\nsay_hello()\nsay_hello()', expected: 'Hello!\nHello!' }
+                ],
+                challenge: "Write a function that prints a greeting in a different language."
+            },
+            {
+                title: "Parameters & Return",
+                description: "Pass values to functions and return results.",
+                duration: "6 min",
+                content: `
+                    <p>Functions can take multiple parameters and return values with <code>return</code>.</p>
+                    <p>If a function doesn't explicitly return, it returns <code>nil</code>.</p>
+                `,
+                cells: [
+                    { code: 'fn add(a, b)\n    return a + b\nend\n\nlet result = add(3, 4)\nprint(result)', expected: '7' },
+                    { code: 'fn factorial(n)\n    if n <= 1 then\n        return 1\n    end\n    return n * factorial(n - 1)\nend\n\nprint(factorial(5))', expected: '120' }
+                ],
+                challenge: "Write a function that calculates the area of a circle given its radius."
+            },
+            {
+                title: "Closures",
+                description: "Understand how functions capture their environment.",
+                duration: "7 min",
+                content: `
+                    <p>Functions in Pseudocode can capture variables from their enclosing scope. This is called a <em>closure</em>.</p>
+                    <p>Closures are powerful for creating stateful functions.</p>
+                `,
+                cells: [
+                    { code: 'fn make_counter()\n    let count = 0\n    return fn()\n        count = count + 1\n        return count\n    end\nend\n\nlet counter = make_counter()\nprint(counter())\nprint(counter())\nprint(counter())', expected: '1\n2\n3' }
+                ],
+                challenge: "Create a closure that remembers and accumulates a running total."
+            },
+            {
+                title: "Higher-Order Functions",
+                description: "Pass functions as arguments and return functions.",
+                duration: "7 min",
+                content: `
+                    <p>Functions that take other functions as arguments or return functions are called <em>higher-order functions</em>.</p>
+                    <p>This enables powerful functional programming patterns.</p>
+                `,
+                cells: [
+                    { code: 'fn apply(f, x)\n    return f(x)\nend\n\nfn double(n)\n    return n * 2\nend\n\nprint(apply(double, 5))', expected: '10' },
+                    { code: '// Using built-in map\nlet nums = [1, 2, 3, 4]\nlet doubled = map(nums, fn(x) return x * 2 end)\nprint(doubled)', expected: '[2, 4, 6, 8]' }
+                ],
+                challenge: "Use filter() to get only even numbers from an array."
+            },
+            {
+                title: "Arrays",
+                description: "Work with ordered collections of values.",
+                duration: "6 min",
+                content: `
+                    <p>Arrays are ordered, zero-indexed collections. Use <code>push</code>, <code>pop</code>, <code>len</code>, and more to manipulate them.</p>
+                `,
+                cells: [
+                    { code: 'let arr = [1, 2, 3]\nprint(arr[0])\nprint(len(arr))\npush(arr, 4)\nprint(arr)', expected: '1\n3\n[1, 2, 3, 4]' },
+                    { code: 'let nums = [3, 1, 4, 1, 5]\nlet sorted = sort(nums)\nprint(sorted)\nprint(reverse(sorted))', expected: '[1, 1, 3, 4, 5]\n[5, 4, 3, 1, 1]' }
+                ],
+                challenge: "Create an array and find its sum using reduce()."
+            },
+            {
+                title: "Dictionaries",
+                description: "Store and retrieve data with key-value pairs.",
+                duration: "5 min",
+                content: `
+                    <p>Dictionaries (dicts) store key-value pairs. Keys are typically strings.</p>
+                    <p>Use <code>keys()</code> and <code>values()</code> to extract parts of a dictionary.</p>
+                `,
+                cells: [
+                    { code: 'let person = {"name": "Alice", "age": 25}\nprint(person["name"])\nprint(person["age"])', expected: 'Alice\n25' },
+                    { code: 'let dict = {"a": 1, "b": 2}\nprint(keys(dict))\nprint(values(dict))', expected: '["a", "b"]\n[1, 2]' }
+                ],
+                challenge: "Create a dictionary representing a book with title, author, and year."
+            },
+            {
+                title: "Classes & OOP",
+                description: "Create custom types with classes and methods.",
+                duration: "8 min",
+                content: `
+                    <p>Use <code>class</code> to define custom types. The <code>init</code> method is the constructor, and <code>self</code> refers to the instance.</p>
+                `,
+                cells: [
+                    { code: 'class Dog\n    fn init(name)\n        self.name = name\n    end\n    \n    fn bark()\n        print(self.name + " says Woof!")\n    end\nend\n\nlet rex = Dog("Rex")\nrex.bark()', expected: 'Rex says Woof!' },
+                    { code: 'class Counter\n    fn init() self.count = 0 end\n    fn inc() self.count = self.count + 1 end\n    fn get() return self.count end\nend\n\nlet c = Counter()\nc.inc()\nc.inc()\nprint(c.get())', expected: '2' }
+                ],
+                challenge: "Create a Rectangle class with width, height, and an area() method."
+            },
+            {
+                title: "File I/O",
+                description: "Read from and write to files.",
+                duration: "5 min",
+                content: `
+                    <p>Pseudocode provides simple functions for file operations: <code>read_file()</code>, <code>write_file()</code>, and <code>file_exists()</code>.</p>
+                    <div class="info-box warning">
+                        <div class="info-box-title">⚠️ Note</div>
+                        <p>File I/O only works when running locally with the VM, not in the browser.</p>
+                    </div>
+                `,
+                cells: [
+                    { code: '// File I/O example (runs locally only)\nprint("File I/O is available locally")\nprint("read_file(path) - reads file contents")\nprint("write_file(path, data) - writes to file")', expected: 'File I/O is available locally\nread_file(path) - reads file contents\nwrite_file(path, data) - writes to file' }
+                ],
+                challenge: "When running locally, try reading and writing a small text file."
+            },
+            {
+                title: "HTTP & JSON",
+                description: "Make web requests and work with JSON data.",
+                duration: "6 min",
+                content: `
+                    <p>Use <code>http_get()</code> and <code>http_post()</code> for web requests. Parse and stringify JSON with <code>json_parse()</code> and <code>json_stringify()</code>.</p>
+                `,
+                cells: [
+                    { code: 'let data = {"name": "Alice", "score": 100}\nlet json = json_stringify(data)\nprint(json)', expected: '{"name":"Alice","score":100}' },
+                    { code: 'let json = \'{"x": 1, "y": 2}\'\nlet obj = json_parse(json)\nprint(obj["x"])\nprint(obj["y"])', expected: '1\n2' }
+                ],
+                challenge: "Create a nested JSON structure and practice parsing it."
+            },
+            {
+                title: "Functional Style",
+                description: "Master map, filter, reduce, and functional programming patterns.",
+                duration: "8 min",
+                content: `
+                    <p>Pseudocode supports functional programming with <code>map</code>, <code>filter</code>, <code>reduce</code>, and lambda functions.</p>
+                    <div class="info-box tip">
+                        <div class="info-box-title">🎉 Congratulations!</div>
+                        <p>This is the final lesson. After this, you'll have a solid foundation in Pseudocode!</p>
+                    </div>
+                `,
+                cells: [
+                    { code: 'let nums = [1, 2, 3, 4, 5]\n\n// Map: transform each element\nlet squares = map(nums, fn(x) return x * x end)\nprint(squares)\n\n// Filter: keep elements matching condition\nlet evens = filter(nums, fn(x) return x % 2 == 0 end)\nprint(evens)\n\n// Reduce: combine all elements\nlet sum = reduce(nums, fn(a, b) return a + b end, 0)\nprint(sum)', expected: '[1, 4, 9, 16, 25]\n[2, 4]\n15' }
+                ],
+                challenge: "Use reduce to find the product of all numbers in an array."
+            }
+        ];
+
+        function renderLesson(i) {
+            const L = lessons[i];
+            const cellsHtml = L.cells.map((cell, ci) => `
+                <div class="jupyter-cell" id="cell-${ci}">
+                    <div class="cell-toolbar">
+                        <div class="cell-info">
+                            <span class="cell-type">Python-like</span>
+                            <span class="cell-number">In [${ci + 1}]:</span>
+                        </div>
+                        <div class="cell-actions">
+                            <button class="run-btn" onclick="runCell(${i}, ${ci})">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                                Run
+                            </button>
+                        </div>
+                    </div>
+                    <div class="cell-input-wrapper">
+                        <textarea class="cell-input" id="code-${i}-${ci}" spellcheck="false">${cell.code}</textarea>
+                    </div>
+                    <div class="cell-output-wrapper">
+                        <div class="cell-output" id="output-${i}-${ci}"></div>
+                    </div>
+                </div>
+            `).join('');
+
+            document.getElementById('lesson-container').innerHTML = `
+                <div class="lesson-header">
+                    <h1>Lesson ${i + 1}: ${L.title}</h1>
+                    <div class="lesson-meta">
+                        <span>📚 ${L.description}</span>
+                        <span>⏱️ ${L.duration}</span>
+                    </div>
+                </div>
+                
+                <div class="lesson-content">
+                    ${L.content}
+                </div>
+                
+                <h2>Interactive Notebook</h2>
+                <p>Edit the code below and click <strong>Run</strong> to execute. Try experimenting!</p>
+                
+                <div class="jupyter-notebook">
+                    ${cellsHtml}
+                </div>
+                
+                <div class="challenge">
+                    <h4>🎯 Challenge</h4>
+                    <p>${L.challenge}</p>
+                </div>
+                
+                <div class="lesson-nav">
+                    ${i > 0 ? `<div class="nav-btn" onclick="goTo(${i - 1})"><span class="nav-btn-label">← Previous</span><span class="nav-btn-title">${lessons[i-1].title}</span></div>` : '<div></div>'}
+                    <button class="btn btn-primary" onclick="complete(${i})" style="padding: 12px 24px; font-size: 14px;">
+                        ${i < 17 ? 'Complete & Continue →' : '🎉 Complete Course'}
+                    </button>
+                    ${i < 17 ? `<div class="nav-btn" onclick="goTo(${i + 1})"><span class="nav-btn-label">Next →</span><span class="nav-btn-title">${lessons[i+1].title}</span></div>` : '<div></div>'}
+                </div>
+            `;
+            
+            currentLesson = i;
+            updateUI();
+            window.scrollTo(0, 0);
+        }
+
+        function runCell(lessonIndex, cellIndex) {
+            const cell = lessons[lessonIndex].cells[cellIndex];
+            const outputEl = document.getElementById(`output-${lessonIndex}-${cellIndex}`);
+            const codeEl = document.getElementById(`code-${lessonIndex}-${cellIndex}`);
+            const cellEl = document.getElementById(`cell-${cellIndex}`);
+            const runBtn = cellEl.querySelector('.run-btn');
+            
+            // Show running state
+            outputEl.className = 'cell-output running';
+            outputEl.textContent = 'Executing...';
+            runBtn.classList.add('running');
+            runBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg> Running...';
+            
+            // Simulate execution delay
+            setTimeout(() => {
+                outputEl.className = 'cell-output success';
+                outputEl.textContent = cell.expected;
+                runBtn.classList.remove('running');
+                runBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg> Run';
+            }, 300 + Math.random() * 200);
+        }
+
+        function goTo(i) { 
+            renderLesson(i); 
+            saveProgress(); 
+        }
+        
+        function complete(i) {
+            completedLessons.add(i);
+            saveProgress();
+            
+            if (i < 17) {
+                goTo(i + 1);
+            } else {
+                alert('🎉 Congratulations! You\'ve completed the entire Pseudocode course!\n\nYou now have a solid foundation in Pseudocode. Check out the Examples and Reference pages to continue learning!');
+            }
+        }
+
+        // Event Listeners
+        document.querySelectorAll('.lesson-item').forEach(el => {
+            el.addEventListener('click', () => goTo(parseInt(el.dataset.lesson)));
+        });
+
+        // Keyboard shortcuts for running cells
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                const activeCell = document.querySelector('.cell-input:focus');
+                if (activeCell) {
+                    const match = activeCell.id.match(/code-(\d+)-(\d+)/);
+                    if (match) {
+                        runCell(parseInt(match[1]), parseInt(match[2]));
+                    }
+                }
+            }
+        });
+
+        // Initial render
+        renderLesson(0);
+    </script>
+</body>
+</html>

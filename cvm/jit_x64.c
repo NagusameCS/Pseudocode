@@ -661,11 +661,15 @@ static int vstack_peek(VStack *vs, int n)
  * We compile everything between FOR_COUNT and LOOP.
  */
 int jit_compile_loop(uint8_t *loop_start, uint8_t *loop_end,
-                     Value *bp, Value *constants, uint32_t num_constants)
+                     Value *bp, Value *constants, uint32_t num_constants,
+                     void *globals_keys, Value *globals_values, uint32_t globals_capacity)
 {
     (void)bp; /* Only used at runtime */
     (void)constants;
     (void)num_constants;
+    (void)globals_keys;
+    (void)globals_values;
+    (void)globals_capacity;
 
     if (jit_state.num_traces >= JIT_MAX_TRACES)
     {

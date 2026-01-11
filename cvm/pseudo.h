@@ -1027,6 +1027,7 @@ ObjClosure *new_closure(VM *vm, ObjFunction *function);
 ObjUpvalue *new_upvalue(VM *vm, Value *slot);
 ObjDict *new_dict(VM *vm, uint32_t capacity);
 ObjBytes *new_bytes(VM *vm, uint32_t capacity);
+void free_object(VM *vm, Obj *object);
 
 /* Arena allocator for temporary allocations */
 typedef struct Arena

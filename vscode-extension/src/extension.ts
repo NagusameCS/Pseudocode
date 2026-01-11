@@ -24,6 +24,8 @@ import { registerExtraFeatures } from './extraFeatures';
 
 let outputChannel: vscode.OutputChannel;
 let diagnosticCollection: vscode.DiagnosticCollection;
+let diagnosticsTimeout: NodeJS.Timeout | undefined;
+let activeChildProcesses: Set<import('child_process').ChildProcess> = new Set();
 
 export function activate(context: vscode.ExtensionContext) {
     outputChannel = vscode.window.createOutputChannel('Pseudocode');
@@ -65,25 +67,42 @@ export function activate(context: vscode.ExtensionContext) {
         new PseudocodeDocumentFormatter()
     );
 
-    // Real-time diagnostics
-    const updateDiagnostics = (document: vscode.TextDocument) => {
+    // Debounced diagnostics to prevent lag while typing
+    const DIAGNOSTICS_DELAY = 500; // ms delay after typing stops (increased for better performance)
+    
+    const updateDiagnosticsDebounced = (document: vscode.TextDocument) => {
+        if (document.languageId !== 'pseudocode') return;
+        
+        // Clear previous timeout
+        if (diagnosticsTimeout) {
+            clearTimeout(diagnosticsTimeout);
+        }
+        
+        // Set new debounced timeout
+        diagnosticsTimeout = setTimeout(() => {
+            createDiagnostics(document, diagnosticCollection);
+        }, DIAGNOSTICS_DELAY);
+    };
+    
+    // Immediate diagnostics for document open
+    const updateDiagnosticsImmediate = (document: vscode.TextDocument) => {
         if (document.languageId === 'pseudocode') {
             createDiagnostics(document, diagnosticCollection);
         }
     };
 
-    // Update diagnostics on document change
+    // Update diagnostics on document change (debounced)
     vscode.workspace.onDidChangeTextDocument(event => {
-        updateDiagnostics(event.document);
+        updateDiagnosticsDebounced(event.document);
     }, null, context.subscriptions);
 
-    // Update diagnostics on document open
+    // Update diagnostics on document open (immediate)
     vscode.workspace.onDidOpenTextDocument(document => {
-        updateDiagnostics(document);
+        updateDiagnosticsImmediate(document);
     }, null, context.subscriptions);
 
     // Update diagnostics for all open pseudocode files
-    vscode.workspace.textDocuments.forEach(updateDiagnostics);
+    vscode.workspace.textDocuments.forEach(updateDiagnosticsImmediate);
 
     // Clear diagnostics on close
     vscode.workspace.onDidCloseTextDocument(document => {
@@ -121,10 +140,10 @@ export function activate(context: vscode.ExtensionContext) {
         await editor.document.save();
 
         const filePath = editor.document.fileName;
-        const vmPath = await findVmPath();
+        const vmPath = await findVmPath(context.extensionPath);
 
         if (!vmPath) {
-            vscode.window.showErrorMessage('Pseudocode VM (pseudo) not found. Please set pseudocode.vmPath in settings or ensure the VM is built.');
+            vscode.window.showErrorMessage('Pseudocode VM not found. The extension may be missing binaries for your platform.');
             return;
         }
 
@@ -170,14 +189,29 @@ export function activate(context: vscode.ExtensionContext) {
     // Register debugger
     registerDebugger(context);
 
-    // Register REPL
-    registerRepl(context, findVmPath);
+    // Register REPL - pass a wrapper that includes extension path
+    const findVmPathWithContext = () => findVmPath(context.extensionPath);
+    registerRepl(context, findVmPathWithContext);
 
     // Show activation message
     console.log('Pseudocode extension activated');
 }
 
-async function findVmPath(): Promise<string | null> {
+// Get the bundled VM binary name for the current platform
+function getBundledVmName(): string {
+    const platform = process.platform; // 'darwin', 'linux', 'win32'
+    const arch = process.arch; // 'arm64', 'x64'
+    
+    if (platform === 'win32') {
+        return arch === 'arm64' ? 'pseudo-win32-arm64.exe' : 'pseudo-win32-x64.exe';
+    } else if (platform === 'darwin') {
+        return arch === 'arm64' ? 'pseudo-darwin-arm64' : 'pseudo-darwin-x64';
+    } else {
+        return arch === 'arm64' ? 'pseudo-linux-arm64' : 'pseudo-linux-x64';
+    }
+}
+
+async function findVmPath(extensionPath?: string): Promise<string | null> {
     const config = vscode.workspace.getConfiguration('pseudocode');
     const configuredPath = config.get<string>('vmPath');
 
@@ -185,47 +219,96 @@ async function findVmPath(): Promise<string | null> {
     if (configuredPath && fs.existsSync(configuredPath)) {
         return configuredPath;
     }
+    
+    // Check for bundled VM binary in extension (PRIORITY - works out of the box)
+    if (extensionPath) {
+        const bundledName = getBundledVmName();
+        const bundledVm = path.join(extensionPath, 'bin', bundledName);
+        if (fs.existsSync(bundledVm)) {
+            // Ensure it's executable on Unix
+            if (process.platform !== 'win32') {
+                try {
+                    fs.chmodSync(bundledVm, 0o755);
+                } catch (e) {
+                    // Ignore chmod errors
+                }
+            }
+            return bundledVm;
+        }
+        
+        // Also check for generic 'pseudo' name as fallback
+        const genericVm = path.join(extensionPath, 'bin', process.platform === 'win32' ? 'pseudo.exe' : 'pseudo');
+        if (fs.existsSync(genericVm)) {
+            if (process.platform !== 'win32') {
+                try {
+                    fs.chmodSync(genericVm, 0o755);
+                } catch (e) {}
+            }
+            return genericVm;
+        }
+    }
 
     // On Windows, look for .exe extension
     const isWindows = process.platform === 'win32';
     const exeNames = isWindows ? ['pseudo.exe', 'pseudo'] : ['pseudo'];
+    
+    // Helper to check multiple paths
+    const checkPaths = (basePath: string): string | null => {
+        for (const exeName of exeNames) {
+            // Check cvm/pseudo (main VM location)
+            const vmInCvm = path.join(basePath, 'cvm', exeName);
+            if (fs.existsSync(vmInCvm)) {
+                return vmInCvm;
+            }
+
+            // Check cvm/pseudo_debug (debug build)
+            const vmDebugName = isWindows ? exeName.replace('pseudo', 'pseudo_debug') : 'pseudo_debug';
+            const vmDebug = path.join(basePath, 'cvm', vmDebugName);
+            if (fs.existsSync(vmDebug)) {
+                return vmDebug;
+            }
+
+            // Check bin/pseudo (installed location)
+            const vmInBin = path.join(basePath, 'bin', exeName);
+            if (fs.existsSync(vmInBin)) {
+                return vmInBin;
+            }
+
+            // Check root pseudo
+            const vmInRoot = path.join(basePath, exeName);
+            if (fs.existsSync(vmInRoot)) {
+                return vmInRoot;
+            }
+
+            // Check build/pseudo (CMake build)
+            const vmInBuild = path.join(basePath, 'build', exeName);
+            if (fs.existsSync(vmInBuild)) {
+                return vmInBuild;
+            }
+        }
+        return null;
+    };
 
     // Check workspace folders for compiled VM
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (workspaceFolders) {
         for (const folder of workspaceFolders) {
-            for (const exeName of exeNames) {
-                // Check cvm/pseudo (main VM location)
-                const vmInCvm = path.join(folder.uri.fsPath, 'cvm', exeName);
-                if (fs.existsSync(vmInCvm)) {
-                    return vmInCvm;
-                }
-
-                // Check cvm/pseudo_debug (debug build)
-                const vmDebugName = isWindows ? exeName.replace('pseudo', 'pseudo_debug') : 'pseudo_debug';
-                const vmDebug = path.join(folder.uri.fsPath, 'cvm', vmDebugName);
-                if (fs.existsSync(vmDebug)) {
-                    return vmDebug;
-                }
-
-                // Check bin/pseudo (installed location)
-                const vmInBin = path.join(folder.uri.fsPath, 'bin', exeName);
-                if (fs.existsSync(vmInBin)) {
-                    return vmInBin;
-                }
-
-                // Check root pseudo
-                const vmInRoot = path.join(folder.uri.fsPath, exeName);
-                if (fs.existsSync(vmInRoot)) {
-                    return vmInRoot;
-                }
-
-                // Check build/pseudo (CMake build)
-                const vmInBuild = path.join(folder.uri.fsPath, 'build', exeName);
-                if (fs.existsSync(vmInBuild)) {
-                    return vmInBuild;
-                }
-            }
+            const result = checkPaths(folder.uri.fsPath);
+            if (result) return result;
+        }
+    }
+    
+    // Check from the active file's directory (traverse up to find project root)
+    const activeEditor = vscode.window.activeTextEditor;
+    if (activeEditor) {
+        let dir = path.dirname(activeEditor.document.fileName);
+        // Traverse up looking for cvm folder
+        for (let i = 0; i < 5; i++) {
+            const result = checkPaths(dir);
+            if (result) return result;
+            const parent = path.dirname(dir);
+            if (parent === dir) break;
+            dir = parent;
         }
     }
 
@@ -305,6 +388,9 @@ function runPseudocode(vmPath: string, filePath: string): void {
         windowsVerbatimArguments: false
     });
 
+    // Track for cleanup
+    activeChildProcesses.add(childProcess);
+
     childProcess.stdout.on('data', (data: Buffer) => {
         outputChannel.append(data.toString());
     });
@@ -314,6 +400,9 @@ function runPseudocode(vmPath: string, filePath: string): void {
     });
 
     childProcess.on('close', (code: number) => {
+        // Remove from tracking
+        activeChildProcesses.delete(childProcess);
+        
         outputChannel.appendLine('');
         outputChannel.appendLine('─'.repeat(50));
 
@@ -368,4 +457,31 @@ function buildVm(cvmPath: string): void {
     });
 }
 
-export function deactivate() { }
+export function deactivate() {
+    // Clean up diagnostics timeout
+    if (diagnosticsTimeout) {
+        clearTimeout(diagnosticsTimeout);
+        diagnosticsTimeout = undefined;
+    }
+    
+    // Kill any active child processes
+    for (const proc of activeChildProcesses) {
+        try {
+            proc.kill();
+        } catch (e) {
+            // Ignore errors during cleanup
+        }
+    }
+    activeChildProcesses.clear();
+    
+    // Dispose output channel
+    if (outputChannel) {
+        outputChannel.dispose();
+    }
+    
+    // Clear diagnostics
+    if (diagnosticCollection) {
+        diagnosticCollection.clear();
+        diagnosticCollection.dispose();
+    }
+}
