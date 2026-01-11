@@ -549,6 +549,8 @@ typedef enum
     OP_ARRAY,
     OP_INDEX,
     OP_INDEX_SET,
+    OP_INDEX_FAST,      /* Unchecked array index - for JIT when bounds proven safe */
+    OP_INDEX_SET_FAST,  /* Unchecked array index set */
     OP_LEN,
     OP_PUSH,
     OP_POP_ARRAY,

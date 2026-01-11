@@ -896,6 +896,8 @@ InterpretResult vm_run(VM *vm)
         [OP_ARRAY] = &&op_array,
         [OP_INDEX] = &&op_index,
         [OP_INDEX_SET] = &&op_index_set,
+        [OP_INDEX_FAST] = &&op_index_fast,
+        [OP_INDEX_SET_FAST] = &&op_index_set_fast,
         [OP_LEN] = &&op_len,
         [OP_PUSH] = &&op_push,
         [OP_POP_ARRAY] = &&op_pop_array,
@@ -1820,6 +1822,31 @@ InterpretResult vm_run(VM *vm)
             return INTERPRET_RUNTIME_ERROR;
         }
 
+        array->values[index] = value;
+        PUSH(value);
+        DISPATCH();
+    }
+
+    /* Fast (unchecked) array access for JIT when bounds are proven safe */
+    CASE(index_fast) :
+    {
+        Value index_val = POP();
+        Value target_obj = POP();
+        ObjArray *array = AS_ARRAY(target_obj);
+        int32_t index = IS_INT(index_val) ? as_int(index_val) : (int32_t)as_num(index_val);
+        /* No bounds check - JIT has proven this is safe */
+        PUSH(array->values[index]);
+        DISPATCH();
+    }
+
+    CASE(index_set_fast) :
+    {
+        Value value = POP();
+        Value index_val = POP();
+        Value target_obj = POP();
+        ObjArray *array = AS_ARRAY(target_obj);
+        int32_t index = IS_INT(index_val) ? as_int(index_val) : (int32_t)as_num(index_val);
+        /* No bounds check - JIT has proven this is safe */
         array->values[index] = value;
         PUSH(value);
         DISPATCH();
