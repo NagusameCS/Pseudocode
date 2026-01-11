@@ -140,6 +140,9 @@ void jit_init(void);
 /* Cleanup JIT compiler */
 void jit_cleanup(void);
 
+/* Set VM for JIT runtime helpers (needed for inline function calls) */
+void jit_set_vm(void *vm);
+
 /* Check if JIT is available */
 int jit_available(void);
 

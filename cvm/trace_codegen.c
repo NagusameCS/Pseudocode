@@ -33,6 +33,262 @@ void deopt_reconstruct(TraceIR *ir, uint32_t snapshot_idx,
                        Value *bp, void *native_regs);
 
 /* ============================================================
+ * JIT Runtime Helpers for Function Inlining
+ * ============================================================
+ * These are called from JIT-compiled code to handle operations
+ * that are too complex to inline as native code.
+ */
+
+/* Global VM pointer for JIT runtime helpers */
+static VM *g_jit_vm = NULL;
+
+/* Set the VM for JIT runtime helpers */
+void jit_set_vm(void *vm)
+{
+    g_jit_vm = (VM *)vm;
+}
+
+/*
+ * jit_call_inline - Call a Pseudocode function from JIT code
+ *
+ * This is a runtime helper that:
+ * 1. Sets up a call frame
+ * 2. Executes the function via the interpreter
+ * 3. Returns the result as a Value
+ *
+ * Parameters (x64 ABI):
+ *   RDI = ObjFunction* function
+ *   RSI = Value* args array
+ *   RDX = uint64_t arg_count
+ *
+ * Returns: Value (result in RAX)
+ */
+__attribute__((noinline))
+Value
+jit_call_inline(ObjFunction *function, Value *args, uint64_t arg_count)
+{
+    if (!g_jit_vm || !function)
+    {
+        return VAL_NIL;
+    }
+
+    VM *vm = g_jit_vm;
+
+    /* Verify arity */
+    if ((uint64_t)function->arity != arg_count)
+    {
+        return VAL_NIL; /* Arity mismatch */
+    }
+
+    /* Check for stack overflow */
+    if (vm->frame_count >= FRAMES_MAX - 1)
+    {
+        return VAL_NIL;
+    }
+
+    /* Save current VM state */
+    Value *old_sp = vm->sp;
+    int old_frame_count = vm->frame_count;
+
+    /* Push callee (function) and arguments onto stack */
+    *vm->sp++ = val_obj(function);
+    for (uint64_t i = 0; i < arg_count; i++)
+    {
+        *vm->sp++ = args[i];
+    }
+
+    /* Set up call frame */
+    CallFrame *frame = &vm->frames[vm->frame_count++];
+    frame->function = function;
+    frame->closure = NULL;
+    frame->ip = vm->ip; /* Save return IP */
+    frame->slots = vm->sp - arg_count - 1;
+    frame->is_init = false;
+
+    /* Execute the function */
+    uint8_t *saved_ip = vm->ip;
+    vm->ip = vm->chunk.code + function->code_start;
+
+    /* Run until we return from this frame */
+    int target_depth = old_frame_count;
+
+    /* Simple inline interpreter for the function body */
+    while (vm->frame_count > target_depth)
+    {
+        uint8_t op = *vm->ip++;
+        switch (op)
+        {
+        case OP_RETURN:
+        {
+            Value result = *(--vm->sp);
+
+            /* Pop frame */
+            vm->frame_count--;
+
+            /* If we've returned from our target frame, we're done */
+            if (vm->frame_count <= target_depth)
+            {
+                vm->sp = old_sp;
+                vm->ip = saved_ip;
+                return result;
+            }
+
+            /* Otherwise, continue with the caller */
+            CallFrame *caller = &vm->frames[vm->frame_count - 1];
+            vm->sp = caller->slots;
+            vm->ip = caller->ip;
+            *vm->sp++ = result;
+            break;
+        }
+        case OP_CONST:
+        {
+            uint8_t idx = *vm->ip++;
+            *vm->sp++ = vm->chunk.constants[idx];
+            break;
+        }
+        case OP_GET_LOCAL:
+        {
+            uint8_t slot = *vm->ip++;
+            CallFrame *cur_frame = &vm->frames[vm->frame_count - 1];
+            *vm->sp++ = cur_frame->slots[slot];
+            break;
+        }
+        case OP_SET_LOCAL:
+        {
+            uint8_t slot = *vm->ip++;
+            CallFrame *cur_frame = &vm->frames[vm->frame_count - 1];
+            cur_frame->slots[slot] = vm->sp[-1];
+            break;
+        }
+        case OP_ADD:
+        {
+            Value b = *(--vm->sp);
+            Value a = *(--vm->sp);
+            if (IS_NUM(a) && IS_NUM(b))
+            {
+                *vm->sp++ = val_num(as_num(a) + as_num(b));
+            }
+            else
+            {
+                *vm->sp++ = VAL_NIL;
+            }
+            break;
+        }
+        case OP_SUB:
+        {
+            Value b = *(--vm->sp);
+            Value a = *(--vm->sp);
+            if (IS_NUM(a) && IS_NUM(b))
+            {
+                *vm->sp++ = val_num(as_num(a) - as_num(b));
+            }
+            else
+            {
+                *vm->sp++ = VAL_NIL;
+            }
+            break;
+        }
+        case OP_MUL:
+        {
+            Value b = *(--vm->sp);
+            Value a = *(--vm->sp);
+            if (IS_NUM(a) && IS_NUM(b))
+            {
+                *vm->sp++ = val_num(as_num(a) * as_num(b));
+            }
+            else
+            {
+                *vm->sp++ = VAL_NIL;
+            }
+            break;
+        }
+        case OP_DIV:
+        {
+            Value b = *(--vm->sp);
+            Value a = *(--vm->sp);
+            if (IS_NUM(a) && IS_NUM(b))
+            {
+                *vm->sp++ = val_num(as_num(a) / as_num(b));
+            }
+            else
+            {
+                *vm->sp++ = VAL_NIL;
+            }
+            break;
+        }
+        case OP_LT:
+        {
+            Value b = *(--vm->sp);
+            Value a = *(--vm->sp);
+            if (IS_NUM(a) && IS_NUM(b))
+            {
+                *vm->sp++ = as_num(a) < as_num(b) ? VAL_TRUE : VAL_FALSE;
+            }
+            else
+            {
+                *vm->sp++ = VAL_FALSE;
+            }
+            break;
+        }
+        case OP_GT:
+        {
+            Value b = *(--vm->sp);
+            Value a = *(--vm->sp);
+            if (IS_NUM(a) && IS_NUM(b))
+            {
+                *vm->sp++ = as_num(a) > as_num(b) ? VAL_TRUE : VAL_FALSE;
+            }
+            else
+            {
+                *vm->sp++ = VAL_FALSE;
+            }
+            break;
+        }
+        case OP_NIL:
+            *vm->sp++ = VAL_NIL;
+            break;
+        case OP_TRUE:
+            *vm->sp++ = VAL_TRUE;
+            break;
+        case OP_FALSE:
+            *vm->sp++ = VAL_FALSE;
+            break;
+        case OP_POP:
+            vm->sp--;
+            break;
+        case OP_DUP:
+            *vm->sp = vm->sp[-1];
+            vm->sp++;
+            break;
+        case OP_NEG:
+        {
+            Value a = *(--vm->sp);
+            if (IS_NUM(a))
+            {
+                *vm->sp++ = val_num(-as_num(a));
+            }
+            else
+            {
+                *vm->sp++ = VAL_NIL;
+            }
+            break;
+        }
+        default:
+            /* Unsupported opcode in inline function - fall back */
+            vm->sp = old_sp;
+            vm->ip = saved_ip;
+            vm->frame_count = old_frame_count;
+            return VAL_NIL;
+        }
+    }
+
+    /* Should not reach here */
+    vm->sp = old_sp;
+    vm->ip = saved_ip;
+    return VAL_NIL;
+}
+
+/* ============================================================
  * Machine Code Buffer
  * ============================================================ */
 
@@ -1843,7 +2099,81 @@ static void compile_ir_op(MCode *mc, TraceIR *ir, IRIns *ins,
         break;
 
     case IR_CALL_INLINE:
-        /* Marker for inlined call - no actual codegen, just marks boundary */
+        /*
+         * Inline function call via runtime helper
+         *
+         * The IR instruction has:
+         * - imm.i64 = ObjFunction* to call (stored as int64)
+         * - aux = argument count
+         * - src1, src2 = first two argument vregs (rest would need stack)
+         *
+         * We call jit_call_inline(function, args_array, arg_count)
+         * where args_array is built on the stack temporarily.
+         */
+        {
+            ObjFunction *fn = (ObjFunction *)(uintptr_t)ins->imm.i64;
+            uint8_t arg_count = (uint8_t)ins->aux;
+
+            if (fn && arg_count <= 2)
+            {
+                /* Allocate stack space for args array (max 8 args * 8 bytes) */
+                /* SUB RSP, 64 */
+                emit(mc, rex(1, 0, 0, RSP));
+                emit(mc, 0x83);
+                emit(mc, 0xe8 | (RSP & 7)); /* SUB r/m64, imm8 */
+                emit(mc, 64);
+
+                /* Store arguments into stack-based array */
+                /* RSP+0 = arg0, RSP+8 = arg1, etc. */
+                if (arg_count >= 1 && src1 >= 0)
+                {
+                    /* MOV [RSP+0], src1 */
+                    emit_mov_mr(mc, RSP, 0, src1);
+                }
+                if (arg_count >= 2 && src2 >= 0)
+                {
+                    /* MOV [RSP+8], src2 */
+                    emit_mov_mr(mc, RSP, 8, src2);
+                }
+
+                /* Set up call arguments per x64 ABI:
+                 * RDI = function pointer
+                 * RSI = args array pointer (RSP)
+                 * RDX = arg count
+                 */
+
+                /* MOV RDI, function_ptr (immediate 64-bit) */
+                emit_mov_ri64(mc, RDI, (int64_t)(uintptr_t)fn);
+
+                /* MOV RSI, RSP (args array is at RSP) */
+                emit_mov_rr(mc, RSI, RSP);
+
+                /* MOV RDX, arg_count */
+                emit_mov_ri32(mc, RDX, arg_count);
+
+                /* CALL jit_call_inline */
+                /* MOV R11, jit_call_inline address */
+                emit_mov_ri64(mc, R11, (int64_t)(uintptr_t)jit_call_inline);
+
+                /* CALL R11 */
+                emit(mc, 0x41); /* REX.B */
+                emit(mc, 0xff); /* CALL r/m64 */
+                emit(mc, 0xd3); /* ModR/M for R11 */
+
+                /* Free stack space */
+                /* ADD RSP, 64 */
+                emit(mc, rex(1, 0, 0, RSP));
+                emit(mc, 0x83);
+                emit(mc, 0xc0 | (RSP & 7)); /* ADD r/m64, imm8 */
+                emit(mc, 64);
+
+                /* Result is in RAX, move to dst if needed */
+                if (dst >= 0 && dst != RAX)
+                {
+                    emit_mov_rr(mc, dst, RAX);
+                }
+            }
+        }
         break;
 
     case IR_RET_VAL:

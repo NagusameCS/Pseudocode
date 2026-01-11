@@ -921,6 +921,10 @@ static void debug_trace_op(VM *vm, uint8_t *ip, Value *sp)
 
 InterpretResult vm_run(VM *vm)
 {
+    /* Set VM for JIT runtime helpers (needed for inline function calls) */
+    extern void jit_set_vm(void *v);
+    jit_set_vm(vm);
+
     register uint8_t *ip = vm->chunk.code;
     register Value *sp = vm->sp;    /* Cache stack pointer in register */
     register Value *bp = vm->stack; /* Cache base pointer for locals */
@@ -1809,6 +1813,39 @@ InterpretResult vm_run(VM *vm)
             vm->sp = sp;
             runtime_error(vm, "Stack overflow.");
             return INTERPRET_RUNTIME_ERROR;
+        }
+
+        /* FUNCTION INLINING: For small functions without closures,
+         * execute inline without pushing a call frame.
+         * Criteria: can_inline flag set, no closure (upvalues), not recursive */
+        if (function->can_inline && closure == NULL && vm->frame_count < FRAMES_MAX - 1)
+        {
+            /* Inline execution: don't push a new frame, just adjust bp.
+             * Stack layout: [callee][arg0][arg1]...[argN] <- sp
+             * We want: [arg0][arg1]...[argN] at slots 1..N (slot 0 is callee)
+             *
+             * The callee is at sp[-arg_count-1], args at sp[-arg_count] to sp[-1].
+             * For the inlined function, slot 0 should be the callee (for self ref),
+             * and slots 1..arity are the arguments.
+             *
+             * We can set bp = sp - arg_count - 1 (points to callee slot)
+             * Then bp[0] = callee, bp[1] = arg0, bp[2] = arg1, etc.
+             *
+             * To return: we need to save where to come back and restore bp.
+             * Use a lightweight "inline frame" that just tracks return location.
+             */
+
+            /* Save current state for inline return */
+            CallFrame *frame = &vm->frames[vm->frame_count++];
+            frame->function = function;
+            frame->closure = NULL;
+            frame->ip = ip;                    /* Return address */
+            frame->slots = sp - arg_count - 1; /* bp for inlined function */
+            frame->is_init = false;
+
+            bp = frame->slots;
+            ip = vm->chunk.code + function->code_start;
+            DISPATCH();
         }
 
         CallFrame *frame = &vm->frames[vm->frame_count++];

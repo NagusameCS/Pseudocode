@@ -767,9 +767,100 @@ bool recorder_step(TraceRecorder *rec, uint8_t *pc,
         break;
     }
 
-    /* ============ Unsupported - Abort Recording ============ */
+    /* ============ Function Call - Attempt Inlining ============ */
     case OP_CALL:
+    {
+        uint8_t arg_count = *pc; /* pc points to arg count byte after op */
+
+        /* Get the callee from the stack */
+        if (rec->sp < (int)(arg_count + 1))
+        {
+            recorder_abort(rec, "stack underflow in CALL");
+            return false;
+        }
+
+        /* Peek at the callee value at runtime from bp */
+        Value callee_val = bp[-arg_count - 1];
+        ObjFunction *function = NULL;
+
+        if (IS_FUNCTION(callee_val))
+        {
+            function = AS_FUNCTION(callee_val);
+        }
+        else if (IS_CLOSURE(callee_val))
+        {
+            ObjClosure *closure = AS_CLOSURE(callee_val);
+            function = closure->function;
+            /* Can't inline closures with upvalues */
+            if (closure->upvalue_count > 0)
+            {
+                recorder_abort(rec, "cannot inline closure with upvalues");
+                return false;
+            }
+        }
+        else
+        {
+            recorder_abort(rec, "cannot inline non-function call");
+            return false;
+        }
+
+        /* Check if function is inlinable */
+        if (!function->can_inline)
+        {
+            recorder_abort(rec, "function too large to inline");
+            return false;
+        }
+
+        /* Check for nested inline depth */
+        if (rec->depth >= 3)
+        {
+            recorder_abort(rec, "inline depth limit exceeded");
+            return false;
+        }
+
+        /* Emit IR_CALL_INLINE which records the call for the code generator */
+        /* The codegen will emit inline native code for the function body */
+        uint16_t callee_vreg = rec_pop(rec);
+        (void)callee_vreg; /* We don't need the callee vreg for inline */
+
+        /* Emit argument loads - pop args from trace stack */
+        uint16_t arg_vregs[8];
+        for (int i = arg_count - 1; i >= 0; i--)
+        {
+            arg_vregs[i] = rec_pop(rec);
+        }
+
+        /* For JIT inlining, emit IR_CALL_INLINE with function pointer */
+        uint16_t result = ir_vreg(ir, IR_TYPE_BOXED);
+        uint32_t call_idx = ir_emit(ir, IR_CALL_INLINE, IR_TYPE_BOXED, result,
+                                    (arg_count > 0) ? arg_vregs[0] : 0,
+                                    (arg_count > 1) ? arg_vregs[1] : 0);
+        if (call_idx > 0)
+        {
+            /* Store function pointer as 64-bit integer */
+            ir->ops[call_idx].imm.i64 = (int64_t)(uintptr_t)function;
+            ir->ops[call_idx].aux = arg_count;
+        }
+
+        /* Push result onto trace stack */
+        rec_push(rec, result);
+        rec->depth++;
+        break;
+    }
+
     case OP_RETURN:
+    {
+        /* For now, abort if we hit a return outside of inlined context */
+        if (rec->depth == 0)
+        {
+            recorder_abort(rec, "return outside of inlined function");
+            return false;
+        }
+        rec->depth--;
+        /* The result is already on the trace stack from the inlined body */
+        break;
+    }
+
     case OP_PRINT:
     case OP_PRINTLN:
         /* These could be supported later with more work */
