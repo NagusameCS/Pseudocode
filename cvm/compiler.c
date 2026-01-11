@@ -245,6 +245,68 @@ static Chunk *current_chunk(void)
     return compiling_chunk;
 }
 
+/* ============ Function Inlining Cache ============ */
+/* Track compiled functions for inlining at call sites */
+
+#define INLINE_CACHE_SIZE 128
+
+typedef struct
+{
+    ObjString *name;         /* Function name */
+    ObjFunction *function;   /* Compiled function */
+    uint32_t code_start;     /* Start of bytecode */
+    uint32_t code_length;    /* Length of bytecode */
+    uint8_t arity;           /* Number of parameters */
+    bool valid;              /* Entry is valid */
+} InlineCacheEntry;
+
+static InlineCacheEntry inline_cache[INLINE_CACHE_SIZE];
+static int inline_cache_count = 0;
+static int current_inline_depth = 0;  /* Track nested inlining depth */
+
+static void init_inline_cache(void)
+{
+    inline_cache_count = 0;
+    current_inline_depth = 0;
+    for (int i = 0; i < INLINE_CACHE_SIZE; i++)
+    {
+        inline_cache[i].valid = false;
+    }
+}
+
+static void register_inlinable_function(ObjString *name, ObjFunction *func)
+{
+    if (!func->can_inline || inline_cache_count >= INLINE_CACHE_SIZE)
+        return;
+
+    /* Don't cache functions with upvalues */
+    if (func->upvalue_count > 0)
+        return;
+
+    InlineCacheEntry *entry = &inline_cache[inline_cache_count++];
+    entry->name = name;
+    entry->function = func;
+    entry->code_start = func->code_start;
+    entry->code_length = func->code_length;
+    entry->arity = func->arity;
+    entry->valid = true;
+}
+
+static InlineCacheEntry *lookup_inlinable(const char *name, int length)
+{
+    for (int i = 0; i < inline_cache_count; i++)
+    {
+        InlineCacheEntry *entry = &inline_cache[i];
+        if (entry->valid && entry->name != NULL &&
+            entry->name->length == (uint32_t)length &&
+            memcmp(entry->name->chars, name, length) == 0)
+        {
+            return entry;
+        }
+    }
+    return NULL;
+}
+
 /* ============ Compile-Time Optimization State ============ */
 
 /* Track the last emitted value for constant folding and type inference */
@@ -267,12 +329,24 @@ static bool inhibit_jump_fusion = false;
 static bool last_was_call = false;
 static uint8_t last_call_arg_count = 0;
 
+/* Track the last GET_GLOBAL for inlining opportunities */
+typedef struct
+{
+    bool valid;              /* True if last emit was GET_GLOBAL */
+    const char *name;        /* Name of the global */
+    int name_length;         /* Length of name */
+    size_t bytecode_pos;     /* Position of GET_GLOBAL in bytecode */
+} LastGlobalGet;
+
+static LastGlobalGet last_global_get = {false, NULL, 0, 0};
+
 static void reset_last_emit(void)
 {
     second_last_emit = last_emit;
     last_emit.is_constant = false;
     last_emit.type = CTYPE_UNKNOWN;
     last_was_call = false;
+    last_global_get.valid = false;
 }
 
 static void track_constant(Value value, uint8_t idx)
@@ -1133,10 +1207,24 @@ static void named_variable(Token name, bool can_assign)
                 emit_byte(OP_GET_LOCAL_3);
                 break;
             }
+            last_global_get.valid = false;
         }
         else
         {
             emit_bytes(get_op, (uint8_t)arg);
+
+            /* Track GET_GLOBAL for potential inlining */
+            if (get_op == OP_GET_GLOBAL)
+            {
+                last_global_get.valid = true;
+                last_global_get.name = name.start;
+                last_global_get.name_length = name.length;
+                last_global_get.bytecode_pos = current_chunk()->count - 2;
+            }
+            else
+            {
+                last_global_get.valid = false;
+            }
         }
         /* Propagate local's inferred type */
         if (arg != -1 && get_op == OP_GET_LOCAL)
@@ -1148,6 +1236,14 @@ static void named_variable(Token name, bool can_assign)
         else
         {
             reset_last_emit(); /* Global variable or unknown - type unknown */
+            /* Don't reset last_global_get here since reset_last_emit does it */
+            if (get_op == OP_GET_GLOBAL)
+            {
+                last_global_get.valid = true;
+                last_global_get.name = name.start;
+                last_global_get.name_length = name.length;
+                last_global_get.bytecode_pos = current_chunk()->count - 2;
+            }
         }
     }
 }
@@ -2993,6 +3089,16 @@ static void call(bool can_assign)
 {
     (void)can_assign;
     uint8_t arg_count = argument_list();
+
+    /* Function inlining infrastructure is in place but disabled for now.
+     * The complexity of bytecode copying with slot remapping introduces
+     * subtle bugs. We have the can_inline flag and InlineCacheEntry structure
+     * ready for future implementation using a cleaner approach like:
+     * 1. Runtime inline caching (JIT-based)
+     * 2. AST-level inlining before bytecode emission
+     * 3. Specialized inline call opcode with VM support
+     */
+
     emit_bytes(OP_CALL, arg_count);
     /* Track for tail call optimization */
     last_was_call = true;
@@ -3982,9 +4088,47 @@ static void enum_declaration(void)
 
 static void fn_declaration(void)
 {
-    uint8_t global = parse_variable("Expect function name.");
-    mark_initialized();
+    /* Save function name for inline caching */
+    consume(TOKEN_IDENT, "Expect function name.");
+    Token fn_name = parser.previous;
+
+    uint8_t global = identifier_constant(&parser.previous);
+
+    if (current->scope_depth > 0)
+    {
+        add_local(fn_name);
+        mark_initialized();
+    }
+
     function(TYPE_FUNCTION);
+
+    /* Register function in inline cache if it's inlinable */
+    /* The function value is on top of the stack (from OP_CLOSURE) */
+    /* We peek at the constant pool to get the actual function */
+    Chunk *chunk = current_chunk();
+    if (chunk->count >= 2)
+    {
+        /* OP_CLOSURE was just emitted, the constant index is at count-1 minus upvalue descriptors */
+        /* Find the ObjFunction in the last emitted OP_CLOSURE */
+        for (int i = chunk->count - 1; i >= 2; i--)
+        {
+            if (chunk->code[i - 1] == OP_CLOSURE)
+            {
+                uint8_t const_idx = chunk->code[i];
+                Value func_val = chunk->constants[const_idx];
+                if (IS_FUNCTION(func_val))
+                {
+                    ObjFunction *func = AS_FUNCTION(func_val);
+                    /* Create name string and register */
+                    ObjString *name_str = copy_string(compiling_vm, fn_name.start, fn_name.length);
+                    func->name = name_str;
+                    register_inlinable_function(name_str, func);
+                }
+                break;
+            }
+        }
+    }
+
     define_variable(global);
 }
 
@@ -4534,6 +4678,9 @@ bool compile(const char *source, Chunk *chunk, VM *vm)
     compiling_vm = vm;
     init_compiler(&compiler, TYPE_SCRIPT);
 
+    /* Initialize inline cache for this compilation */
+    init_inline_cache();
+
     parser.had_error = false;
     parser.panic_mode = false;
 
@@ -4543,6 +4690,7 @@ bool compile(const char *source, Chunk *chunk, VM *vm)
     last_emit.bytecode_pos = 0;
     last_emit.const_idx = 0;
     second_last_emit.is_constant = false;
+    last_global_get.valid = false;
 
     advance();
 
