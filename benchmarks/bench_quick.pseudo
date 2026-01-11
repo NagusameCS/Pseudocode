@@ -1,0 +1,119 @@
+// Pseudocode Language - Quick Benchmark
+// For comparison with Python and C
+
+print("=== Pseudocode Quick Benchmark ===")
+print("")
+
+// 1. Empty loop (10M)
+fn bench_loop()
+    let start = time()
+    let x = 0
+    for i in 0..10000000 do
+        x = x + 1
+    end
+    let elapsed = (time() - start) * 1000
+    print("1. Loop (10M):       " + str(elapsed) + " ms (x=" + str(x) + ")")
+end
+
+// 2. Fibonacci recursive
+fn fib(n)
+    if n < 2 then
+        return n
+    end
+    return fib(n - 1) + fib(n - 2)
+end
+
+fn bench_fib()
+    let start = time()
+    let result = fib(35)
+    let elapsed = (time() - start) * 1000
+    print("2. Fib(35):          " + str(elapsed) + " ms (result=" + str(result) + ")")
+end
+
+// 3. Arithmetic
+fn bench_arith()
+    let start = time()
+    let x = 1
+    for i in 0..10000000 do
+        x = (x * 3 + 7) % 1000000
+    end
+    let elapsed = (time() - start) * 1000
+    print("3. Arith (10M):      " + str(elapsed) + " ms (x=" + str(x) + ")")
+end
+
+// 4. Small array sum
+fn bench_array()
+    let arr = []
+    for i in 0..10000 do
+        push(arr, i)
+    end
+    let start = time()
+    let s = 0
+    for j in 0..100 do
+        s = 0
+        for i in 0..10000 do
+            s = s + arr[i]
+        end
+    end
+    let elapsed = (time() - start) * 1000
+    print("4. Array sum (100x): " + str(elapsed) + " ms (sum=" + str(s) + ")")
+end
+
+// 5. Object access
+class Point
+    fn init(x, y)
+        self.x = x
+        self.y = y
+    end
+end
+
+fn bench_object()
+    let p = Point(1, 2)
+    let start = time()
+    for i in 0..1000000 do
+        p.x = p.x + 1
+    end
+    let elapsed = (time() - start) * 1000
+    print("5. Object (1M):      " + str(elapsed) + " ms (p.x=" + str(p.x) + ")")
+end
+
+// 6. Prime count (basic sieve)
+fn bench_primes()
+    let start = time()
+    let n = 100000
+    let sieve = []
+    for i in 0..n do
+        push(sieve, true)
+    end
+    
+    let p = 2
+    while p * p < n do
+        if sieve[p] then
+            let i = p * p
+            while i < n do
+                sieve[i] = false
+                i = i + p
+            end
+        end
+        p = p + 1
+    end
+    
+    let count = 0
+    for i in 2..n do
+        if sieve[i] then
+            count = count + 1
+        end
+    end
+    let elapsed = (time() - start) * 1000
+    print("6. Primes (100k):    " + str(elapsed) + " ms (count=" + str(count) + ")")
+end
+
+bench_loop()
+bench_fib()
+bench_arith()
+bench_array()
+bench_object()
+bench_primes()
+
+print("")
+print("=== Done ===")
