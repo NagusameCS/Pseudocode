@@ -32,7 +32,7 @@
 - [DONE] Small constant opcodes (OP_CONST_0, 1, 2, -1)
 
 ### Remaining Optimizations
-- [WIP] **Function Inlining** - Infrastructure in place, JIT-level implementation needed
+- [DONE] **Function Inlining** - JIT-level via runtime helper, supports small functions
 - [WIP] **Escape Analysis** - Compile-time tracking done, stack allocation pending
 - [DONE] **SIMD Vectorization** - AVX/SSE accelerated array operations
 - [ ] **Better Register Allocation** - Linear scan instead of simple allocation
@@ -54,24 +54,23 @@
 ## Recommended Next Steps (Priority Order)
 
 ### HIGH Priority
-1. **Function Inlining** - Inline small functions (<50 bytecodes) at call sites
-   - Would eliminate call overhead for hot functions
-   - Expected: 10-50x improvement for recursive code
-
-### MEDIUM Priority
-2. **Escape Analysis** - Identify objects that don't escape function scope
-   - Stack-allocate instead of heap
-   - Reduces GC pressure
+1. **Escape Analysis Stack Allocation** - Wire up the escape analysis to actually stack-allocate
+   - Infrastructure is in place, needs codegen integration
    - Expected: 1.5-2x for allocation-heavy code
 
-3. **Loop Unrolling** - Unroll small fixed-iteration loops
+### MEDIUM Priority
+2. **Loop Unrolling** - Unroll small fixed-iteration loops
    - Reduces branch overhead
    - Expected: 1.2-1.5x for small loops
 
+3. **Better Register Allocation** - Linear scan instead of simple allocation
+   - Currently using naive allocation
+   - Expected: 1.1-1.3x general improvement
+
 ### LOWER Priority (Future)
-4. **SIMD Vectorization** - Use SSE/AVX for array operations
-5. **Polymorphic IC** - Handle multiple class shapes efficiently
-6. **Profile-Guided Optimization** - Recompile hot traces with better info
+4. **Profile-Guided Optimization** - Recompile hot traces with better info
+5. **Inline Caching for Globals** - Speed up global variable access
+6. **Native bytecode inlining** - Inline at bytecode level instead of JIT
 
 ---
 
