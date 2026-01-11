@@ -1,0 +1,271 @@
+// Pseudocode Standard Library - Database (SQLite-style)
+// Simple key-value and SQL-like operations with JSON persistence
+
+fn db_open(path)
+    if file_exists(path) then
+        return path
+    end
+    write_file(path, "{}")
+    return path
+end
+
+fn db_close(db_path)
+    return true
+end
+
+fn db_create_table(db_path, tbl_name)
+    let content = read_file(db_path)
+    let db = json_parse(content)
+    let exists = dict_has(db, tbl_name)
+    if not exists then
+        dict_set(db, tbl_name, [])
+    end
+    write_file(db_path, json_stringify(db))
+    return true
+end
+
+fn db_table_exists(db_path, tbl_name)
+    let content = read_file(db_path)
+    let db = json_parse(content)
+    return dict_has(db, tbl_name)
+end
+
+fn db_list_tables(db_path)
+    let content = read_file(db_path)
+    let db = json_parse(content)
+    return dict_keys(db)
+end
+
+fn db_insert(db_path, tbl_name, record)
+    let content = read_file(db_path)
+    let db = json_parse(content)
+    
+    let tbl_exists = dict_has(db, tbl_name)
+    if not tbl_exists then
+        dict_set(db, tbl_name, [])
+    end
+    
+    let has_id = dict_has(record, "id")
+    if not has_id then
+        let max_id = 0
+        let rows = dict_get(db, tbl_name)
+        for row in rows do
+            let row_has_id = dict_has(row, "id")
+            if row_has_id then
+                let row_id = dict_get(row, "id")
+                if row_id > max_id then
+                    max_id = row_id
+                end
+            end
+        end
+        dict_set(record, "id", max_id + 1)
+    end
+    
+    let tbl_rows = dict_get(db, tbl_name)
+    push(tbl_rows, record)
+    dict_set(db, tbl_name, tbl_rows)
+    write_file(db_path, json_stringify(db))
+    return dict_get(record, "id")
+end
+
+fn db_select_all(db_path, tbl_name)
+    let content = read_file(db_path)
+    let db = json_parse(content)
+    let exists = dict_has(db, tbl_name)
+    if not exists then
+        return []
+    end
+    return dict_get(db, tbl_name)
+end
+
+fn db_select_where(db_path, tbl_name, column, match_val)
+    let all_rows = db_select_all(db_path, tbl_name)
+    let result = []
+    for row in all_rows do
+        let has_col = dict_has(row, column)
+        if has_col then
+            let col_val = dict_get(row, column)
+            if col_val == match_val then
+                push(result, row)
+            end
+        end
+    end
+    return result
+end
+
+fn db_select_by_id(db_path, tbl_name, id)
+    let rows = db_select_where(db_path, tbl_name, "id", id)
+    if len(rows) > 0 then
+        return rows[0]
+    end
+    return nil
+end
+
+fn db_count(db_path, tbl_name)
+    let rows = db_select_all(db_path, tbl_name)
+    return len(rows)
+end
+
+fn db_exists(db_path, tbl_name, column, match_val)
+    let rows = db_select_where(db_path, tbl_name, column, match_val)
+    return len(rows) > 0
+end
+
+fn db_update_by_id(db_path, tbl_name, id, updates)
+    let content = read_file(db_path)
+    let db = json_parse(content)
+    let exists = dict_has(db, tbl_name)
+    if not exists then
+        return 0
+    end
+    
+    let count = 0
+    let tbl_rows = dict_get(db, tbl_name)
+    for i in 0..len(tbl_rows) do
+        let row = tbl_rows[i]
+        let has_id = dict_has(row, "id")
+        if has_id then
+            let row_id = dict_get(row, "id")
+            if row_id == id then
+                let update_keys = dict_keys(updates)
+                for uk in update_keys do
+                    dict_set(row, uk, dict_get(updates, uk))
+                end
+                count = count + 1
+            end
+        end
+    end
+    
+    write_file(db_path, json_stringify(db))
+    return count
+end
+
+fn db_delete_by_id(db_path, tbl_name, id)
+    let content = read_file(db_path)
+    let db = json_parse(content)
+    let exists = dict_has(db, tbl_name)
+    if not exists then
+        return 0
+    end
+    
+    let new_rows = []
+    let count = 0
+    let tbl_rows = dict_get(db, tbl_name)
+    
+    for row in tbl_rows do
+        let has_id = dict_has(row, "id")
+        if has_id then
+            let row_id = dict_get(row, "id")
+            if row_id == id then
+                count = count + 1
+            else
+                push(new_rows, row)
+            end
+        else
+            push(new_rows, row)
+        end
+    end
+    
+    dict_set(db, tbl_name, new_rows)
+    write_file(db_path, json_stringify(db))
+    return count
+end
+
+fn db_truncate(db_path, tbl_name)
+    let content = read_file(db_path)
+    let db = json_parse(content)
+    let exists = dict_has(db, tbl_name)
+    if exists then
+        dict_set(db, tbl_name, [])
+        write_file(db_path, json_stringify(db))
+    end
+    return true
+end
+
+fn kv_set(db_path, kv_key, kv_val)
+    db_create_table(db_path, "_kv_store")
+    let content = read_file(db_path)
+    let db = json_parse(content)
+    let rows = dict_get(db, "_kv_store")
+    let found = false
+    for row in rows do
+        let rk = dict_get(row, "key")
+        if rk == kv_key then
+            dict_set(row, "value", kv_val)
+            found = true
+        end
+    end
+    if not found then
+        let new_rec = dict()
+        dict_set(new_rec, "key", kv_key)
+        dict_set(new_rec, "value", kv_val)
+        push(rows, new_rec)
+    end
+    write_file(db_path, json_stringify(db))
+    return true
+end
+
+fn kv_get(db_path, kv_key)
+    let content = read_file(db_path)
+    let db = json_parse(content)
+    let has_store = dict_has(db, "_kv_store")
+    if not has_store then
+        return nil
+    end
+    let rows = dict_get(db, "_kv_store")
+    for row in rows do
+        let rk = dict_get(row, "key")
+        let is_match = rk == kv_key
+        if is_match then
+            return dict_get(row, "value")
+        end
+    end
+    return nil
+end
+
+fn kv_has(db_path, kv_key)
+    let val = kv_get(db_path, kv_key)
+    return val != nil
+end
+
+fn kv_delete(db_path, kv_key)
+    let content = read_file(db_path)
+    let db = json_parse(content)
+    let has_store = dict_has(db, "_kv_store")
+    if not has_store then
+        return 0
+    end
+    let new_rows = []
+    let count = 0
+    let rows = dict_get(db, "_kv_store")
+    for row in rows do
+        let rk = dict_get(row, "key")
+        let is_match = rk == kv_key
+        if is_match then
+            count = count + 1
+        else
+            push(new_rows, row)
+        end
+    end
+    dict_set(db, "_kv_store", new_rows)
+    write_file(db_path, json_stringify(db))
+    return count
+end
+
+fn kv_keys(db_path)
+    let content = read_file(db_path)
+    let db = json_parse(content)
+    let has_store = dict_has(db, "_kv_store")
+    if not has_store then
+        return []
+    end
+    let rows = dict_get(db, "_kv_store")
+    let result = []
+    for row in rows do
+        let has_key = dict_has(row, "key")
+        if has_key then
+            push(result, dict_get(row, "key"))
+        end
+    end
+    return result
+end

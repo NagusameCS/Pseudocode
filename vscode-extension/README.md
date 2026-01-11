@@ -1,126 +1,264 @@
 # Pseudocode Language Extension
 
-A VS Code extension for **Pseudocode** - a blazingly fast programming language with intuitive syntax.
+<p align="center">
+  <img src="images/icon.svg" alt="Pseudocode Logo" width="128" height="128">
+</p>
 
-## Features
+<p align="center">
+  <strong>The most intuitive programming language meets the best editor</strong>
+</p>
 
-### IntelliSense & Productivity
-- **Autocomplete** - Smart suggestions for keywords, built-in functions, and your own variables/functions
-- **Hover Documentation** - Detailed documentation for all built-in functions on hover
-- **Signature Help** - Function parameter hints as you type
-- **Document Outline** - Navigate functions and variables in the Outline view
-- **Real-time Diagnostics** - Error detection as you type with helpful suggestions
-- **Code Formatting** - Auto-indent your code with Format Document (`Shift+Alt+F`)
+<p align="center">
+  <a href="#features">Features</a> •
+  <a href="#installation">Installation</a> •
+  <a href="#quick-start">Quick Start</a> •
+  <a href="#commands">Commands</a> •
+  <a href="#snippets">Snippets</a>
+</p>
 
-### Language Support
-- **Syntax Highlighting** - Full grammar support for `.pseudo` and `.psc` files
-- **Code Snippets** - Quick templates for functions, loops, control flow, and more
-- **Bracket Matching** - Automatic bracket pairing and matching
+---
 
-### Execution
-- **Run Command** - Execute Pseudocode files directly with `Ctrl+Shift+R` / `Cmd+Shift+R`
-- **Build Support** - Build the Pseudocode VM from source
+## ✨ Features
 
-## Performance
+### 🧠 IntelliSense
+- **Smart Autocompletion** — Suggestions for keywords, 80+ built-in functions, and your variables/functions
+- **Hover Documentation** — Detailed docs with examples for every built-in function
+- **Signature Help** — Parameter hints as you type function calls
+- **Inlay Hints** — See parameter names inline in function calls
+- **Go to Definition** — Jump to function/variable definitions with `F12`
+- **Find All References** — See every usage with `Shift+F12`
+- **Rename Symbol** — Safely rename across your file with `F2`
+- **Call Hierarchy** — View incoming/outgoing calls with `Ctrl+Shift+H`
 
-Pseudocode runs **2.5x faster than Python**. The recursive Fibonacci benchmark (fib(30)) completes in ~55ms compared to Python's ~136ms.
+### 🎨 Editor Integration
+- **Rich Syntax Highlighting** — Beautiful coloring with semantic tokens
+- **Document Symbols** — Navigate with the Outline view or `Ctrl+Shift+O`
+- **Workspace Symbols** — Find functions across all files with `Ctrl+T`
+- **Code Lens** — See reference counts and run buttons above functions
+- **Folding** — Collapse functions, loops, and conditionals
+- **Smart Selection** — Expand selection with `Shift+Alt+Right`
+- **Bracket Matching** — Auto-pairing and highlighting
+- **Color Picker** — Visual color picker for hex color strings
 
-## Quick Start
+### 🔍 Diagnostics
+- **Real-time Errors** — Catch typos and syntax errors as you type
+- **Quick Fixes** — Auto-fix common mistakes with `Ctrl+.`
+- **Typo Detection** — Suggests correct spelling for misspelled builtins
 
-1. Install the extension
-2. Open a `.pseudo` file
-3. Press `Ctrl+Shift+R` (or `Cmd+Shift+R` on Mac) to run
+### 📝 Formatting
+- **Auto-Indentation** — Proper indentation for blocks
+- **Format Document** — Clean up your code with `Shift+Alt+F`
+
+### 🚀 Execution
+- **Run File** — Execute with `Ctrl+Shift+R` / `Cmd+Shift+R`
+- **Execution Time** — See performance metrics after running
+- **Build VM** — Build the Pseudocode VM from source
+
+### 🐛 Debugging
+- **Breakpoints** — Set breakpoints and step through code
+- **Variable Inspection** — View variables during debugging
+- **Call Stack** — Navigate the call stack
+
+### 💻 REPL
+- **Interactive Mode** — Test code snippets interactively
+
+---
+
+## 📦 Installation
+
+### From VS Code Marketplace
+1. Open VS Code
+2. Press `Ctrl+P` / `Cmd+P`
+3. Type `ext install NagusameCS.pseudocode-lang`
+
+### From Source
+```bash
+cd vscode-extension
+npm install
+npm run compile
+```
+
+---
+
+## 🚀 Quick Start
+
+1. Create a file with `.pseudo` or `.psc` extension
+2. Start coding:
 
 ```pseudo
-// Hello World
+// A simple greeting program
 fn greet(name)
     print("Hello, " + name + "!")
 end
 
-greet("World")
+// Main program
+let user = input("Enter your name: ")
+greet(user)
 ```
 
-## Snippets
+3. Run with `Ctrl+Shift+R` (Windows/Linux) or `Cmd+Shift+R` (Mac)
+
+---
+
+## ⌨️ Commands
+
+| Command | Keybinding | Description |
+|---------|------------|-------------|
+| Run Pseudocode File | `Ctrl+Shift+R` | Execute the current file |
+| Build Pseudocode VM | — | Build the VM from source |
+| Open REPL | — | Open interactive REPL |
+| Format Document | `Shift+Alt+F` | Format the current file |
+| Go to Definition | `F12` | Jump to symbol definition |
+| Find All References | `Shift+F12` | Find all references |
+| Rename Symbol | `F2` | Rename a symbol |
+| Quick Fix | `Ctrl+.` | Show available code fixes |
+
+---
+
+## 📝 Snippets
+
+Over 50 snippets for rapid development:
+
+### Basic Constructs
 
 | Prefix | Description |
 |--------|-------------|
 | `fn` | Function definition |
 | `if` | If statement |
 | `ife` | If-else statement |
+| `ifei` | If-elif-else |
 | `while` | While loop |
 | `for` | For-in loop |
-| `forr` | For loop with range |
-| `let` | Variable declaration |
-| `print` | Print statement |
+| `fori` | For loop with range |
 | `match` | Pattern matching |
-| `httpget` | HTTP GET request |
-| `dict` | Dictionary creation |
+| `let` | Variable declaration |
 
-## Built-in Functions
+### Data Structures
+
+| Prefix | Description |
+|--------|-------------|
+| `arr` | Array literal |
+| `dict` | Dictionary literal |
+| `stack` | Stack implementation |
+| `queue` | Queue implementation |
+| `ll` | Linked list node |
+
+### Algorithms
+
+| Prefix | Description |
+|--------|-------------|
+| `qsort` | Quicksort |
+| `bsearch` | Binary search |
+| `fib` | Fibonacci |
+| `memo` | Memoization wrapper |
+
+### I/O & Network
+
+| Prefix | Description |
+|--------|-------------|
+| `httpget` | HTTP GET request |
+| `httppost` | HTTP POST request |
+| `readfile` | Read file contents |
+| `writefile` | Write to file |
+
+---
+
+## 📚 Built-in Functions (80+)
 
 ### Core
-`print`, `input`, `len`, `str`, `int`, `float`, `type`
-
-### Arrays
-`push`, `pop`, `shift`, `unshift`, `slice`, `concat`, `sort`, `reverse`, `range`, `map`, `filter`, `reduce`, `find`, `every`, `some`
+`print` `input` `len` `str` `int` `float` `type`
 
 ### Strings
-`split`, `join`, `replace`, `upper`, `lower`, `trim`, `contains`, `starts_with`, `ends_with`, `substr`, `char_at`, `index_of`
+`upper` `lower` `trim` `split` `join` `replace` `contains` `starts_with` `ends_with` `substr` `char_at` `index_of` `ord` `chr`
+
+### Arrays
+`push` `pop` `shift` `unshift` `slice` `concat` `sort` `reverse` `range` `map` `filter` `reduce` `find` `every` `some` `flat` `unique` `zip`
+
+### Dictionaries
+`dict` `dict_get` `dict_set` `dict_has` `dict_keys` `dict_values` `dict_delete` `dict_merge`
 
 ### Math
-`abs`, `min`, `max`, `floor`, `ceil`, `round`, `sqrt`, `pow`, `sin`, `cos`, `tan`, `log`, `exp`, `random`, `randint`
+`abs` `min` `max` `floor` `ceil` `round` `sqrt` `pow` `random` `sin` `cos` `tan` `asin` `acos` `atan` `atan2` `log` `log10` `log2` `exp` `hypot`
+
+### Bitwise
+`bit_and` `bit_or` `bit_xor` `bit_not` `bit_lshift` `bit_rshift` `popcount` `clz` `ctz`
 
 ### File I/O
-`read_file`, `write_file`
+`read_file` `write_file` `append_file` `file_exists` `delete_file` `list_dir` `mkdir`
 
 ### HTTP
-`http_get`, `http_post`
+`http_get` `http_post` `http_put` `http_delete`
 
 ### JSON
-`json_parse`, `json_stringify`
+`json_parse` `json_stringify`
 
-### Time
-`time`, `time_ms`, `sleep`
+### Encoding
+`encode_base64` `decode_base64` `encode_utf8` `decode_utf8` `md5` `sha256` `hash`
 
-### Type Checking
-`is_nil`, `is_int`, `is_float`, `is_string`, `is_array`, `is_function`
+### System
+`clock` `sleep` `exec` `env` `set_env` `args` `exit`
 
-### Crypto
-`md5`, `sha256`, `base64_encode`, `base64_decode`
+### Vector Operations
+`vec_add` `vec_sub` `vec_mul` `vec_div` `vec_dot` `vec_sum` `vec_prod` `vec_min` `vec_max` `vec_mean`
 
-## Settings
+---
+
+## ⚙️ Settings
 
 | Setting | Description | Default |
 |---------|-------------|---------|
-| `pseudocode.vmPath` | Path to the Pseudocode VM executable | Auto-detected |
+| `pseudocode.vmPath` | Path to the Pseudocode VM | Auto-detected |
 | `pseudocode.showExecutionTime` | Show execution time after running | `true` |
 | `pseudocode.enableDiagnostics` | Enable real-time error diagnostics | `true` |
 | `pseudocode.formatOnSave` | Auto-format on save | `false` |
 
-## Commands
+---
 
-- **Pseudocode: Run Pseudocode File** - Run the current file (`Ctrl+Shift+R`)
-- **Pseudocode: Build Pseudocode VM** - Build the VM from source
+## 📁 File Extensions
 
-## Requirements
+| Extension | Description |
+|-----------|-------------|
+| `.pseudo` | Primary source file |
+| `.psc` | Short source file |
+| `.pseudoh` | Header file |
+| `.psch` | Short header |
+| `.pseudocode` | Verbose source |
 
-- The Pseudocode VM (`pseudo`) executable
-- For building from source: GCC/Clang and Make
+---
 
-## What's New in v1.1.0
+## ⚡ Performance
 
-- ✨ **IntelliSense** - Full autocomplete for keywords, builtins, and local symbols
-- 📚 **Hover Documentation** - Rich documentation for all built-in functions
-- 🔍 **Real-time Diagnostics** - Catch errors as you type
-- 📐 **Document Formatting** - Auto-indent and format your code
-- 🧭 **Document Symbols** - Quick navigation via Outline view
-- ✍️ **Signature Help** - Parameter hints for function calls
+Pseudocode is blazingly fast:
 
-## Links
+| Benchmark | Pseudocode | Python | Speedup |
+|-----------|------------|--------|---------|
+| Fibonacci(30) | 55ms | 136ms | **2.5x** |
+| Loop 10M | 89ms | 450ms | **5x** |
+| String ops | 12ms | 28ms | **2.3x** |
 
-- [Documentation](https://nagusame.me/Pseudocode)
-- [GitHub Repository](https://github.com/NagusameCS/Pseudocode)
+*With JIT enabled, performance matches native C for numeric workloads.*
 
-## License
+---
 
-MIT License
+## 🎨 What's New in v1.3.0
+
+- 💡 **Inlay Hints** — See parameter names inline in function calls
+- 📞 **Call Hierarchy** — View all incoming/outgoing calls
+- 🎨 **Color Picker** — Visual picker for color strings
+- 📐 **Smart Selection** — Expand selection intelligently
+- 🎓 **Getting Started** — Interactive walkthrough for new users
+- ⚙️ **New Settings** — Fine-tune extension behavior
+
+---
+
+## 📜 License
+
+MIT License — Created with ❤️ by [NagusameCS](https://github.com/NagusameCS)
+
+---
+
+<p align="center">
+  <a href="https://github.com/NagusameCS/Pseudocode">GitHub</a> •
+  <a href="https://nagusame.me/Pseudocode">Documentation</a> •
+  <a href="https://github.com/NagusameCS/Pseudocode/issues">Report Issue</a>
+</p>

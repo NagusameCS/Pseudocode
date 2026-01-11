@@ -1,0 +1,277 @@
+// Pseudocode Standard Library - Extended I/O
+// Path operations, temporary files, and file utilities
+
+// ============ Path Operations ============
+
+// Join path components with the system separator
+fn path_join(parts)
+    let result = ""
+    for i in 0..len(parts) do
+        if i > 0 and len(result) > 0 then
+            if result[len(result) - 1] != "/" then
+                result = result + "/"
+            end
+        end
+        result = result + parts[i]
+    end
+    return result
+end
+
+// Get directory name from path
+fn dirname(path)
+    let last_sep = -1
+    for i in 0..len(path) do
+        if path[i] == "/" then
+            last_sep = i
+        end
+    end
+    if last_sep == -1 then
+        return "."
+    end
+    if last_sep == 0 then
+        return "/"
+    end
+    return substr(path, 0, last_sep)
+end
+
+// Get base name from path (filename with extension)
+fn basename(path)
+    let last_sep = -1
+    for i in 0..len(path) do
+        if path[i] == "/" then
+            last_sep = i
+        end
+    end
+    if last_sep == -1 then
+        return path
+    end
+    return substr(path, last_sep + 1, len(path) - last_sep - 1)
+end
+
+// Get file extension (including the dot)
+fn extname(path)
+    let base = basename(path)
+    let last_dot = -1
+    for i in 0..len(base) do
+        if base[i] == "." then
+            last_dot = i
+        end
+    end
+    if last_dot == -1 or last_dot == 0 then
+        return ""
+    end
+    return substr(base, last_dot, len(base) - last_dot)
+end
+
+// Get filename without extension
+fn stem(path)
+    let base = basename(path)
+    let last_dot = -1
+    for i in 0..len(base) do
+        if base[i] == "." then
+            last_dot = i
+        end
+    end
+    if last_dot == -1 or last_dot == 0 then
+        return base
+    end
+    return substr(base, 0, last_dot)
+end
+
+// Check if path is absolute
+fn is_absolute(path)
+    if len(path) == 0 then
+        return false
+    end
+    return path[0] == "/"
+end
+
+// Normalize path (remove . and ..)
+fn normalize_path(path)
+    let parts = split(path, "/")
+    let result = []
+    let is_abs = is_absolute(path)
+    
+    for part in parts do
+        if part == "." or part == "" then
+            // Skip current dir and empty parts
+        elif part == ".." then
+            if len(result) > 0 and result[len(result) - 1] != ".." then
+                pop(result)
+            elif not is_abs then
+                push(result, "..")
+            end
+        else
+            push(result, part)
+        end
+    end
+    
+    let normalized = join(result, "/")
+    if is_abs then
+        normalized = "/" + normalized
+    end
+    if len(normalized) == 0 then
+        return "."
+    end
+    return normalized
+end
+
+// ============ Temporary Files ============
+
+// Generate a unique temporary filename
+fn temp_filename(prefix)
+    let timestamp = int(time() * 1000000)
+    let rand_part = int(random() * 1000000)
+    return "/tmp/" + prefix + "_" + str(timestamp) + "_" + str(rand_part)
+end
+
+// Create a temporary file with content, returns path
+fn create_temp_file(prefix, content)
+    let path = temp_filename(prefix)
+    write_file(path, content)
+    return path
+end
+
+// Create a temporary directory, returns path
+fn create_temp_dir(prefix)
+    let path = temp_filename(prefix)
+    mkdir(path)
+    return path
+end
+
+// ============ File Utilities ============
+
+// Read file as lines
+fn read_lines(path)
+    let content = read_file(path)
+    if content == nil then
+        return []
+    end
+    return split(content, "\n")
+end
+
+// Write lines to file
+fn write_lines(path, lines)
+    let content = join(lines, "\n")
+    write_file(path, content)
+end
+
+// Copy file from src to dst
+fn copy_file(src, dst)
+    let content = read_file(src)
+    if content == nil then
+        return false
+    end
+    write_file(dst, content)
+    return true
+end
+
+// Get file size in bytes
+fn file_size(path)
+    let content = read_file(path)
+    if content == nil then
+        return -1
+    end
+    return len(content)
+end
+
+// Check if path is a directory
+fn is_dir(path)
+    let entries = list_dir(path)
+    return entries != nil
+end
+
+// Check if path is a file
+fn is_file(path)
+    return file_exists(path) and not is_dir(path)
+end
+
+// Walk directory tree recursively
+fn walk_dir(path, callback)
+    let entries = list_dir(path)
+    if entries == nil then
+        return
+    end
+    
+    for entry in entries do
+        let full_path = path_join([path, entry])
+        callback(full_path)
+        if is_dir(full_path) then
+            walk_dir(full_path, callback)
+        end
+    end
+end
+
+// Find files matching a pattern (simple glob with *)
+fn find_files(dir, pattern)
+    let results = []
+    let entries = list_dir(dir)
+    if entries == nil then
+        return results
+    end
+    
+    for entry in entries do
+        if glob_match(entry, pattern) then
+            push(results, path_join([dir, entry]))
+        end
+    end
+    return results
+end
+
+// Simple glob matching (* matches any sequence)
+fn glob_match(name, pattern)
+    let ni = 0
+    let pi = 0
+    let star_idx = -1
+    let match_idx = 0
+    
+    while ni < len(name) do
+        if pi < len(pattern) and (pattern[pi] == name[ni] or pattern[pi] == "?") then
+            ni = ni + 1
+            pi = pi + 1
+        elif pi < len(pattern) and pattern[pi] == "*" then
+            star_idx = pi
+            match_idx = ni
+            pi = pi + 1
+        elif star_idx != -1 then
+            pi = star_idx + 1
+            match_idx = match_idx + 1
+            ni = match_idx
+        else
+            return false
+        end
+    end
+    
+    while pi < len(pattern) and pattern[pi] == "*" do
+        pi = pi + 1
+    end
+    
+    return pi == len(pattern)
+end
+
+// ============ Environment ============
+
+// Get home directory
+fn home_dir()
+    return env("HOME")
+end
+
+// Get current working directory
+fn cwd()
+    return env("PWD")
+end
+
+// Expand ~ in path
+fn expand_home(path)
+    if len(path) == 0 then
+        return path
+    end
+    if path[0] == "~" then
+        let home = home_dir()
+        if len(path) == 1 then
+            return home
+        end
+        return home + substr(path, 1, len(path) - 1)
+    end
+    return path
+end

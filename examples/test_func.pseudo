@@ -1,0 +1,32 @@
+// Test passing function as argument
+fn is_big(x)
+    return x > 3
+end
+
+fn call_with_4(f)
+    return f(4)
+end
+
+let result = call_with_4(is_big)
+print("result: " + str(result))
+
+// Now test with array
+fn find_big(arr, pred)
+    let i = 0
+    while i < len(arr) do
+        print("  checking arr[" + str(i) + "]=" + str(arr[i]))
+        let check = pred(arr[i])
+        print("  pred result: " + str(check))
+        if check then
+            print("  returning " + str(arr[i]))
+            return arr[i]
+        end
+        i = i + 1
+    end
+    return nil
+end
+
+let nums = [1, 2, 3, 4, 5]
+print("calling find_big...")
+let found = find_big(nums, is_big)
+print("found: " + str(found))

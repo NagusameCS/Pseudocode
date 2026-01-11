@@ -1,0 +1,20 @@
+// Call with array element
+fn is_big(x)
+    print("is_big called with: " + str(x))
+    let result = x > 3
+    print("returning: " + str(result))
+    return result
+end
+
+fn call_with_array_elem(func, arr, idx)
+    let elem = arr[idx]
+    print("elem=" + str(elem))
+    let r = func(elem)
+    print("result=" + str(r))
+    return r
+end
+
+let nums = [1, 2, 3, 4, 5]
+print("Test with arr[3]:")
+let r = call_with_array_elem(is_big, nums, 3)
+print("final r=" + str(r))

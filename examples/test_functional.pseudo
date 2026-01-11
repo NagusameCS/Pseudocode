@@ -1,0 +1,67 @@
+// Test functional library
+import "./lib/functional.pseudo"
+
+print("=== Functional Library Test ===")
+print("")
+
+// Helper functions for testing
+fn times_two(x)
+    return x * 2
+end
+
+fn is_even(x)
+    return x % 2 == 0
+end
+
+fn add(a, b)
+    return a + b
+end
+
+fn greater_than_3(x)
+    return x > 3
+end
+
+fn is_positive(x)
+    return x > 0
+end
+
+fn make_square(i)
+    return i * i
+end
+
+// Test map
+let nums = [1, 2, 3, 4, 5]
+let doubled = map(nums, times_two)
+print("map [1,2,3,4,5] * 2 -> sum: " + str(sum(doubled)))
+
+// Test filter
+let evens = filter(nums, is_even)
+print("filter evens -> sum: " + str(sum(evens)))
+
+// Test reduce
+let total = reduce(nums, add, 0)
+print("reduce sum: " + str(total))
+
+// Test find_if
+let found = find_if(nums, greater_than_3)
+print("find_if > 3: " + str(found))
+
+// Test any/all
+let hasEven = any(nums, is_even)
+let allPositive = all(nums, is_positive)
+print("any even: " + str(hasEven))
+print("all positive: " + str(allPositive))
+
+// Test generate
+let squares = generate(5, make_square)
+print("generate squares -> sum: " + str(sum(squares)))
+
+// Test sum
+print("sum: " + str(sum(nums)))
+
+// Test range
+let r = range(1, 6)
+print("range 1-5 -> sum: " + str(sum(r)))
+
+print("")
+print("=== Test Complete ===")

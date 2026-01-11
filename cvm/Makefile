@@ -7,12 +7,17 @@ CFLAGS += -Wall -Wextra
 CFLAGS += -std=gnu11  # Use gnu11 to allow computed gotos
 CFLAGS += -U_FORTIFY_SOURCE  # Disable FORTIFY for now (pre-existing issue)
 
+# PCRE2 for regex support
+PCRE2_CFLAGS = $(shell pkg-config --cflags libpcre2-8 2>/dev/null)
+PCRE2_LIBS = $(shell pkg-config --libs libpcre2-8 2>/dev/null || echo "-lpcre2-8")
+CFLAGS += $(PCRE2_CFLAGS)
+
 # Debug build
 DEBUG_FLAGS = -O0 -g -DDEBUG -fsanitize=address,undefined
 
 # JIT sources - trace-based JIT compiler
 JIT_SOURCES = jit_trace.c trace_recorder.c trace_regalloc.c trace_codegen.c
-SOURCES = main.c lexer.c compiler.c vm.c memory.c $(JIT_SOURCES) tensor.c
+SOURCES = main.c lexer.c compiler.c vm.c memory.c import.c $(JIT_SOURCES) tensor.c
 OBJECTS = $(SOURCES:.c=.o)
 TARGET = pseudo
 
@@ -27,11 +32,11 @@ debug: CFLAGS = $(DEBUG_FLAGS) -Wall -Wextra -std=c11
 debug: $(TARGET)
 
 $(TARGET): $(SOURCES)
-	$(CC) $(CFLAGS) -o $@ $^ -lm
+	$(CC) $(CFLAGS) -o $@ $^ -lm $(PCRE2_LIBS)
 
 # Fast single-file compile for development
 fast:
-	$(CC) -O2 -o $(TARGET) $(SOURCES) -lm
+	$(CC) -O2 -o $(TARGET) $(SOURCES) -lm $(PCRE2_LIBS)
 
 clean:
 	rm -f $(TARGET) $(OBJECTS)
@@ -39,12 +44,12 @@ clean:
 # Profile-guided optimization (maximum performance)
 pgo: clean
 	@echo "=== Building with Profile-Guided Optimization ==="
-	$(CC) -O3 -march=native -flto -fprofile-generate -std=gnu11 -o $(TARGET) $(SOURCES) -lm
+	$(CC) -O3 -march=native -flto -fprofile-generate -std=gnu11 -o $(TARGET) $(SOURCES) -lm $(PCRE2_LIBS)
 	@echo "Generating profile data..."
 	@./$(TARGET) ../examples/fibonacci.pseudo > /dev/null
 	@./$(TARGET) ../examples/fizzbuzz.pseudo > /dev/null
 	@./$(TARGET) ../examples/factorial.pseudo > /dev/null
-	$(CC) -O3 -march=native -flto -fprofile-use -fprofile-correction -std=gnu11 -o $(TARGET) $(SOURCES) -lm
+	$(CC) -O3 -march=native -flto -fprofile-use -fprofile-correction -std=gnu11 -o $(TARGET) $(SOURCES) -lm $(PCRE2_LIBS)
 	@rm -f *.gcda
 	@echo "=== PGO build complete ==="
 

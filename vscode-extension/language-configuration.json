@@ -79,8 +79,22 @@
         }
     },
     "indentationRules": {
-        "increaseIndentPattern": "^\\s*(fn|if|else|elif|while|for|match|case)\\b.*:\\s*$|^\\s*(fn|if|else|elif|while|for|match|case)\\b[^{]*\\{\\s*$",
-        "decreaseIndentPattern": "^\\s*[}\\]]\\s*$"
+        "increaseIndentPattern": "^\\s*(fn\\s+\\w+\\s*\\([^)]*\\)|if\\s+.+\\s+then|elif\\s+.+\\s+then|else|while\\s+.+\\s+do|for\\s+.+\\s+do|match\\s+.+|case\\s+.+\\s+then)\\s*$",
+        "decreaseIndentPattern": "^\\s*(end|else|elif)\\b"
     },
+    "onEnterRules": [
+        {
+            "beforeText": "^\\s*(fn\\s+\\w+\\s*\\([^)]*\\)|if\\s+.+\\s+then|elif\\s+.+\\s+then|else|while\\s+.+\\s+do|for\\s+.+\\s+do|match\\s+.+|case\\s+.+\\s+then)\\s*$",
+            "action": {
+                "indent": "indent"
+            }
+        },
+        {
+            "beforeText": "^\\s*end\\s*$",
+            "action": {
+                "indent": "outdent"
+            }
+        }
+    ],
     "wordPattern": "(-?\\d*\\.\\d\\w*)|([^\\`\\~\\!\\@\\#\\%\\^\\&\\*\\(\\)\\-\\=\\+\\[\\{\\]\\}\\\\\\|\\;\\:\\'\\\"\\,\\.\\<\\>\\/\\?\\s]+)"
 }

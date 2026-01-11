@@ -1,0 +1,50 @@
+// Test classes and OOP
+
+// Basic class with method
+class Counter
+    fn count()
+        return 42
+    end
+end
+
+print("Test 1: Basic class")
+let c = Counter()
+print("Count: " + str(c.count()))
+
+// Class with field
+class Point
+    let x
+    let y
+    
+    fn init(px, py)
+        self.x = px
+        self.y = py
+    end
+    
+    fn get_x()
+        return self.x
+    end
+    
+    fn distance_from_origin()
+        return sqrt(self.x * self.x + self.y * self.y)
+    end
+    
+    fn to_string()
+        return "Point(" + str(self.x) + ", " + str(self.y) + ")"
+    end
+end
+
+print("\nTest 2: Class with fields and init")
+let p = Point(3, 4)
+print(p.to_string())
+print("Distance: " + str(p.distance_from_origin()))
+
+// Class with multiple instances
+print("\nTest 3: Multiple instances")
+let p1 = Point(0, 0)
+let p2 = Point(5, 12)
+print("P1: " + p1.to_string())
+print("P2: " + p2.to_string())
+print("P2 distance: " + str(p2.distance_from_origin()))
+
+print("\nAll class tests passed!")

@@ -1,0 +1,18 @@
+// Call through parameter
+fn is_big(x)
+    print("is_big called with: " + str(x))
+    let result = x > 3
+    print("returning: " + str(result))
+    return result
+end
+
+fn call_it(func, val)
+    print("call_it: calling func with " + str(val))
+    let r = func(val)
+    print("call_it: got " + str(r))
+    return r
+end
+
+print("Calling through parameter:")
+let r = call_it(is_big, 4)
+print("final r=" + str(r))

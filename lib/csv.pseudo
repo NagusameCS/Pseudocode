@@ -1,0 +1,266 @@
+// Pseudocode Standard Library - CSV Parser
+// Parse and write CSV (Comma-Separated Values) files
+
+// ============ CSV Parsing ============
+
+// Parse CSV string into array of arrays
+fn csv_parse(text)
+    let rows = []
+    let current_row = []
+    let current_field = ""
+    let in_quotes = false
+    let i = 0
+    
+    while i < len(text) do
+        let ch = text[i]
+        
+        if in_quotes then
+            if ch == "\"" then
+                // Check for escaped quote
+                if i + 1 < len(text) and text[i + 1] == "\"" then
+                    current_field = current_field + "\""
+                    i = i + 1
+                else
+                    in_quotes = false
+                end
+            else
+                current_field = current_field + ch
+            end
+        else
+            if ch == "\"" then
+                in_quotes = true
+            elif ch == "," then
+                push(current_row, current_field)
+                current_field = ""
+            elif ch == "\n" then
+                push(current_row, current_field)
+                push(rows, current_row)
+                current_row = []
+                current_field = ""
+            elif ch == "\r" then
+                // Skip carriage return
+            else
+                current_field = current_field + ch
+            end
+        end
+        
+        i = i + 1
+    end
+    
+    // Handle last field/row
+    if len(current_field) > 0 or len(current_row) > 0 then
+        push(current_row, current_field)
+        push(rows, current_row)
+    end
+    
+    return rows
+end
+
+// Parse CSV with headers, returns array of dicts
+fn csv_parse_dict(text)
+    let rows = csv_parse(text)
+    if len(rows) < 1 then
+        return []
+    end
+    
+    let headers = rows[0]
+    let result = []
+    
+    for i in 1..len(rows) do
+        let row = rows[i]
+        let obj = {}
+        for j in 0..len(headers) do
+            if j < len(row) then
+                obj[headers[j]] = row[j]
+            else
+                obj[headers[j]] = ""
+            end
+        end
+        push(result, obj)
+    end
+    
+    return result
+end
+
+// Parse CSV file
+fn csv_read(path)
+    let content = read_file(path)
+    if content == nil then
+        return nil
+    end
+    return csv_parse(content)
+end
+
+// Parse CSV file with headers
+fn csv_read_dict(path)
+    let content = read_file(path)
+    if content == nil then
+        return nil
+    end
+    return csv_parse_dict(content)
+end
+
+// ============ CSV Writing ============
+
+// Escape a field for CSV (quote if needed)
+fn csv_escape_field(value)
+    let s = str(value)
+    let needs_quotes = false
+    
+    for i in 0..len(s) do
+        let ch = s[i]
+        if ch == "," or ch == "\"" or ch == "\n" or ch == "\r" then
+            needs_quotes = true
+        end
+    end
+    
+    if not needs_quotes then
+        return s
+    end
+    
+    // Escape quotes and wrap in quotes
+    let result = "\""
+    for i in 0..len(s) do
+        let ch = s[i]
+        if ch == "\"" then
+            result = result + "\"\""
+        else
+            result = result + ch
+        end
+    end
+    result = result + "\""
+    return result
+end
+
+// Convert array of arrays to CSV string
+fn csv_stringify(rows)
+    let lines = []
+    for row in rows do
+        let fields = []
+        for field in row do
+            push(fields, csv_escape_field(field))
+        end
+        push(lines, join(fields, ","))
+    end
+    return join(lines, "\n")
+end
+
+// Convert array of dicts to CSV string
+fn csv_stringify_dict(data, headers)
+    if len(data) == 0 then
+        return ""
+    end
+    
+    // If headers not provided, get from first row
+    if headers == nil then
+        headers = keys(data[0])
+    end
+    
+    let rows = [headers]
+    for item in data do
+        let row = []
+        for h in headers do
+            if has_key(item, h) then
+                push(row, item[h])
+            else
+                push(row, "")
+            end
+        end
+        push(rows, row)
+    end
+    
+    return csv_stringify(rows)
+end
+
+// Write CSV to file
+fn csv_write(path, rows)
+    let content = csv_stringify(rows)
+    write_file(path, content)
+end
+
+// Write CSV with headers to file
+fn csv_write_dict(path, data, headers)
+    let content = csv_stringify_dict(data, headers)
+    write_file(path, content)
+end
+
+// ============ CSV Utilities ============
+
+// Get column by index from parsed CSV
+fn csv_column(rows, index)
+    let result = []
+    for row in rows do
+        if index < len(row) then
+            push(result, row[index])
+        end
+    end
+    return result
+end
+
+// Get column by name from dict CSV
+fn csv_column_by_name(data, name)
+    let result = []
+    for row in data do
+        if has_key(row, name) then
+            push(result, row[name])
+        end
+    end
+    return result
+end
+
+// Filter rows where column matches value
+fn csv_filter(data, column, value)
+    let result = []
+    for row in data do
+        if has_key(row, column) and row[column] == value then
+            push(result, row)
+        end
+    end
+    return result
+end
+
+// Sort CSV data by column
+fn csv_sort(data, column, ascending)
+    if ascending == nil then
+        ascending = true
+    end
+    
+    // Simple bubble sort for CSV data
+    let n = len(data)
+    for i in 0..n do
+        for j in 0..n - i - 1 do
+            let a = data[j][column]
+            let b = data[j + 1][column]
+            let should_swap = false
+            
+            if ascending then
+                should_swap = a > b
+            else
+                should_swap = a < b
+            end
+            
+            if should_swap then
+                let temp = data[j]
+                data[j] = data[j + 1]
+                data[j + 1] = temp
+            end
+        end
+    end
+    
+    return data
+end
+
+// Select specific columns from CSV data
+fn csv_select(data, columns)
+    let result = []
+    for row in data do
+        let new_row = {}
+        for col in columns do
+            if has_key(row, col) then
+                new_row[col] = row[col]
+            end
+        end
+        push(result, new_row)
+    end
+    return result
+end

@@ -3,9 +3,9 @@
 ## Current State (January 2026)
 
 **What we have:**
-- ✅ Pattern-based strength reduction JIT for ~5 specific loop patterns
-- ✅ **General loop JIT compiler** - compiles ANY for-loop to native code
-- ✅ **Global variable JIT support** - top-level scripts now JIT-compiled
+-  Pattern-based strength reduction JIT for ~5 specific loop patterns
+-  **General loop JIT compiler** - compiles ANY for-loop to native code
+-  **Global variable JIT support** - top-level scripts now JIT-compiled
 - Fast bytecode interpreter (~15-20 ns/op)
 
 **Performance Comparison (vs C with volatile):**
@@ -16,7 +16,7 @@
 | x=x+i (10M) | 3.2ms | 37ms | ~12x slower |
 | x=x+i*2-1 (10M) | 7.7ms | 40ms | ~5x slower |
 | if i<5M (10M) | 10ms | 22ms | ~2x slower |
-| Global x=x+1 (10M) | - | 20ms | ✅ Working |
+| Global x=x+1 (10M) | - | 20ms |  Working |
 
 **Analysis:**
 - Strength-reducible patterns achieve **O(1)** time complexity
@@ -35,7 +35,7 @@
 
 ---
 
-## Phase 1: Basic Method JIT (2-3 weeks) - ✅ COMPLETE
+## Phase 1: Basic Method JIT (2-3 weeks) -  COMPLETE
 
 **Goal:** Compile entire functions to native code, not just recognized patterns.
 
@@ -259,6 +259,47 @@ sum += arr[0]; sum += arr[1]; sum += arr[2]; sum += arr[3]
 | 3 | Call Optimization | 600-900 | 1-2 weeks |
 | 4 | Loop Optimizations | 500-800 | 1-2 weeks |
 | **Total** | **Full JIT** | **3800-5800** | **6-10 weeks** |
+
+---
+
+##  Recommended Next Steps (Priority Order)
+
+### Immediate Actions ( HIGH Priority)
+1. **Function Inlining** - Recursive functions are 400x slower than Python. This is the #1 performance issue to fix.
+   - Inline small functions (<50 bytecode ops) at call sites
+   - Eliminates function call overhead for recursion
+   - Expected: 10-50x improvement for recursive code
+
+2. **Constant Folding in Compiler** - `3 + 4` should compile to `7`
+   - Easy to implement in `compiler.c`
+   - ~50-100 lines of code
+   - Expected: 1.2-1.5x overall improvement
+
+3. **Integer-Specialized Opcodes** - `OP_ADD_II` for int+int
+   - Skip NaN-boxing for known integer operations
+   - ~200 lines of code
+   - Expected: 2-3x improvement for arithmetic-heavy code
+
+### Short Term Actions
+4. **Box Elimination Pass** - Remove redundant box/unbox pairs
+5. **Dead Code Elimination** - Skip code after unconditional returns
+6. **Tail Call Optimization** - Reuse stack frames
+
+### Current Bottleneck Analysis (January 2026)
+```
+Benchmark: factorial(12) x 100,000 calls
+
+Pseudocode: 27,000ms   Slow (recursive)
+Python:        63ms    Fast (has call optimization)
+C:              5ms    Fastest
+
+Issue: Each recursive call:
+  - Pushes new call frame (~20 ops)
+  - Saves/restores registers (~10 ops)
+  - Boxes/unboxes return value (~8 ops)
+  
+With inlining: Would be ~10ms (competitive with Python)
+```
 
 ---
 

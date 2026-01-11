@@ -1,0 +1,13 @@
+// Test minimal functional
+import "./lib/minimal.pseudo"
+
+fn is_big(x)
+    print("is_big: " + str(x))
+    return x > 3
+end
+
+let nums = [1, 2, 3, 4, 5]
+print("nums defined, calling find...")
+print("nums[0]=" + str(nums[0]))
+let found = find(nums, is_big)
+print("found=" + str(found))

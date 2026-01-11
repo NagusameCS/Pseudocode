@@ -1,0 +1,210 @@
+// DateTime Library
+// Date and time manipulation utilities
+//
+// Usage:
+//   import "./lib/datetime.pseudo"
+
+// ============ Time Functions ============
+
+// Get current Unix timestamp in milliseconds
+fn now()
+    return time() * 1000
+end
+
+// Get current Unix timestamp in seconds
+fn timestamp()
+    return time()
+end
+
+// Sleep for specified milliseconds
+fn delay(ms)
+    sleep(ms / 1000)
+end
+
+// ============ Date Parsing ============
+
+// Parse a date dict from timestamp (seconds since epoch)
+fn from_timestamp(ts)
+    // Calculate date components
+    // Days since epoch (Jan 1, 1970)
+    let days = floor(ts / 86400)
+    let remaining = ts % 86400
+    
+    let hours = floor(remaining / 3600)
+    remaining = remaining % 3600
+    let minutes = floor(remaining / 60)
+    let seconds = remaining % 60
+    
+    // Calculate year, month, day (simplified - doesn't handle leap years perfectly)
+    let year = 1970
+    let days_in_year = 365
+    
+    while days >= days_in_year do
+        // Check for leap year
+        if (year % 4 == 0 and year % 100 != 0) or (year % 400 == 0) then
+            days_in_year = 366
+        else
+            days_in_year = 365
+        end
+        
+        if days >= days_in_year then
+            days = days - days_in_year
+            year = year + 1
+        end
+    end
+    
+    // Calculate month and day
+    let months = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    if (year % 4 == 0 and year % 100 != 0) or (year % 400 == 0) then
+        months[1] = 29
+    end
+    
+    let month = 1
+    let m = 0
+    while m < 12 and days >= months[m] do
+        days = days - months[m]
+        month = month + 1
+        m = m + 1
+    end
+    
+    let day = days + 1
+    
+    let result = dict()
+    dict_set(result, "year", year)
+    dict_set(result, "month", month)
+    dict_set(result, "day", day)
+    dict_set(result, "hour", hours)
+    dict_set(result, "minute", minutes)
+    dict_set(result, "second", seconds)
+    dict_set(result, "timestamp", ts)
+    return result
+end
+
+// Get current date as dict
+fn today()
+    return from_timestamp(time())
+end
+
+// ============ Date Formatting ============
+
+// Pad a number with leading zeros
+fn _pad_zero(n, width)
+    let s = str(n)
+    while len(s) < width do
+        s = "0" + s
+    end
+    return s
+end
+
+// Format date as ISO 8601: "2026-01-11T14:30:00"
+fn format_iso(date)
+    let y = _pad_zero(dict_get(date, "year"), 4)
+    let m = _pad_zero(dict_get(date, "month"), 2)
+    let d = _pad_zero(dict_get(date, "day"), 2)
+    let h = _pad_zero(dict_get(date, "hour"), 2)
+    let mi = _pad_zero(dict_get(date, "minute"), 2)
+    let s = _pad_zero(dict_get(date, "second"), 2)
+    return y + "-" + m + "-" + d + "T" + h + ":" + mi + ":" + s
+end
+
+// Format date as readable: "January 11, 2026"
+fn format_readable(date)
+    let month_names = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+    let m = dict_get(date, "month")
+    let d = dict_get(date, "day")
+    let y = dict_get(date, "year")
+    return month_names[m - 1] + " " + str(d) + ", " + str(y)
+end
+
+// Format date as short: "01/11/2026"
+fn format_short(date)
+    let m = _pad_zero(dict_get(date, "month"), 2)
+    let d = _pad_zero(dict_get(date, "day"), 2)
+    let y = str(dict_get(date, "year"))
+    return m + "/" + d + "/" + y
+end
+
+// Format time as "HH:MM:SS"
+fn format_time(date)
+    let h = _pad_zero(dict_get(date, "hour"), 2)
+    let m = _pad_zero(dict_get(date, "minute"), 2)
+    let s = _pad_zero(dict_get(date, "second"), 2)
+    return h + ":" + m + ":" + s
+end
+
+// ============ Date Arithmetic ============
+
+// Add days to a timestamp
+fn add_days(ts, days)
+    return ts + (days * 86400)
+end
+
+// Add hours to a timestamp
+fn add_hours(ts, hours)
+    return ts + (hours * 3600)
+end
+
+// Add minutes to a timestamp
+fn add_minutes(ts, minutes)
+    return ts + (minutes * 60)
+end
+
+// Difference in days between two timestamps
+fn diff_days(ts1, ts2)
+    return floor(abs(ts1 - ts2) / 86400)
+end
+
+// Difference in hours between two timestamps
+fn diff_hours(ts1, ts2)
+    return floor(abs(ts1 - ts2) / 3600)
+end
+
+// ============ Date Comparisons ============
+
+// Check if ts1 is before ts2
+fn is_before(ts1, ts2)
+    return ts1 < ts2
+end
+
+// Check if ts1 is after ts2
+fn is_after(ts1, ts2)
+    return ts1 > ts2
+end
+
+// Check if two timestamps are on the same day
+fn same_day(ts1, ts2)
+    let d1 = from_timestamp(ts1)
+    let d2 = from_timestamp(ts2)
+    let y1 = dict_get(d1, "year")
+    let y2 = dict_get(d2, "year")
+    let m1 = dict_get(d1, "month")
+    let m2 = dict_get(d2, "month")
+    let day1 = dict_get(d1, "day")
+    let day2 = dict_get(d2, "day")
+    return y1 == y2 and m1 == m2 and day1 == day2
+end
+// ============ Day of Week ============
+
+// Get day of week (0=Sunday, 6=Saturday)
+fn day_of_week(ts)
+    // Jan 1, 1970 was Thursday (4)
+    let days = floor(ts / 86400)
+    return (days + 4) % 7
+end
+
+// Get day name
+fn day_name(ts)
+    let names = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+    return names[day_of_week(ts)]
+end
+
+// Check if weekend
+fn is_weekend(ts)
+    let dow = day_of_week(ts)
+    return dow == 0 or dow == 6
+end
+
+// Check if weekday
+fn is_weekday(ts)
+    return not is_weekend(ts)
+end

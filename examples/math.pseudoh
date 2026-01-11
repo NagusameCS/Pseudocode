@@ -1,0 +1,131 @@
+// Pseudocode Math Library Header
+// math.pseudoh - Common mathematical functions and constants
+
+// Constants
+let PI = 3.14159265358979323846
+let E = 2.71828182845904523536
+let TAU = 6.28318530717958647692
+let PHI = 1.61803398874989484820
+
+// Trigonometric helpers
+fn deg_to_rad(degrees)
+    return degrees * PI / 180
+end
+
+fn rad_to_deg(radians)
+    return radians * 180 / PI
+end
+
+// Statistical functions
+fn mean(arr)
+    let sum = 0
+    for i in 0..len(arr) do
+        sum = sum + arr[i]
+    end
+    return sum / len(arr)
+end
+
+fn variance(arr)
+    let m = mean(arr)
+    let sum_sq = 0
+    for i in 0..len(arr) do
+        let diff = arr[i] - m
+        sum_sq = sum_sq + diff * diff
+    end
+    return sum_sq / len(arr)
+end
+
+fn std_dev(arr)
+    return sqrt(variance(arr))
+end
+
+fn median(arr)
+    let sorted = sort(arr)
+    let n = len(sorted)
+    if n % 2 == 0 then
+        return (sorted[n / 2 - 1] + sorted[n / 2]) / 2
+    else
+        return sorted[floor(n / 2)]
+    end
+end
+
+// Number theory
+fn gcd(a, b)
+    while b != 0 do
+        let temp = b
+        b = a % b
+        a = temp
+    end
+    return a
+end
+
+fn lcm(a, b)
+    return abs(a * b) / gcd(a, b)
+end
+
+fn is_prime(n)
+    if n < 2 then
+        return false
+    end
+    if n == 2 then
+        return true
+    end
+    if n % 2 == 0 then
+        return false
+    end
+    for i in 3..floor(sqrt(n))+1 do
+        if n % i == 0 then
+            return false
+        end
+    end
+    return true
+end
+
+fn factorial(n)
+    if n <= 1 then
+        return 1
+    end
+    return n * factorial(n - 1)
+end
+
+fn fibonacci(n)
+    if n <= 1 then
+        return n
+    end
+    let a = 0
+    let b = 1
+    for i in 2 to n do
+        let temp = a + b
+        a = b
+        b = temp
+    end
+    return b
+end
+
+// Combinatorics
+fn permutations(n, r)
+    return factorial(n) / factorial(n - r)
+end
+
+fn combinations(n, r)
+    return factorial(n) / (factorial(r) * factorial(n - r))
+end
+
+// Interpolation
+fn lerp(a, b, t)
+    return a + (b - a) * t
+end
+
+fn clamp(value, min_val, max_val)
+    if value < min_val then
+        return min_val
+    end
+    if value > max_val then
+        return max_val
+    end
+    return value
+end
+
+fn map_range(value, in_min, in_max, out_min, out_max)
+    return (value - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
+end

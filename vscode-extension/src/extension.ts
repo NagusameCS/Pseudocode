@@ -19,6 +19,8 @@ import {
 } from './languageFeatures';
 import { registerDebugger } from './debugAdapter';
 import { registerRepl } from './repl';
+import { registerAdvancedFeatures } from './advancedFeatures';
+import { registerExtraFeatures } from './extraFeatures';
 
 let outputChannel: vscode.OutputChannel;
 let diagnosticCollection: vscode.DiagnosticCollection;
@@ -96,6 +98,14 @@ export function activate(context: vscode.ExtensionContext) {
         formatterProvider,
         diagnosticCollection
     );
+
+    // ============ Advanced Features ============
+    // Code Lens, Go to Definition, References, Rename, Semantic Tokens, Status Bar
+    registerAdvancedFeatures(context);
+
+    // ============ Extra Features ============
+    // Inlay Hints, Call Hierarchy, Color Provider, Smart Selection
+    registerExtraFeatures(context);
 
     // ============ Commands ============
 
@@ -180,10 +190,22 @@ async function findVmPath(): Promise<string | null> {
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (workspaceFolders) {
         for (const folder of workspaceFolders) {
-            // Check cvm/pseudo
+            // Check cvm/pseudo (main VM location)
             const vmInCvm = path.join(folder.uri.fsPath, 'cvm', 'pseudo');
             if (fs.existsSync(vmInCvm)) {
                 return vmInCvm;
+            }
+
+            // Check cvm/pseudo_debug (debug build)
+            const vmDebug = path.join(folder.uri.fsPath, 'cvm', 'pseudo_debug');
+            if (fs.existsSync(vmDebug)) {
+                return vmDebug;
+            }
+
+            // Check bin/pseudo (installed location)
+            const vmInBin = path.join(folder.uri.fsPath, 'bin', 'pseudo');
+            if (fs.existsSync(vmInBin)) {
+                return vmInBin;
             }
 
             // Check root pseudo
@@ -191,14 +213,35 @@ async function findVmPath(): Promise<string | null> {
             if (fs.existsSync(vmInRoot)) {
                 return vmInRoot;
             }
+
+            // Check build/pseudo (CMake build)
+            const vmInBuild = path.join(folder.uri.fsPath, 'build', 'pseudo');
+            if (fs.existsSync(vmInBuild)) {
+                return vmInBuild;
+            }
         }
     }
 
-    // Check if pseudo is in PATH
+    // Check common installation paths
+    const commonPaths = [
+        '/usr/local/bin/pseudo',
+        '/usr/bin/pseudo',
+        path.join(process.env.HOME || '', '.local', 'bin', 'pseudo'),
+        path.join(process.env.HOME || '', 'bin', 'pseudo')
+    ];
+
+    for (const p of commonPaths) {
+        if (fs.existsSync(p)) {
+            return p;
+        }
+    }
+
+    // Check if pseudo is in PATH (Linux/macOS)
     return new Promise((resolve) => {
-        exec('which pseudo', (error, stdout) => {
+        const cmd = process.platform === 'win32' ? 'where pseudo' : 'which pseudo';
+        exec(cmd, (error, stdout) => {
             if (!error && stdout.trim()) {
-                resolve(stdout.trim());
+                resolve(stdout.trim().split('\n')[0]);
             } else {
                 resolve(null);
             }
@@ -212,13 +255,28 @@ function runPseudocode(vmPath: string, filePath: string): void {
 
     const config = vscode.workspace.getConfiguration('pseudocode');
     const showTime = config.get<boolean>('showExecutionTime', true);
+    const enableJIT = config.get<boolean>('enableJIT', true);
+    const debugMode = config.get<boolean>('debugMode', false);
 
     outputChannel.appendLine(`Running: ${path.basename(filePath)}`);
     outputChannel.appendLine('─'.repeat(50));
 
     const startTime = Date.now();
 
-    const process = spawn(vmPath, [filePath], {
+    // Build command line arguments
+    const args: string[] = [];
+
+    if (enableJIT) {
+        args.push('-j');  // Enable JIT
+    }
+
+    if (debugMode) {
+        args.push('-d');  // Debug mode
+    }
+
+    args.push(filePath);
+
+    const process = spawn(vmPath, args, {
         cwd: path.dirname(filePath)
     });
 

@@ -1,0 +1,10 @@
+// Test tiny import
+import "./lib/tiny.pseudo"
+
+fn add_one(x)
+    print("add_one called with: " + str(x))
+    return x + 1
+end
+
+let result = tiny_caller(add_one, 5)
+print("result=" + str(result))

@@ -1,0 +1,36 @@
+// Test exception handling
+
+// Basic try/catch
+print("Test 1: Basic try/catch")
+try
+    throw "Test error"
+catch e
+    print("Caught: " + e)
+end
+
+// Throw with no handler should fail (commented out)
+// throw "Unhandled!"
+
+// Nested try/catch
+print("\nTest 2: Nested try/catch")
+try
+    try
+        throw "Inner error"
+    catch e
+        print("Inner catch: " + e)
+        throw "Rethrow: " + e
+    end
+catch e
+    print("Outer catch: " + e)
+end
+
+// Try with no exception
+print("\nTest 3: Normal exit")
+try
+    let x = 10
+    print("No error, x = " + str(x))
+catch e
+    print("This should not print")
+end
+
+print("\nAll exception tests passed!")

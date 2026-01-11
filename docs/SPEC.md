@@ -5,10 +5,22 @@
 
 ## 1. Lexical Structure
 
-### 1.1 Character Set
+### 1.1 File Extensions
+
+Pseudocode supports multiple file extensions for different purposes:
+
+| Extension | Purpose | Description |
+|-----------|---------|-------------|
+| `.pseudo` | Main source | Primary source file extension |
+| `.psc` | Main source | Short alias for `.pseudo` |
+| `.pseudoh` | Header | Header files with declarations and interfaces |
+| `.psch` | Header | Short alias for `.pseudoh` |
+| `.pseudocode` | Main source | Verbose, explicit extension |
+
+### 1.2 Character Set
 Pseudocode source files are UTF-8 encoded text.
 
-### 1.2 Whitespace
+### 1.3 Whitespace
 - Spaces and tabs are ignored except for separating tokens
 - Newlines are significant as statement terminators
 - Indentation is not syntactically significant

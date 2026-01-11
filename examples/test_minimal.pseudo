@@ -1,0 +1,19 @@
+// Super minimal import test
+fn my_func(x)
+    return x + 1
+end
+
+fn caller(f, v)
+    return f(v)
+end
+
+// Test before import
+print("Before import: " + str(caller(my_func, 5)))
+
+// Now a tiny library
+fn lib_caller(f, v)
+    return f(v)
+end
+
+// Test after library def
+print("After lib def: " + str(lib_caller(my_func, 5)))

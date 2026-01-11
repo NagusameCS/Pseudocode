@@ -1,0 +1,340 @@
+// Pseudocode Standard Library - Extended HTTP Client
+// HTTP requests with headers, authentication, and more
+
+// ============ HTTP Request Builder ============
+
+// Create a new HTTP request object
+fn http_request(method, url)
+    return {
+        "method": method,
+        "url": url,
+        "headers": {},
+        "body": "",
+        "timeout": 30,
+        "follow_redirects": true
+    }
+end
+
+// Set header on request
+fn http_set_header(req, name, value)
+    req["headers"][name] = value
+    return req
+end
+
+// Set multiple headers
+fn http_set_headers(req, headers)
+    for key in keys(headers) do
+        req["headers"][key] = headers[key]
+    end
+    return req
+end
+
+// Set request body
+fn http_set_body(req, body)
+    req["body"] = body
+    return req
+end
+
+// Set JSON body (auto-sets Content-Type)
+fn http_json_body(req, data)
+    req["body"] = json_stringify(data)
+    req["headers"]["Content-Type"] = "application/json"
+    return req
+end
+
+// Set form body (URL encoded)
+fn http_form_body(req, data)
+    let parts = []
+    for key in keys(data) do
+        let encoded_key = url_encode(key)
+        let encoded_val = url_encode(str(data[key]))
+        push(parts, encoded_key + "=" + encoded_val)
+    end
+    req["body"] = join(parts, "&")
+    req["headers"]["Content-Type"] = "application/x-www-form-urlencoded"
+    return req
+end
+
+// Set timeout
+fn http_set_timeout(req, seconds)
+    req["timeout"] = seconds
+    return req
+end
+
+// ============ Authentication ============
+
+// Set Basic authentication
+fn http_basic_auth(req, username, password)
+    let credentials = username + ":" + password
+    let encoded = encode_base64(credentials)
+    req["headers"]["Authorization"] = "Basic " + encoded
+    return req
+end
+
+// Set Bearer token authentication
+fn http_bearer_auth(req, token)
+    req["headers"]["Authorization"] = "Bearer " + token
+    return req
+end
+
+// Set API key in header
+fn http_api_key(req, header_name, api_key)
+    req["headers"][header_name] = api_key
+    return req
+end
+
+// ============ URL Encoding ============
+
+// URL encode a string
+fn url_encode(s)
+    let result = ""
+    let safe = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.~"
+    
+    for i in 0..len(s) do
+        let ch = s[i]
+        if contains(safe, ch) then
+            result = result + ch
+        elif ch == " " then
+            result = result + "+"
+        else
+            // Convert to hex
+            let code = ord(ch)
+            let hex = "%" + to_hex(code)
+            result = result + hex
+        end
+    end
+    return result
+end
+
+// URL decode a string
+fn url_decode(s)
+    let result = ""
+    let i = 0
+    
+    while i < len(s) do
+        let ch = s[i]
+        if ch == "+" then
+            result = result + " "
+        elif ch == "%" and i + 2 < len(s) then
+            let hex = substr(s, i + 1, 2)
+            let code = from_hex(hex)
+            result = result + char(code)
+            i = i + 2
+        else
+            result = result + ch
+        end
+        i = i + 1
+    end
+    return result
+end
+
+// Convert number to hex string
+fn to_hex(n)
+    let hex_chars = "0123456789ABCDEF"
+    if n < 16 then
+        return hex_chars[n]
+    end
+    return to_hex(int(n / 16)) + hex_chars[n % 16]
+end
+
+// Convert hex string to number
+fn from_hex(s)
+    let result = 0
+    let hex_chars = "0123456789ABCDEFabcdef"
+    let values = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 10, 11, 12, 13, 14, 15]
+    
+    for i in 0..len(s) do
+        let ch = s[i]
+        let idx = index_of(hex_chars, ch)
+        if idx >= 0 then
+            result = result * 16 + values[idx]
+        end
+    end
+    return result
+end
+
+// ============ Query String ============
+
+// Build query string from dict
+fn build_query_string(params)
+    let parts = []
+    for key in keys(params) do
+        let encoded_key = url_encode(key)
+        let encoded_val = url_encode(str(params[key]))
+        push(parts, encoded_key + "=" + encoded_val)
+    end
+    return join(parts, "&")
+end
+
+// Parse query string to dict
+fn parse_query_string(qs)
+    let result = {}
+    let pairs = split(qs, "&")
+    
+    for pair in pairs do
+        let parts = split(pair, "=")
+        if len(parts) >= 2 then
+            let key = url_decode(parts[0])
+            let value = url_decode(parts[1])
+            result[key] = value
+        elif len(parts) == 1 then
+            result[url_decode(parts[0])] = ""
+        end
+    end
+    return result
+end
+
+// Append query parameters to URL
+fn url_with_params(url, params)
+    let qs = build_query_string(params)
+    if contains(url, "?") then
+        return url + "&" + qs
+    else
+        return url + "?" + qs
+    end
+end
+
+// ============ HTTP Methods (Convenience) ============
+
+// GET request with headers
+fn http_get_with_headers(url, headers)
+    let req = http_request("GET", url)
+    http_set_headers(req, headers)
+    return http_send(req)
+end
+
+// POST JSON
+fn http_post_json(url, data)
+    let req = http_request("POST", url)
+    http_json_body(req, data)
+    return http_send(req)
+end
+
+// POST form data
+fn http_post_form(url, data)
+    let req = http_request("POST", url)
+    http_form_body(req, data)
+    return http_send(req)
+end
+
+// PUT request
+fn http_put_json(url, data)
+    let req = http_request("PUT", url)
+    http_json_body(req, data)
+    return http_send(req)
+end
+
+// PATCH request
+fn http_patch_json(url, data)
+    let req = http_request("PATCH", url)
+    http_json_body(req, data)
+    return http_send(req)
+end
+
+// DELETE request
+fn http_delete_with_headers(url, headers)
+    let req = http_request("DELETE", url)
+    http_set_headers(req, headers)
+    return http_send(req)
+end
+
+// ============ HTTP Client (uses VM builtins) ============
+
+// Send HTTP request (uses appropriate builtin based on method)
+fn http_send(req)
+    let method = req["method"]
+    let url = req["url"]
+    let body = req["body"]
+    
+    // Build curl-compatible header string for VM
+    let header_str = ""
+    for key in keys(req["headers"]) do
+        header_str = header_str + key + ": " + req["headers"][key] + "\n"
+    end
+    
+    // Use appropriate builtin
+    if method == "GET" then
+        return http_get(url)
+    elif method == "POST" then
+        return http_post(url, body)
+    elif method == "PUT" then
+        return http_put(url, body)
+    elif method == "DELETE" then
+        return http_delete(url)
+    else
+        return http_post(url, body)
+    end
+end
+
+// ============ Response Parsing ============
+
+// Parse response as JSON
+fn http_json_response(response)
+    if response == nil then
+        return nil
+    end
+    return json_parse(response)
+end
+
+// ============ REST API Client ============
+
+// Create a REST API client
+fn rest_client(base_url)
+    return {
+        "base_url": base_url,
+        "headers": {},
+        "auth": nil
+    }
+end
+
+// Set default headers for client
+fn rest_set_headers(client, headers)
+    for key in keys(headers) do
+        client["headers"][key] = headers[key]
+    end
+    return client
+end
+
+// Set bearer auth for client
+fn rest_set_auth(client, token)
+    client["headers"]["Authorization"] = "Bearer " + token
+    return client
+end
+
+// GET resource
+fn rest_get(client, path)
+    let url = client["base_url"] + path
+    let req = http_request("GET", url)
+    http_set_headers(req, client["headers"])
+    let response = http_send(req)
+    return http_json_response(response)
+end
+
+// POST resource
+fn rest_post(client, path, data)
+    let url = client["base_url"] + path
+    let req = http_request("POST", url)
+    http_set_headers(req, client["headers"])
+    http_json_body(req, data)
+    let response = http_send(req)
+    return http_json_response(response)
+end
+
+// PUT resource
+fn rest_put(client, path, data)
+    let url = client["base_url"] + path
+    let req = http_request("PUT", url)
+    http_set_headers(req, client["headers"])
+    http_json_body(req, data)
+    let response = http_send(req)
+    return http_json_response(response)
+end
+
+// DELETE resource
+fn rest_delete(client, path)
+    let url = client["base_url"] + path
+    let req = http_request("DELETE", url)
+    http_set_headers(req, client["headers"])
+    let response = http_send(req)
+    return http_json_response(response)
+end

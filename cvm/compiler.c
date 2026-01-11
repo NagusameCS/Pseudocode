@@ -14,11 +14,14 @@
 /* Forward declarations from lexer.c */
 typedef enum
 {
+    /* Literals */
     TOKEN_INT,
     TOKEN_FLOAT,
     TOKEN_STRING,
     TOKEN_TRUE,
     TOKEN_FALSE,
+
+    /* Identifiers & Keywords */
     TOKEN_IDENT,
     TOKEN_LET,
     TOKEN_CONST,
@@ -38,6 +41,29 @@ typedef enum
     TOKEN_NOT,
     TOKEN_MATCH,
     TOKEN_CASE,
+    TOKEN_TRY,
+    TOKEN_CATCH,
+    TOKEN_FINALLY,
+    TOKEN_THROW,
+    TOKEN_CLASS,
+    TOKEN_EXTENDS,
+    TOKEN_SELF,
+    TOKEN_SUPER,
+    TOKEN_NIL,
+    TOKEN_ENUM,
+
+    /* Advanced language features */
+    TOKEN_YIELD,
+    TOKEN_ASYNC,
+    TOKEN_AWAIT,
+    TOKEN_STATIC,
+    TOKEN_FROM,
+    TOKEN_AS,
+    TOKEN_MODULE,
+    TOKEN_EXPORT,
+    TOKEN_IMPORT,
+
+    /* Operators */
     TOKEN_PLUS,
     TOKEN_MINUS,
     TOKEN_STAR,
@@ -52,18 +78,37 @@ typedef enum
     TOKEN_ASSIGN,
     TOKEN_ARROW,
     TOKEN_RANGE,
+
+    /* Bitwise */
     TOKEN_BAND,
     TOKEN_BOR,
     TOKEN_BXOR,
     TOKEN_SHL,
     TOKEN_SHR,
+
+    /* Delimiters */
     TOKEN_LPAREN,
     TOKEN_RPAREN,
     TOKEN_LBRACKET,
     TOKEN_RBRACKET,
+    TOKEN_LBRACE,
+    TOKEN_RBRACE,
     TOKEN_COMMA,
     TOKEN_COLON,
+    TOKEN_DOT,
     TOKEN_NEWLINE,
+
+    /* Type annotation tokens (parsed but ignored at runtime) */
+    TOKEN_TYPE_NUMBER,
+    TOKEN_TYPE_STRING,
+    TOKEN_TYPE_BOOL,
+    TOKEN_TYPE_ARRAY,
+    TOKEN_TYPE_DICT,
+    TOKEN_TYPE_NIL,
+    TOKEN_TYPE_ANY,
+    TOKEN_TYPE_VOID,
+
+    /* Special */
     TOKEN_EOF,
     TOKEN_ERROR,
 } TokenType;
@@ -78,6 +123,17 @@ typedef struct
 
 void scanner_init(const char *source);
 Token scan_token(void);
+
+/* Scanner state for string interpolation */
+typedef struct
+{
+    const char *start;
+    const char *current;
+    int line;
+} ScannerState;
+
+void scanner_save_state(ScannerState *state);
+void scanner_restore_state(const ScannerState *state);
 
 /* ============ Parser State ============ */
 
@@ -134,13 +190,25 @@ typedef struct
     Token name;
     int depth;
     CompileTimeType inferred_type; /* Inferred type for specialization */
+    bool is_captured;              /* True if captured by a closure */
 } Local;
 
 typedef enum
 {
     TYPE_FUNCTION,
     TYPE_SCRIPT,
+    TYPE_METHOD,
+    TYPE_INITIALIZER,
+    TYPE_GENERATOR, /* Generator function (uses yield) */
+    TYPE_ASYNC,     /* Async function (returns Promise) */
 } FunctionType;
+
+/* Upvalue tracking for closures */
+typedef struct
+{
+    uint8_t index;
+    bool is_local; /* true if capturing enclosing local, false if upvalue */
+} Upvalue;
 
 typedef struct Compiler
 {
@@ -151,6 +219,8 @@ typedef struct Compiler
     Local locals[256];
     int local_count;
     int scope_depth;
+
+    Upvalue upvalues[256];
 } Compiler;
 
 static Parser parser;
@@ -475,6 +545,7 @@ static void init_compiler(Compiler *compiler, FunctionType type)
     local->depth = 0;
     local->name.start = "";
     local->name.length = 0;
+    local->is_captured = false;
 }
 
 static ObjFunction *end_compiler(void)
@@ -497,7 +568,15 @@ static void end_scope(void)
     while (current->local_count > 0 &&
            current->locals[current->local_count - 1].depth > current->scope_depth)
     {
-        emit_byte(OP_POP);
+        /* If variable was captured by a closure, close it instead of popping */
+        if (current->locals[current->local_count - 1].is_captured)
+        {
+            emit_byte(OP_CLOSE_UPVALUE);
+        }
+        else
+        {
+            emit_byte(OP_POP);
+        }
         current->local_count--;
     }
 }
@@ -526,6 +605,56 @@ static int resolve_local(Compiler *compiler, Token *name)
     return -1;
 }
 
+/* Add an upvalue to the compiler's upvalue array */
+static int add_upvalue(Compiler *compiler, uint8_t index, bool is_local)
+{
+    int upvalue_count = compiler->function->upvalue_count;
+
+    /* Check if we already captured this variable */
+    for (int i = 0; i < upvalue_count; i++)
+    {
+        Upvalue *upvalue = &compiler->upvalues[i];
+        if (upvalue->index == index && upvalue->is_local == is_local)
+        {
+            return i;
+        }
+    }
+
+    if (upvalue_count == 256)
+    {
+        error("Too many closure variables in function.");
+        return 0;
+    }
+
+    compiler->upvalues[upvalue_count].is_local = is_local;
+    compiler->upvalues[upvalue_count].index = index;
+    return compiler->function->upvalue_count++;
+}
+
+/* Resolve a variable in enclosing scopes, creating upvalues as needed */
+static int resolve_upvalue(Compiler *compiler, Token *name)
+{
+    if (compiler->enclosing == NULL)
+        return -1;
+
+    /* First, look for a local variable in the immediately enclosing function */
+    int local = resolve_local(compiler->enclosing, name);
+    if (local != -1)
+    {
+        compiler->enclosing->locals[local].is_captured = true;
+        return add_upvalue(compiler, (uint8_t)local, true);
+    }
+
+    /* Otherwise, look for an upvalue in the enclosing function */
+    int upvalue = resolve_upvalue(compiler->enclosing, name);
+    if (upvalue != -1)
+    {
+        return add_upvalue(compiler, (uint8_t)upvalue, false);
+    }
+
+    return -1;
+}
+
 static void add_local(Token name)
 {
     if (current->local_count == 256)
@@ -538,6 +667,7 @@ static void add_local(Token name)
     local->name = name;
     local->depth = -1;                    /* Mark uninitialized */
     local->inferred_type = CTYPE_UNKNOWN; /* Will be set on first assignment */
+    local->is_captured = false;           /* Not captured by default */
 }
 
 static void declare_variable(void)
@@ -607,6 +737,10 @@ static void statement(void);
 static void declaration(void);
 static ParseRule *get_rule(TokenType type);
 static void parse_precedence(Precedence precedence);
+static void lambda(bool can_assign);
+static void super_(bool can_assign);
+static void yield_expr(bool can_assign);
+static void await_expr(bool can_assign);
 
 static void grouping(bool can_assign)
 {
@@ -673,14 +807,9 @@ static void number(bool can_assign)
     }
 }
 
-static void string(bool can_assign)
+/* Process escape sequences in a string segment, returns malloc'd buffer */
+static char *process_escape_sequences(const char *src, int src_len, int *out_len)
 {
-    (void)can_assign;
-    /* Skip opening and closing quotes */
-    const char *src = parser.previous.start + 1;
-    int src_len = parser.previous.length - 2;
-
-    /* Process escape sequences */
     char *buffer = malloc(src_len + 1);
     int dst_len = 0;
 
@@ -712,6 +841,9 @@ static void string(bool can_assign)
             case '0':
                 buffer[dst_len++] = '\0';
                 break;
+            case '$':
+                buffer[dst_len++] = '$';
+                break;
             default:
                 buffer[dst_len++] = src[i];
                 break;
@@ -723,10 +855,153 @@ static void string(bool can_assign)
         }
     }
     buffer[dst_len] = '\0';
+    *out_len = dst_len;
+    return buffer;
+}
 
-    ObjString *str = copy_string(compiling_vm, buffer, dst_len);
-    free(buffer);
+/* Emit a string constant from processed buffer */
+static void emit_string_segment(const char *buffer, int len)
+{
+    ObjString *str = copy_string(compiling_vm, buffer, len);
     emit_constant(val_obj(str));
+}
+
+/* Forward declarations for interpolation */
+static void expression(void);
+
+static void string(bool can_assign)
+{
+    (void)can_assign;
+    /* Skip opening and closing quotes */
+    const char *src = parser.previous.start + 1;
+    int src_len = parser.previous.length - 2;
+
+    /* Check if this string contains interpolation */
+    bool has_interpolation = false;
+    for (int i = 0; i < src_len - 1; i++)
+    {
+        if (src[i] == '$' && src[i + 1] == '{' && (i == 0 || src[i - 1] != '\\'))
+        {
+            has_interpolation = true;
+            break;
+        }
+    }
+
+    if (!has_interpolation)
+    {
+        /* Simple string - no interpolation */
+        int dst_len;
+        char *buffer = process_escape_sequences(src, src_len, &dst_len);
+        ObjString *str = copy_string(compiling_vm, buffer, dst_len);
+        free(buffer);
+        emit_constant(val_obj(str));
+        return;
+    }
+
+    /* String interpolation: "Hello ${name}!" becomes "Hello " + str(name) + "!" */
+    int parts_emitted = 0;
+    int segment_start = 0;
+
+    for (int i = 0; i < src_len; i++)
+    {
+        /* Check for unescaped ${ */
+        if (src[i] == '$' && i + 1 < src_len && src[i + 1] == '{' &&
+            (i == 0 || src[i - 1] != '\\'))
+        {
+            /* Emit the string segment before ${ */
+            if (i > segment_start)
+            {
+                int seg_len;
+                char *seg = process_escape_sequences(src + segment_start, i - segment_start, &seg_len);
+                emit_string_segment(seg, seg_len);
+                free(seg);
+                if (parts_emitted > 0)
+                    emit_byte(OP_ADD);
+                parts_emitted++;
+            }
+
+            /* Find matching } */
+            int brace_depth = 1;
+            int expr_start = i + 2;
+            int expr_end = expr_start;
+            while (expr_end < src_len && brace_depth > 0)
+            {
+                if (src[expr_end] == '{')
+                    brace_depth++;
+                else if (src[expr_end] == '}')
+                    brace_depth--;
+                if (brace_depth > 0)
+                    expr_end++;
+            }
+
+            if (brace_depth != 0)
+            {
+                error("Unterminated interpolation in string.");
+                return;
+            }
+
+            /* Parse the expression inside ${} */
+            int expr_len = expr_end - expr_start;
+            if (expr_len > 0)
+            {
+                /* Save scanner and parser state */
+                ScannerState saved_scanner;
+                scanner_save_state(&saved_scanner);
+                Token old_current_tok = parser.current;
+                Token old_previous_tok = parser.previous;
+
+                /* Create a temporary null-terminated copy of the expression */
+                char *expr_copy = malloc(expr_len + 1);
+                memcpy(expr_copy, src + expr_start, expr_len);
+                expr_copy[expr_len] = '\0';
+
+                /* Initialize scanner on the expression */
+                scanner_init(expr_copy);
+                advance(); /* Prime the parser with first token */
+
+                /* Parse the expression */
+                expression();
+
+                free(expr_copy);
+
+                /* Restore scanner and parser state */
+                scanner_restore_state(&saved_scanner);
+                parser.current = old_current_tok;
+                parser.previous = old_previous_tok;
+
+                /* Convert to string */
+                emit_byte(OP_STR);
+
+                /* Concatenate with previous parts */
+                if (parts_emitted > 0)
+                    emit_byte(OP_ADD);
+                parts_emitted++;
+            }
+
+            /* Move past the closing } */
+            i = expr_end;
+            segment_start = expr_end + 1;
+        }
+    }
+
+    /* Emit remaining string segment after last interpolation */
+    if (segment_start < src_len)
+    {
+        int seg_len;
+        char *seg = process_escape_sequences(src + segment_start, src_len - segment_start, &seg_len);
+        emit_string_segment(seg, seg_len);
+        free(seg);
+        if (parts_emitted > 0)
+            emit_byte(OP_ADD);
+        parts_emitted++;
+    }
+
+    /* If no parts were emitted (empty string with just ${}), emit empty string */
+    if (parts_emitted == 0)
+    {
+        ObjString *str = copy_string(compiling_vm, "", 0);
+        emit_constant(val_obj(str));
+    }
 }
 
 static void named_variable(Token name, bool can_assign)
@@ -738,6 +1013,11 @@ static void named_variable(Token name, bool can_assign)
     {
         get_op = OP_GET_LOCAL;
         set_op = OP_SET_LOCAL;
+    }
+    else if ((arg = resolve_upvalue(current, &name)) != -1)
+    {
+        get_op = OP_GET_UPVALUE;
+        set_op = OP_SET_UPVALUE;
     }
     else
     {
@@ -751,7 +1031,7 @@ static void named_variable(Token name, bool can_assign)
         /* Parse RHS and emit assignment */
         expression();
         /* Update local's inferred type from the RHS */
-        if (arg != -1 && get_op == OP_SET_LOCAL)
+        if (get_op == OP_SET_LOCAL)
         {
             current->locals[arg].inferred_type = last_emit.type;
         }
@@ -1663,6 +1943,40 @@ static void variable(bool can_assign)
             return;
         }
 
+        /* ============ REGEX OPERATIONS ============ */
+        if (name.length == 11 && memcmp(name.start, "regex_match", 11) == 0)
+        {
+            advance();
+            expression(); /* text */
+            consume(TOKEN_COMMA, "Expect ',' after text argument.");
+            expression(); /* pattern */
+            consume(TOKEN_RPAREN, "Expect ')' after regex_match arguments.");
+            emit_byte(OP_REGEX_MATCH);
+            return;
+        }
+        if (name.length == 10 && memcmp(name.start, "regex_find", 10) == 0)
+        {
+            advance();
+            expression(); /* text */
+            consume(TOKEN_COMMA, "Expect ',' after text argument.");
+            expression(); /* pattern */
+            consume(TOKEN_RPAREN, "Expect ')' after regex_find arguments.");
+            emit_byte(OP_REGEX_FIND);
+            return;
+        }
+        if (name.length == 13 && memcmp(name.start, "regex_replace", 13) == 0)
+        {
+            advance();
+            expression(); /* text */
+            consume(TOKEN_COMMA, "Expect ',' after text argument.");
+            expression(); /* pattern */
+            consume(TOKEN_COMMA, "Expect ',' after pattern argument.");
+            expression(); /* replacement */
+            consume(TOKEN_RPAREN, "Expect ')' after regex_replace arguments.");
+            emit_byte(OP_REGEX_REPLACE);
+            return;
+        }
+
         /* ============ TENSOR OPERATIONS ============ */
         if (name.length == 12 && memcmp(name.start, "tensor_zeros", 12) == 0)
         {
@@ -2066,6 +2380,13 @@ static void literal(bool can_assign)
         last_emit.value = VAL_TRUE;
         last_emit.bytecode_pos = current_chunk()->count - 1;
         break;
+    case TOKEN_NIL:
+        emit_byte(OP_NIL);
+        second_last_emit = last_emit;
+        last_emit.is_constant = true;
+        last_emit.value = VAL_NIL;
+        last_emit.bytecode_pos = current_chunk()->count - 1;
+        break;
     default:
         return;
     }
@@ -2429,7 +2750,11 @@ static void binary(bool can_assign)
 static void and_(bool can_assign)
 {
     (void)can_assign;
-    int end_jump = emit_jump(OP_JMP_FALSE);
+    /* IMPORTANT: Use emit_jump_no_fuse to prevent fusion with preceding comparison.
+     * For short-circuit AND, we need the comparison result to stay on the stack
+     * so it can become the result of the AND expression when left side is falsy.
+     * Fusion would consume the operands and not push a result. */
+    int end_jump = emit_jump_no_fuse(OP_JMP_FALSE);
     emit_byte(OP_POP);
     parse_precedence(PREC_AND);
     patch_jump(end_jump);
@@ -2438,7 +2763,11 @@ static void and_(bool can_assign)
 static void or_(bool can_assign)
 {
     (void)can_assign;
-    int else_jump = emit_jump(OP_JMP_FALSE);
+    /* IMPORTANT: Use emit_jump_no_fuse to prevent fusion with preceding comparison.
+     * For short-circuit OR, we need the comparison result to stay on the stack
+     * so it can become the result of the OR expression when left side is truthy.
+     * Fusion would consume the operands and not push a result. */
+    int else_jump = emit_jump_no_fuse(OP_JMP_FALSE);
     int end_jump = emit_jump(OP_JMP);
 
     patch_jump(else_jump);
@@ -2495,16 +2824,20 @@ static void array_literal(bool can_assign)
     (void)can_assign;
     uint8_t count = 0;
 
+    skip_newlines();
     if (!check(TOKEN_RBRACKET))
     {
         do
         {
+            skip_newlines();
             if (check(TOKEN_RBRACKET))
                 break; /* Trailing comma */
             expression();
             count++;
+            skip_newlines();
         } while (match(TOKEN_COMMA));
     }
+    skip_newlines();
 
     consume(TOKEN_RBRACKET, "Expect ']' after array elements.");
     emit_bytes(OP_ARRAY, count);
@@ -2517,13 +2850,105 @@ static void range_expr(bool can_assign)
     emit_byte(OP_RANGE);
 }
 
+/* Parse property access: obj.property or obj.method() */
+static void dot(bool can_assign)
+{
+    consume(TOKEN_IDENT, "Expect property name after '.'.");
+    uint8_t name = identifier_constant(&parser.previous);
+
+    if (can_assign && match(TOKEN_ASSIGN))
+    {
+        expression();
+        emit_bytes(OP_SET_FIELD, name);
+    }
+    else if (match(TOKEN_LPAREN))
+    {
+        /* Method call: obj.method(args) */
+        uint8_t arg_count = argument_list();
+        emit_bytes(OP_INVOKE, name);
+        emit_byte(arg_count);
+    }
+    else
+    {
+        emit_bytes(OP_GET_FIELD, name);
+    }
+}
+
+/* Parse 'self' keyword in methods */
+static void self_(bool can_assign)
+{
+    (void)can_assign;
+    /* 'self' is always slot 0 in method calls */
+    emit_bytes(OP_GET_LOCAL, 0);
+}
+
+/* Parse 'super' keyword for calling parent class methods */
+static void super_(bool can_assign)
+{
+    (void)can_assign;
+
+    /* Syntax: super.method() or super.method */
+    consume(TOKEN_DOT, "Expect '.' after 'super'.");
+    consume(TOKEN_IDENT, "Expect superclass method name.");
+    uint8_t method_name = identifier_constant(&parser.previous);
+
+    /* Push 'self' (slot 0) then emit super access */
+    emit_bytes(OP_GET_LOCAL, 0);
+    emit_bytes(OP_GET_SUPER, method_name);
+}
+
+/* Parse 'yield' expression for generators */
+static void yield_expr(bool can_assign)
+{
+    (void)can_assign;
+
+    /* Check we're in a generator function */
+    if (current->type != TYPE_GENERATOR)
+    {
+        error("Cannot use 'yield' outside of a generator function.");
+        return;
+    }
+
+    /* Optional value: yield expr or just yield (yields nil) */
+    if (!check(TOKEN_NEWLINE) && !check(TOKEN_END) && !check(TOKEN_EOF))
+    {
+        expression();
+    }
+    else
+    {
+        emit_byte(OP_NIL);
+    }
+
+    emit_byte(OP_YIELD);
+}
+
+/* Parse 'await' expression for async functions */
+static void await_expr(bool can_assign)
+{
+    (void)can_assign;
+
+    /* Check we're in an async function */
+    if (current->type != TYPE_ASYNC)
+    {
+        error("Cannot use 'await' outside of an async function.");
+        return;
+    }
+
+    /* Await requires an expression (the promise) */
+    parse_precedence(PREC_UNARY);
+    emit_byte(OP_AWAIT);
+}
+
 ParseRule rules[] = {
     [TOKEN_LPAREN] = {grouping, call, PREC_CALL},
     [TOKEN_RPAREN] = {NULL, NULL, PREC_NONE},
     [TOKEN_LBRACKET] = {array_literal, index_, PREC_CALL},
     [TOKEN_RBRACKET] = {NULL, NULL, PREC_NONE},
+    [TOKEN_LBRACE] = {NULL, NULL, PREC_NONE},
+    [TOKEN_RBRACE] = {NULL, NULL, PREC_NONE},
     [TOKEN_COMMA] = {NULL, NULL, PREC_NONE},
     [TOKEN_COLON] = {NULL, NULL, PREC_NONE},
+    [TOKEN_DOT] = {NULL, dot, PREC_CALL},
     [TOKEN_MINUS] = {unary, binary, PREC_TERM},
     [TOKEN_PLUS] = {NULL, binary, PREC_TERM},
     [TOKEN_SLASH] = {NULL, binary, PREC_FACTOR},
@@ -2550,10 +2975,11 @@ ParseRule rules[] = {
     [TOKEN_NOT] = {unary, NULL, PREC_NONE},
     [TOKEN_TRUE] = {literal, NULL, PREC_NONE},
     [TOKEN_FALSE] = {literal, NULL, PREC_NONE},
+    [TOKEN_NIL] = {literal, NULL, PREC_NONE},
     [TOKEN_RANGE] = {NULL, range_expr, PREC_COMPARISON},
     [TOKEN_LET] = {NULL, NULL, PREC_NONE},
     [TOKEN_CONST] = {NULL, NULL, PREC_NONE},
-    [TOKEN_FN] = {NULL, NULL, PREC_NONE},
+    [TOKEN_FN] = {lambda, NULL, PREC_NONE},
     [TOKEN_RETURN] = {NULL, NULL, PREC_NONE},
     [TOKEN_IF] = {NULL, NULL, PREC_NONE},
     [TOKEN_THEN] = {NULL, NULL, PREC_NONE},
@@ -2566,6 +2992,26 @@ ParseRule rules[] = {
     [TOKEN_DO] = {NULL, NULL, PREC_NONE},
     [TOKEN_ARROW] = {NULL, NULL, PREC_NONE},
     [TOKEN_NEWLINE] = {NULL, NULL, PREC_NONE},
+    [TOKEN_ENUM] = {NULL, NULL, PREC_NONE},
+    [TOKEN_SELF] = {self_, NULL, PREC_NONE},
+    [TOKEN_SUPER] = {super_, NULL, PREC_NONE},
+    [TOKEN_CLASS] = {NULL, NULL, PREC_NONE},
+    [TOKEN_EXTENDS] = {NULL, NULL, PREC_NONE},
+    [TOKEN_TRY] = {NULL, NULL, PREC_NONE},
+    [TOKEN_CATCH] = {NULL, NULL, PREC_NONE},
+    [TOKEN_FINALLY] = {NULL, NULL, PREC_NONE},
+    [TOKEN_THROW] = {NULL, NULL, PREC_NONE},
+    [TOKEN_MATCH] = {NULL, NULL, PREC_NONE},
+    [TOKEN_CASE] = {NULL, NULL, PREC_NONE},
+    [TOKEN_YIELD] = {yield_expr, NULL, PREC_NONE},
+    [TOKEN_ASYNC] = {NULL, NULL, PREC_NONE},
+    [TOKEN_AWAIT] = {await_expr, NULL, PREC_NONE},
+    [TOKEN_STATIC] = {NULL, NULL, PREC_NONE},
+    [TOKEN_FROM] = {NULL, NULL, PREC_NONE},
+    [TOKEN_AS] = {NULL, NULL, PREC_NONE},
+    [TOKEN_MODULE] = {NULL, NULL, PREC_NONE},
+    [TOKEN_EXPORT] = {NULL, NULL, PREC_NONE},
+    [TOKEN_IMPORT] = {NULL, NULL, PREC_NONE},
     [TOKEN_ERROR] = {NULL, NULL, PREC_NONE},
     [TOKEN_EOF] = {NULL, NULL, PREC_NONE},
 };
@@ -2613,7 +3059,8 @@ static void block(void)
 {
     skip_newlines();
     while (!check(TOKEN_END) && !check(TOKEN_ELSE) && !check(TOKEN_ELIF) &&
-           !check(TOKEN_CASE) && !check(TOKEN_EOF))
+           !check(TOKEN_CASE) && !check(TOKEN_CATCH) && !check(TOKEN_FINALLY) &&
+           !check(TOKEN_EOF))
     {
         declaration();
         skip_newlines();
@@ -2843,6 +3290,76 @@ static void print_statement(void)
     emit_byte(OP_PRINT);
 }
 
+/* Exception handling: try ... catch e then ... end */
+static void try_statement(void)
+{
+    skip_newlines();
+
+    /* Emit OP_TRY with placeholder catch offset */
+    emit_byte(OP_TRY);
+    int try_start = current_chunk()->count;
+    emit_byte(0xff); /* Placeholder high byte */
+    emit_byte(0xff); /* Placeholder low byte */
+
+    /* Parse try block */
+    block();
+
+    /* End of try - pop handler and jump over catch */
+    emit_byte(OP_TRY_END);
+    int end_jump = emit_jump(OP_JMP);
+
+    /* Patch the catch offset */
+    int catch_offset = current_chunk()->count - try_start - 2;
+    current_chunk()->code[try_start] = (catch_offset >> 8) & 0xff;
+    current_chunk()->code[try_start + 1] = catch_offset & 0xff;
+
+    /* Parse catch clause */
+    consume(TOKEN_CATCH, "Expect 'catch' after try block.");
+
+    /* Emit OP_CATCH to push exception onto stack */
+    emit_byte(OP_CATCH);
+
+    /* Optional: bind exception to variable */
+    if (check(TOKEN_IDENT))
+    {
+        begin_scope();
+        uint8_t var = parse_variable("Expect exception variable name.");
+        define_variable(var);
+
+        if (match(TOKEN_THEN))
+        {
+            skip_newlines();
+        }
+
+        block();
+        end_scope();
+    }
+    else
+    {
+        /* No variable - just pop the exception */
+        emit_byte(OP_POP);
+
+        if (match(TOKEN_THEN))
+        {
+            skip_newlines();
+        }
+
+        block();
+    }
+
+    /* Patch end jump */
+    patch_jump(end_jump);
+
+    consume(TOKEN_END, "Expect 'end' after catch block.");
+}
+
+/* Throw statement: throw expr */
+static void throw_statement(void)
+{
+    expression();
+    emit_byte(OP_THROW);
+}
+
 /* Pattern matching: match expr case val1 then ... case val2 then ... else ... end */
 static void match_statement(void)
 {
@@ -2914,6 +3431,14 @@ static void statement(void)
     {
         match_statement();
     }
+    else if (match(TOKEN_TRY))
+    {
+        try_statement();
+    }
+    else if (match(TOKEN_THROW))
+    {
+        throw_statement();
+    }
     else if (match(TOKEN_RETURN))
     {
         return_statement();
@@ -2947,6 +3472,74 @@ static void var_declaration(void)
     }
 
     define_variable(global);
+}
+
+/* Lambda/anonymous function expression: fn(x) return x * 2 end */
+static void lambda(bool can_assign)
+{
+    (void)can_assign;
+
+    Compiler compiler;
+    init_compiler(&compiler, TYPE_FUNCTION);
+
+    /* Anonymous functions get a synthetic name for debugging */
+    current->function->name = copy_string(compiling_vm, "<lambda>", 8);
+
+    begin_scope();
+
+    consume(TOKEN_LPAREN, "Expect '(' after 'fn' in lambda.");
+
+    if (!check(TOKEN_RPAREN))
+    {
+        do
+        {
+            current->function->arity++;
+            if (current->function->arity > 255)
+            {
+                error_at_current("Can't have more than 255 parameters.");
+            }
+            uint8_t constant = parse_variable("Expect parameter name.");
+            (void)constant;
+            if (match(TOKEN_COLON))
+            {
+                consume(TOKEN_IDENT, "Expect type name.");
+            }
+            mark_initialized();
+        } while (match(TOKEN_COMMA));
+    }
+
+    consume(TOKEN_RPAREN, "Expect ')' after lambda parameters.");
+
+    /* Optional return type */
+    if (match(TOKEN_ARROW))
+    {
+        consume(TOKEN_IDENT, "Expect return type.");
+    }
+
+    /* Jump over the lambda body - we'll patch this later */
+    int jump = emit_jump(OP_JMP);
+
+    /* Record where the function code starts */
+    current->function->code_start = current_chunk()->count;
+
+    skip_newlines();
+    block();
+    consume(TOKEN_END, "Expect 'end' after lambda body.");
+
+    ObjFunction *func = end_compiler();
+
+    /* Patch the jump to skip the function body */
+    patch_jump(jump);
+
+    /* Emit closure instruction with upvalue info */
+    emit_bytes(OP_CLOSURE, make_constant(val_obj(func)));
+
+    /* Emit upvalue descriptors */
+    for (int i = 0; i < func->upvalue_count; i++)
+    {
+        emit_byte(compiler.upvalues[i].is_local ? 1 : 0);
+        emit_byte(compiler.upvalues[i].index);
+    }
 }
 
 static void function(FunctionType type)
@@ -2999,7 +3592,131 @@ static void function(FunctionType type)
     /* Patch the jump to skip the function body */
     patch_jump(jump);
 
-    emit_bytes(OP_CONST, make_constant(val_obj(func)));
+    /* Emit closure instruction with upvalue info */
+    emit_bytes(OP_CLOSURE, make_constant(val_obj(func)));
+
+    /* Emit upvalue descriptors */
+    for (int i = 0; i < func->upvalue_count; i++)
+    {
+        emit_byte(compiler.upvalues[i].is_local ? 1 : 0);
+        emit_byte(compiler.upvalues[i].index);
+    }
+}
+
+/* Enum declaration parser
+ * Syntax:
+ *   enum Color
+ *       Red
+ *       Green
+ *       Blue
+ *   end
+ *
+ * or with explicit values:
+ *   enum Status
+ *       Pending = 0
+ *       Active = 1
+ *       Done = 2
+ *   end
+ *
+ * Creates global constants: Color_Red = 0, Color_Green = 1, etc.
+ * Also creates Color_name(value) function and Color_values array.
+ */
+static void enum_declaration(void)
+{
+    consume(TOKEN_IDENT, "Expect enum name.");
+    Token enum_name = parser.previous;
+
+    /* Create the enum name string for prefixing members */
+    char prefix[256];
+    int prefix_len = snprintf(prefix, sizeof(prefix), "%.*s_",
+                              enum_name.length, enum_name.start);
+
+    skip_newlines();
+
+    /* Track enum members for creating helper array */
+    char member_names[64][256];
+    int member_values[64];
+    int member_count = 0;
+    int next_value = 0;
+
+    /* Parse enum members until 'end' */
+    while (!check(TOKEN_END) && !check(TOKEN_EOF))
+    {
+        skip_newlines();
+        if (check(TOKEN_END))
+            break;
+
+        consume(TOKEN_IDENT, "Expect enum member name.");
+        Token member = parser.previous;
+
+        /* Check for explicit value assignment */
+        int value = next_value;
+        if (match(TOKEN_ASSIGN))
+        {
+            consume(TOKEN_INT, "Expect integer value for enum member.");
+            value = (int)strtol(parser.previous.start, NULL, 10);
+        }
+
+        /* Store member info */
+        if (member_count < 64)
+        {
+            snprintf(member_names[member_count], sizeof(member_names[0]),
+                     "%.*s", member.length, member.start);
+            member_values[member_count] = value;
+            member_count++;
+        }
+
+        /* Create global constant: EnumName_MemberName */
+        char const_name[512];
+        snprintf(const_name, sizeof(const_name), "%s%.*s",
+                 prefix, member.length, member.start);
+
+        /* Emit the value and define as global */
+        ObjString *name_str = copy_string(compiling_vm, const_name, strlen(const_name));
+        emit_constant(val_num(value));
+        uint8_t global = make_constant(val_obj(name_str));
+        emit_bytes(OP_SET_GLOBAL, global);
+        emit_byte(OP_POP);
+
+        next_value = value + 1;
+        skip_newlines();
+    }
+
+    consume(TOKEN_END, "Expect 'end' after enum declaration.");
+
+    /* Create EnumName_values array containing all values */
+    char values_name[512];
+    snprintf(values_name, sizeof(values_name), "%.*s_values",
+             enum_name.length, enum_name.start);
+
+    /* Emit array literal with all values */
+    for (int i = 0; i < member_count; i++)
+    {
+        emit_constant(val_num(member_values[i]));
+    }
+    emit_bytes(OP_ARRAY, member_count);
+
+    ObjString *values_str = copy_string(compiling_vm, values_name, strlen(values_name));
+    uint8_t values_global = make_constant(val_obj(values_str));
+    emit_bytes(OP_SET_GLOBAL, values_global);
+    emit_byte(OP_POP);
+
+    /* Create EnumName_names array containing all member names */
+    char names_name[512];
+    snprintf(names_name, sizeof(names_name), "%.*s_names",
+             enum_name.length, enum_name.start);
+
+    for (int i = 0; i < member_count; i++)
+    {
+        ObjString *name = copy_string(compiling_vm, member_names[i], strlen(member_names[i]));
+        emit_constant(val_obj(name));
+    }
+    emit_bytes(OP_ARRAY, member_count);
+
+    ObjString *names_str = copy_string(compiling_vm, names_name, strlen(names_name));
+    uint8_t names_global = make_constant(val_obj(names_str));
+    emit_bytes(OP_SET_GLOBAL, names_global);
+    emit_byte(OP_POP);
 }
 
 static void fn_declaration(void)
@@ -3010,6 +3727,304 @@ static void fn_declaration(void)
     define_variable(global);
 }
 
+/* Async function declaration: async fn name() */
+static void async_fn_declaration(void)
+{
+    uint8_t global = parse_variable("Expect async function name.");
+    mark_initialized();
+    function(TYPE_ASYNC);
+    emit_byte(OP_ASYNC); /* Wrap result in Promise */
+    define_variable(global);
+}
+
+/* Generator function declaration: fn* name() or fn name() with yield */
+static void generator_fn_declaration(void)
+{
+    uint8_t global = parse_variable("Expect generator function name.");
+    mark_initialized();
+    function(TYPE_GENERATOR);
+    emit_byte(OP_GENERATOR); /* Wrap in generator object */
+    define_variable(global);
+}
+
+/* Module declaration: module ModuleName */
+static void module_declaration(void)
+{
+    consume(TOKEN_IDENT, "Expect module name.");
+    uint8_t name = identifier_constant(&parser.previous);
+
+    emit_bytes(OP_MODULE, name);
+
+    skip_newlines();
+
+    /* Parse module body */
+    while (!check(TOKEN_END) && !check(TOKEN_EOF))
+    {
+        skip_newlines();
+        if (check(TOKEN_END))
+            break;
+        declaration();
+        skip_newlines();
+    }
+
+    consume(TOKEN_END, "Expect 'end' after module body.");
+
+    /* Define module as global */
+    emit_bytes(OP_SET_GLOBAL, name);
+}
+
+/* Export declaration: export fn name or export let name */
+static void export_declaration(void)
+{
+    if (match(TOKEN_FN))
+    {
+        /* export fn name() */
+        consume(TOKEN_IDENT, "Expect function name after 'export fn'.");
+        uint8_t name = identifier_constant(&parser.previous);
+
+        function(TYPE_FUNCTION);
+        emit_bytes(OP_EXPORT, name);
+    }
+    else if (match(TOKEN_LET) || match(TOKEN_CONST))
+    {
+        /* export let name = value */
+        consume(TOKEN_IDENT, "Expect variable name after 'export let'.");
+        uint8_t name = identifier_constant(&parser.previous);
+
+        if (match(TOKEN_ASSIGN))
+        {
+            expression();
+        }
+        else
+        {
+            emit_byte(OP_NIL);
+        }
+        emit_bytes(OP_EXPORT, name);
+    }
+    else if (match(TOKEN_CLASS))
+    {
+        /* export class ClassName */
+        consume(TOKEN_IDENT, "Expect class name after 'export class'.");
+        uint8_t name = identifier_constant(&parser.previous);
+
+        /* Class body parsing - simplified version */
+        emit_bytes(OP_CLASS, name);
+
+        if (match(TOKEN_EXTENDS))
+        {
+            consume(TOKEN_IDENT, "Expect superclass name.");
+            variable(false);
+            emit_byte(OP_INHERIT);
+        }
+
+        skip_newlines();
+        while (!check(TOKEN_END) && !check(TOKEN_EOF))
+        {
+            skip_newlines();
+            if (match(TOKEN_FN))
+            {
+                consume(TOKEN_IDENT, "Expect method name.");
+                uint8_t method_name = identifier_constant(&parser.previous);
+                function(TYPE_METHOD);
+                emit_bytes(OP_METHOD, method_name);
+            }
+            else if (check(TOKEN_END))
+            {
+                break;
+            }
+            else
+            {
+                advance();
+            }
+            skip_newlines();
+        }
+        consume(TOKEN_END, "Expect 'end' after class body.");
+
+        emit_bytes(OP_EXPORT, name);
+    }
+    else
+    {
+        error("Expect declaration after 'export'.");
+    }
+}
+
+/* Import declaration: import name from "module" or from "module" import a, b */
+static void import_declaration(void)
+{
+    if (match(TOKEN_IDENT))
+    {
+        /* import ModuleName - import entire module */
+        uint8_t name = identifier_constant(&parser.previous);
+
+        if (match(TOKEN_AS))
+        {
+            /* import ModuleName as alias */
+            consume(TOKEN_IDENT, "Expect alias name after 'as'.");
+            uint8_t alias = identifier_constant(&parser.previous);
+            emit_bytes(OP_IMPORT_AS, name);
+            emit_byte(alias);
+        }
+        else if (match(TOKEN_FROM))
+        {
+            /* import name from "module" */
+            consume(TOKEN_STRING, "Expect module path string.");
+            /* Module loading would happen at runtime */
+            emit_bytes(OP_IMPORT_FROM, name);
+        }
+        else
+        {
+            /* Just import by name */
+            emit_bytes(OP_IMPORT_AS, name);
+            emit_byte(name);
+        }
+
+        /* Define as global */
+        emit_bytes(OP_SET_GLOBAL, name);
+    }
+    else if (match(TOKEN_LBRACE))
+    {
+        /* import { a, b, c } from "module" - selective import */
+        do
+        {
+            consume(TOKEN_IDENT, "Expect symbol name.");
+            uint8_t sym = identifier_constant(&parser.previous);
+
+            uint8_t alias = sym;
+            if (match(TOKEN_AS))
+            {
+                consume(TOKEN_IDENT, "Expect alias after 'as'.");
+                alias = identifier_constant(&parser.previous);
+            }
+
+            emit_bytes(OP_IMPORT_FROM, sym);
+            emit_bytes(OP_SET_GLOBAL, alias);
+        } while (match(TOKEN_COMMA));
+
+        consume(TOKEN_RBRACE, "Expect '}' after import list.");
+        consume(TOKEN_FROM, "Expect 'from' after import list.");
+        consume(TOKEN_STRING, "Expect module path string.");
+    }
+    else
+    {
+        error("Expect module name or '{' after 'import'.");
+    }
+}
+
+/* Class declaration parser */
+static void class_declaration(void)
+{
+    consume(TOKEN_IDENT, "Expect class name.");
+    uint8_t name_constant = identifier_constant(&parser.previous);
+
+    /* Emit OP_CLASS to create the class object */
+    emit_bytes(OP_CLASS, name_constant);
+
+    /* Store class in global variable with same name */
+    if (current->scope_depth > 0)
+    {
+        add_local(parser.previous);
+        mark_initialized();
+    }
+    else
+    {
+        emit_bytes(OP_SET_GLOBAL, name_constant);
+    }
+
+    /* Optional inheritance: class Foo extends Bar */
+    if (match(TOKEN_EXTENDS))
+    {
+        consume(TOKEN_IDENT, "Expect superclass name.");
+        variable(false); /* Load the superclass */
+        emit_byte(OP_INHERIT);
+    }
+
+    skip_newlines();
+
+    /* Parse class body until 'end' */
+    while (!check(TOKEN_END) && !check(TOKEN_EOF))
+    {
+        skip_newlines();
+
+        if (match(TOKEN_STATIC))
+        {
+            /* Static method or property */
+            if (match(TOKEN_FN))
+            {
+                /* Static method: static fn name() */
+                consume(TOKEN_IDENT, "Expect static method name.");
+                uint8_t method_name = identifier_constant(&parser.previous);
+                function(TYPE_FUNCTION);
+                emit_bytes(OP_STATIC, method_name);
+            }
+            else if (match(TOKEN_LET))
+            {
+                /* Static property: static let name = value */
+                consume(TOKEN_IDENT, "Expect static property name.");
+                uint8_t prop_name = identifier_constant(&parser.previous);
+
+                if (match(TOKEN_ASSIGN))
+                {
+                    expression();
+                }
+                else
+                {
+                    emit_byte(OP_NIL);
+                }
+                emit_bytes(OP_STATIC, prop_name);
+            }
+            else
+            {
+                error("Expect 'fn' or 'let' after 'static'.");
+            }
+        }
+        else if (match(TOKEN_FN))
+        {
+            /* Method definition */
+            consume(TOKEN_IDENT, "Expect method name.");
+            uint8_t method_name = identifier_constant(&parser.previous);
+
+            /* Check if this is an initializer */
+            Token method_token = parser.previous;
+            bool is_init = (method_token.length == 4 &&
+                            memcmp(method_token.start, "init", 4) == 0);
+
+            function(is_init ? TYPE_INITIALIZER : TYPE_METHOD);
+            emit_bytes(OP_METHOD, method_name);
+        }
+        else if (match(TOKEN_LET))
+        {
+            /* Field declaration */
+            consume(TOKEN_IDENT, "Expect field name.");
+            uint8_t field_name = identifier_constant(&parser.previous);
+            emit_bytes(OP_FIELD, field_name);
+
+            /* Optional initializer - skip for now, handled in constructor */
+            if (match(TOKEN_ASSIGN))
+            {
+                /* Just skip the initializer expression for now */
+                expression();
+                emit_byte(OP_POP);
+            }
+        }
+        else if (check(TOKEN_END))
+        {
+            break;
+        }
+        else
+        {
+            skip_newlines();
+            if (!check(TOKEN_END) && !check(TOKEN_EOF))
+            {
+                advance(); /* Skip unknown tokens in class body */
+            }
+        }
+
+        skip_newlines();
+    }
+
+    consume(TOKEN_END, "Expect 'end' after class body.");
+}
+
 static void declaration(void)
 {
     skip_newlines();
@@ -3017,6 +4032,32 @@ static void declaration(void)
     if (match(TOKEN_FN))
     {
         fn_declaration();
+    }
+    else if (match(TOKEN_ASYNC))
+    {
+        /* async fn name() - async function declaration */
+        consume(TOKEN_FN, "Expect 'fn' after 'async'.");
+        async_fn_declaration();
+    }
+    else if (match(TOKEN_CLASS))
+    {
+        class_declaration();
+    }
+    else if (match(TOKEN_ENUM))
+    {
+        enum_declaration();
+    }
+    else if (match(TOKEN_MODULE))
+    {
+        module_declaration();
+    }
+    else if (match(TOKEN_EXPORT))
+    {
+        export_declaration();
+    }
+    else if (match(TOKEN_IMPORT))
+    {
+        import_declaration();
     }
     else if (match(TOKEN_LET) || match(TOKEN_CONST))
     {

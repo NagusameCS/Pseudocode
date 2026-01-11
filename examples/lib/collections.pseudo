@@ -1,0 +1,210 @@
+// Array/Collection Utilities Library for Pseudocode
+// Import with: import "collections.pseudo"
+
+// Create a range as an array
+fn range_array(start, stop)
+    let arr = []
+    for i in start..stop do
+        push(arr, i)
+    end
+    return arr
+end
+
+// Create a range with step
+fn range_step(start, stop, step)
+    let arr = []
+    let i = start
+    if step > 0 then
+        while i < stop do
+            push(arr, i)
+            i = i + step
+        end
+    else
+        while i > stop do
+            push(arr, i)
+            i = i + step
+        end
+    end
+    return arr
+end
+
+// Find index of element (returns -1 if not found)
+fn index_of(arr, item)
+    for i in 0..len(arr) do
+        if arr[i] == item then
+            return i
+        end
+    end
+    return -1
+end
+
+// Check if array contains element
+fn array_contains(arr, item)
+    return index_of(arr, item) != -1
+end
+
+// Remove duplicates from array
+fn unique(arr)
+    let result = []
+    for item in arr do
+        if not array_contains(result, item) then
+            push(result, item)
+        end
+    end
+    return result
+end
+
+// Flatten a 2D array
+fn flatten(arr)
+    let result = []
+    for sub_arr in arr do
+        for item in sub_arr do
+            push(result, item)
+        end
+    end
+    return result
+end
+
+// Zip two arrays together
+fn zip(arr1, arr2)
+    let result = []
+    let min_len = len(arr1)
+    if len(arr2) < min_len then
+        min_len = len(arr2)
+    end
+    for i in 0..min_len do
+        push(result, [arr1[i], arr2[i]])
+    end
+    return result
+end
+
+// Reverse an array (returns new array)
+fn reverse_array(arr)
+    let result = []
+    let i = len(arr) - 1
+    while i >= 0 do
+        push(result, arr[i])
+        i = i - 1
+    end
+    return result
+end
+
+// Take first n elements
+fn take(arr, n)
+    let result = []
+    let count = n
+    if count > len(arr) then
+        count = len(arr)
+    end
+    for i in 0..count do
+        push(result, arr[i])
+    end
+    return result
+end
+
+// Drop first n elements
+fn drop(arr, n)
+    let result = []
+    for i in n..len(arr) do
+        push(result, arr[i])
+    end
+    return result
+end
+
+// Partition array into chunks of size n
+fn chunk(arr, n)
+    let result = []
+    let current = []
+    for item in arr do
+        push(current, item)
+        if len(current) == n then
+            push(result, current)
+            current = []
+        end
+    end
+    if len(current) > 0 then
+        push(result, current)
+    end
+    return result
+end
+
+// Count occurrences of each element (returns dict)
+fn frequencies(arr)
+    let counts = dict()
+    for item in arr do
+        let key = str(item)
+        if dict_has(counts, key) then
+            dict_set(counts, key, dict_get(counts, key) + 1)
+        else
+            dict_set(counts, key, 1)
+        end
+    end
+    return counts
+end
+
+// Group by a key function result (simplified - groups by value)
+fn group_by(arr, key_fn)
+    let groups = dict()
+    for item in arr do
+        let key = str(key_fn(item))
+        if not dict_has(groups, key) then
+            dict_set(groups, key, [])
+        end
+        push(dict_get(groups, key), item)
+    end
+    return groups
+end
+
+// Stack implementation
+fn create_stack()
+    return []
+end
+
+fn stack_push(stack, item)
+    push(stack, item)
+end
+
+fn stack_pop(stack)
+    return pop(stack)
+end
+
+fn stack_peek(stack)
+    return stack[len(stack) - 1]
+end
+
+fn stack_empty(stack)
+    return len(stack) == 0
+end
+
+// Queue implementation (simple, not optimized)
+fn create_queue()
+    return []
+end
+
+fn queue_enqueue(queue, item)
+    push(queue, item)
+end
+
+fn queue_dequeue(queue)
+    if len(queue) == 0 then
+        return nil
+    end
+    let item = queue[0]
+    // Shift elements (inefficient but simple)
+    for i in 0..(len(queue) - 1) do
+        queue[i] = queue[i + 1]
+    end
+    pop(queue)
+    return item
+end
+
+fn queue_front(queue)
+    if len(queue) == 0 then
+        return nil
+    end
+    return queue[0]
+end
+
+fn queue_empty(queue)
+    return len(queue) == 0
+end

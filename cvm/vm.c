@@ -24,6 +24,10 @@
 #include <ctype.h>
 #include <errno.h>
 
+/* PCRE2 for regex support */
+#define PCRE2_CODE_UNIT_WIDTH 8
+#include <pcre2.h>
+
 /* Use computed gotos if available (GCC/Clang) */
 #if defined(__GNUC__) || defined(__clang__)
 #define USE_COMPUTED_GOTO 1
@@ -37,9 +41,12 @@ void vm_init(VM *vm)
 {
     vm->sp = vm->stack;
     vm->frame_count = 0;
+    vm->handler_count = 0;
+    vm->current_exception = VAL_NIL;
     vm->objects = NULL;
     vm->bytes_allocated = 0;
     vm->next_gc = 1024 * 1024;
+    vm->open_upvalues = NULL;
 
     vm->globals.keys = NULL;
     vm->globals.values = NULL;
@@ -67,6 +74,55 @@ void vm_free(VM *vm)
         free(vm->globals.values);
 
     chunk_free(&vm->chunk);
+}
+
+/* ============ Upvalue Management ============ */
+
+/* Capture a local variable as an upvalue, reusing existing if already captured */
+static ObjUpvalue *capture_upvalue(VM *vm, Value *local)
+{
+    ObjUpvalue *prev = NULL;
+    ObjUpvalue *upvalue = vm->open_upvalues;
+
+    /* Walk the list looking for an existing upvalue or insertion point */
+    while (upvalue != NULL && upvalue->location > local)
+    {
+        prev = upvalue;
+        upvalue = upvalue->next;
+    }
+
+    /* Found existing upvalue for this slot */
+    if (upvalue != NULL && upvalue->location == local)
+    {
+        return upvalue;
+    }
+
+    /* Create new upvalue */
+    ObjUpvalue *created = new_upvalue(vm, local);
+    created->next = upvalue;
+
+    if (prev == NULL)
+    {
+        vm->open_upvalues = created;
+    }
+    else
+    {
+        prev->next = created;
+    }
+
+    return created;
+}
+
+/* Close all upvalues pointing to slots at or above 'last' */
+static void close_upvalues(VM *vm, Value *last)
+{
+    while (vm->open_upvalues != NULL && vm->open_upvalues->location >= last)
+    {
+        ObjUpvalue *upvalue = vm->open_upvalues;
+        upvalue->closed = *upvalue->location;
+        upvalue->location = &upvalue->closed;
+        vm->open_upvalues = upvalue->next;
+    }
 }
 
 /* ============ Globals Hash Table ============ */
@@ -181,6 +237,18 @@ static void runtime_error(VM *vm, const char *format, ...)
 
     vm->sp = vm->stack;
     vm->frame_count = 0;
+}
+
+/* ============ Object Allocation Helper ============ */
+
+static Obj *alloc_object(VM *vm, size_t size, ObjType type)
+{
+    Obj *object = (Obj *)pseudo_realloc(vm, NULL, 0, size);
+    object->type = type;
+    object->marked = false;
+    object->next = vm->objects;
+    vm->objects = object;
+    return object;
 }
 
 /* ============ JSON Parser ============ */
@@ -358,21 +426,62 @@ static Value json_parse_array(VM *vm, const char **json, const char *end)
     return val_obj(arr);
 }
 
+/* Helper to insert into a hash-based dict */
+static void dict_insert(ObjDict *dict, ObjString *key, Value value)
+{
+    /* Grow if needed (at 75% load) */
+    if (dict->count * 4 >= dict->capacity * 3)
+    {
+        uint32_t new_cap = dict->capacity < 8 ? 8 : dict->capacity * 2;
+        ObjString **new_keys = (ObjString **)calloc(new_cap, sizeof(ObjString *));
+        Value *new_values = (Value *)malloc(new_cap * sizeof(Value));
+
+        /* Rehash all existing entries */
+        for (uint32_t i = 0; i < dict->capacity; i++)
+        {
+            if (dict->keys[i])
+            {
+                uint32_t slot = dict->keys[i]->hash & (new_cap - 1);
+                while (new_keys[slot])
+                    slot = (slot + 1) & (new_cap - 1);
+                new_keys[slot] = dict->keys[i];
+                new_values[slot] = dict->values[i];
+            }
+        }
+
+        free(dict->keys);
+        free(dict->values);
+        dict->keys = new_keys;
+        dict->values = new_values;
+        dict->capacity = new_cap;
+    }
+
+    /* Find slot using linear probing */
+    uint32_t slot = key->hash & (dict->capacity - 1);
+    while (dict->keys[slot])
+    {
+        /* Check if key already exists */
+        if (dict->keys[slot]->length == key->length &&
+            memcmp(dict->keys[slot]->chars, key->chars, key->length) == 0)
+        {
+            dict->values[slot] = value;
+            return;
+        }
+        slot = (slot + 1) & (dict->capacity - 1);
+    }
+    dict->keys[slot] = key;
+    dict->values[slot] = value;
+    dict->count++;
+}
+
 static Value json_parse_object(VM *vm, const char **json, const char *end)
 {
     if (*json >= end || **json != '{')
         return VAL_NIL;
     (*json)++; /* Skip '{' */
 
-    ObjDict *dict = (ObjDict *)pseudo_realloc(vm, NULL, 0, sizeof(ObjDict));
-    dict->obj.type = OBJ_DICT;
-    dict->obj.next = vm->objects;
-    dict->obj.marked = false;
-    vm->objects = (Obj *)dict;
-    dict->keys = NULL;
-    dict->values = NULL;
-    dict->count = 0;
-    dict->capacity = 0;
+    /* Use new_dict for proper hash-based storage */
+    ObjDict *dict = new_dict(vm, 8);
 
     json_skip_whitespace(json, end);
 
@@ -401,17 +510,8 @@ static Value json_parse_object(VM *vm, const char **json, const char *end)
         json_skip_whitespace(json, end);
         Value value = json_parse_value(vm, json, end);
 
-        /* Add to dict */
-        if (dict->count >= dict->capacity)
-        {
-            uint32_t new_cap = dict->capacity < 8 ? 8 : dict->capacity * 2;
-            dict->keys = realloc(dict->keys, sizeof(ObjString *) * new_cap);
-            dict->values = realloc(dict->values, sizeof(Value) * new_cap);
-            dict->capacity = new_cap;
-        }
-        dict->keys[dict->count] = AS_STRING(key);
-        dict->values[dict->count] = value;
-        dict->count++;
+        /* Add to dict using proper hash-based insertion */
+        dict_insert(dict, AS_STRING(key), value);
 
         json_skip_whitespace(json, end);
         if (*json >= end)
@@ -546,10 +646,14 @@ static void json_stringify_value_impl(VM *vm, Value val, char **buf, size_t *len
     {
         ObjDict *dict = AS_DICT(val);
         json_stringify_append(buf, len, cap, "{", 1);
-        for (uint32_t i = 0; i < dict->count; i++)
+        int first = 1;
+        for (uint32_t i = 0; i < dict->capacity; i++)
         {
-            if (i > 0)
+            if (!dict->keys[i])
+                continue;
+            if (!first)
                 json_stringify_append(buf, len, cap, ",", 1);
+            first = 0;
             json_stringify_append(buf, len, cap, "\"", 1);
             json_stringify_append(buf, len, cap, dict->keys[i]->chars, dict->keys[i]->length);
             json_stringify_append(buf, len, cap, "\":", 2);
@@ -751,6 +855,10 @@ InterpretResult vm_run(VM *vm)
         [OP_SET_LOCAL] = &&op_set_local,
         [OP_GET_GLOBAL] = &&op_get_global,
         [OP_SET_GLOBAL] = &&op_set_global,
+        [OP_GET_UPVALUE] = &&op_get_upvalue,
+        [OP_SET_UPVALUE] = &&op_set_upvalue,
+        [OP_CLOSURE] = &&op_closure,
+        [OP_CLOSE_UPVALUE] = &&op_close_upvalue,
         [OP_ADD] = &&op_add,
         [OP_SUB] = &&op_sub,
         [OP_MUL] = &&op_mul,
@@ -1016,6 +1124,46 @@ InterpretResult vm_run(VM *vm)
         [OP_NN_SOFTMAX] = &&op_nn_softmax,
         [OP_NN_MSE_LOSS] = &&op_nn_mse_loss,
         [OP_NN_CE_LOSS] = &&op_nn_ce_loss,
+        [OP_TRY] = &&op_try,
+        [OP_TRY_END] = &&op_try_end,
+        [OP_THROW] = &&op_throw,
+        [OP_CATCH] = &&op_catch,
+        /* Classes */
+        [OP_CLASS] = &&op_class,
+        [OP_INHERIT] = &&op_inherit,
+        [OP_METHOD] = &&op_method,
+        [OP_FIELD] = &&op_field,
+        [OP_GET_FIELD] = &&op_get_field,
+        [OP_SET_FIELD] = &&op_set_field,
+        [OP_INVOKE] = &&op_invoke,
+        [OP_SUPER_INVOKE] = &&op_super_invoke,
+        /* Super keyword */
+        [OP_GET_SUPER] = &&op_get_super,
+        /* Static methods/properties */
+        [OP_STATIC] = &&op_static,
+        [OP_GET_STATIC] = &&op_get_static,
+        [OP_SET_STATIC] = &&op_set_static,
+        [OP_BIND_METHOD] = &&op_bind_method,
+        /* Generators */
+        [OP_GENERATOR] = &&op_generator,
+        [OP_YIELD] = &&op_yield,
+        [OP_YIELD_FROM] = &&op_yield_from,
+        [OP_GEN_NEXT] = &&op_gen_next,
+        [OP_GEN_SEND] = &&op_gen_send,
+        [OP_GEN_RETURN] = &&op_gen_return,
+        /* Async/Await */
+        [OP_ASYNC] = &&op_async,
+        [OP_AWAIT] = &&op_await,
+        [OP_PROMISE] = &&op_promise,
+        [OP_RESOLVE] = &&op_resolve,
+        [OP_REJECT] = &&op_reject,
+        /* Decorators */
+        [OP_DECORATOR] = &&op_decorator,
+        /* Modules */
+        [OP_MODULE] = &&op_module,
+        [OP_EXPORT] = &&op_export,
+        [OP_IMPORT_FROM] = &&op_import_from,
+        [OP_IMPORT_AS] = &&op_import_as,
     };
 
 #define DISPATCH() goto *dispatch_table[*ip++]
@@ -1117,6 +1265,55 @@ InterpretResult vm_run(VM *vm)
     {
         ObjString *name = AS_STRING(READ_CONST());
         table_set(vm, name, PEEK(0));
+        DISPATCH();
+    }
+
+    CASE(get_upvalue) :
+    {
+        uint8_t slot = READ_BYTE();
+        CallFrame *frame = &vm->frames[vm->frame_count - 1];
+        ObjClosure *closure = frame->closure;
+        PUSH(*closure->upvalues[slot]->location);
+        DISPATCH();
+    }
+
+    CASE(set_upvalue) :
+    {
+        uint8_t slot = READ_BYTE();
+        CallFrame *frame = &vm->frames[vm->frame_count - 1];
+        ObjClosure *closure = frame->closure;
+        *closure->upvalues[slot]->location = PEEK(0);
+        DISPATCH();
+    }
+
+    CASE(closure) :
+    {
+        ObjFunction *function = AS_FUNCTION(READ_CONST());
+        ObjClosure *closure = new_closure(vm, function);
+        PUSH(val_obj(closure));
+
+        for (int i = 0; i < closure->upvalue_count; i++)
+        {
+            uint8_t is_local = READ_BYTE();
+            uint8_t index = READ_BYTE();
+            if (is_local)
+            {
+                closure->upvalues[i] = capture_upvalue(vm, bp + index);
+            }
+            else
+            {
+                CallFrame *frame = &vm->frames[vm->frame_count - 1];
+                ObjClosure *enclosing = frame->closure;
+                closure->upvalues[i] = enclosing->upvalues[index];
+            }
+        }
+        DISPATCH();
+    }
+
+    CASE(close_upvalue) :
+    {
+        close_upvalues(vm, sp - 1);
+        POP();
         DISPATCH();
     }
 
@@ -1387,14 +1584,99 @@ InterpretResult vm_run(VM *vm)
         uint8_t arg_count = READ_BYTE();
         Value callee = PEEK(arg_count);
 
-        if (!IS_FUNCTION(callee))
+        ObjFunction *function = NULL;
+        ObjClosure *closure = NULL;
+
+        if (IS_FUNCTION(callee))
+        {
+            function = AS_FUNCTION(callee);
+        }
+        else if (IS_CLOSURE(callee))
+        {
+            closure = AS_CLOSURE(callee);
+            function = closure->function;
+        }
+        else if (IS_CLASS(callee))
+        {
+            /* Class instantiation */
+            ObjClass *klass = AS_CLASS(callee);
+            vm->sp = sp; /* Sync sp for allocation */
+
+            /* Create instance */
+            size_t size = sizeof(ObjInstance) + sizeof(Value) * klass->field_count;
+            ObjInstance *instance = (ObjInstance *)pseudo_realloc(vm, NULL, 0, size);
+            instance->obj.type = OBJ_INSTANCE;
+            instance->obj.next = vm->objects;
+            instance->obj.marked = false;
+            vm->objects = (Obj *)instance;
+            instance->klass = klass;
+
+            /* Initialize fields to nil */
+            for (uint16_t i = 0; i < klass->field_count; i++)
+            {
+                instance->fields[i] = VAL_NIL;
+            }
+
+            /* Replace class with instance on stack */
+            sp[-arg_count - 1] = val_obj(instance);
+
+            /* Look for init method */
+            ObjFunction *init_method = NULL;
+            ObjClosure *init_closure = NULL;
+            for (uint16_t i = 0; i < klass->method_count; i++)
+            {
+                if (klass->method_names[i]->length == 4 &&
+                    memcmp(klass->method_names[i]->chars, "init", 4) == 0)
+                {
+                    Value method_val = klass->methods[i];
+                    if (IS_FUNCTION(method_val))
+                    {
+                        init_method = AS_FUNCTION(method_val);
+                    }
+                    else if (IS_CLOSURE(method_val))
+                    {
+                        init_closure = AS_CLOSURE(method_val);
+                        init_method = init_closure->function;
+                    }
+                    break;
+                }
+            }
+
+            if (init_method != NULL)
+            {
+                /* Call init method */
+                if (arg_count != init_method->arity)
+                {
+                    vm->sp = sp;
+                    runtime_error(vm, "Expected %d arguments but got %d.",
+                                  init_method->arity, arg_count);
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+
+                CallFrame *frame = &vm->frames[vm->frame_count++];
+                frame->function = init_method;
+                frame->closure = init_closure;
+                frame->ip = ip;
+                frame->slots = sp - arg_count - 1;
+                frame->is_init = true; /* Mark as init call */
+                bp = frame->slots;
+
+                ip = vm->chunk.code + init_method->code_start;
+            }
+            else
+            {
+                /* No init method, just pop arguments and leave instance */
+                sp -= arg_count;
+            }
+            DISPATCH();
+        }
+        else
         {
             vm->sp = sp;
             runtime_error(vm, "Can only call functions.");
             return INTERPRET_RUNTIME_ERROR;
         }
 
-        ObjFunction *function = AS_FUNCTION(callee);
         if (arg_count != function->arity)
         {
             vm->sp = sp;
@@ -1412,8 +1694,10 @@ InterpretResult vm_run(VM *vm)
 
         CallFrame *frame = &vm->frames[vm->frame_count++];
         frame->function = function;
+        frame->closure = closure; /* NULL for plain functions */
         frame->ip = ip;
         frame->slots = sp - arg_count - 1;
+        frame->is_init = false;
         bp = frame->slots; /* Update cached base pointer */
 
         ip = vm->chunk.code + function->code_start;
@@ -1429,6 +1713,18 @@ InterpretResult vm_run(VM *vm)
             /* Returning from top-level - shouldn't happen normally */
             vm->sp = sp;
             return INTERPRET_OK;
+        }
+
+        /* Close any upvalues owned by this call frame */
+        vm->sp = sp;
+
+        CallFrame *returning_frame = &vm->frames[vm->frame_count - 1];
+        close_upvalues(vm, returning_frame->slots);
+
+        /* If returning from init, use instance (slot 0) instead of result */
+        if (returning_frame->is_init)
+        {
+            result = returning_frame->slots[0];
         }
 
         vm->frame_count--;
@@ -1464,11 +1760,11 @@ InterpretResult vm_run(VM *vm)
     CASE(index) :
     {
         Value index_val = POP();
-        Value obj_val = POP();
+        Value target_obj = POP();
 
-        if (IS_ARRAY(obj_val))
+        if (IS_ARRAY(target_obj))
         {
-            ObjArray *array = AS_ARRAY(obj_val);
+            ObjArray *array = AS_ARRAY(target_obj);
             int32_t index = IS_INT(index_val) ? as_int(index_val) : (int32_t)as_num(index_val);
             if (index < 0 || index >= (int32_t)array->count)
             {
@@ -1477,9 +1773,9 @@ InterpretResult vm_run(VM *vm)
             }
             PUSH(array->values[index]);
         }
-        else if (IS_STRING(obj_val))
+        else if (IS_STRING(target_obj))
         {
-            ObjString *str = AS_STRING(obj_val);
+            ObjString *str = AS_STRING(target_obj);
             int32_t index = IS_INT(index_val) ? as_int(index_val) : (int32_t)as_num(index_val);
             if (index < 0 || index >= (int32_t)str->length)
             {
@@ -1501,15 +1797,15 @@ InterpretResult vm_run(VM *vm)
     {
         Value value = POP();
         Value index_val = POP();
-        Value obj_val = POP();
+        Value target_obj = POP();
 
-        if (!IS_ARRAY(obj_val))
+        if (!IS_ARRAY(target_obj))
         {
             runtime_error(vm, "Only arrays support index assignment.");
             return INTERPRET_RUNTIME_ERROR;
         }
 
-        ObjArray *array = AS_ARRAY(obj_val);
+        ObjArray *array = AS_ARRAY(target_obj);
         int32_t index = IS_INT(index_val) ? as_int(index_val) : (int32_t)as_num(index_val);
         if (index < 0 || index >= (int32_t)array->count)
         {
@@ -1590,14 +1886,14 @@ InterpretResult vm_run(VM *vm)
     {
         Value end_val = POP();
         Value start_val = POP();
-        Value obj_val = POP();
+        Value target_obj = POP();
 
         int32_t start = IS_INT(start_val) ? as_int(start_val) : (int32_t)as_num(start_val);
         int32_t end = IS_INT(end_val) ? as_int(end_val) : (int32_t)as_num(end_val);
 
-        if (IS_ARRAY(obj_val))
+        if (IS_ARRAY(target_obj))
         {
-            ObjArray *arr = AS_ARRAY(obj_val);
+            ObjArray *arr = AS_ARRAY(target_obj);
             if (start < 0)
                 start += arr->count;
             if (end < 0)
@@ -1616,9 +1912,9 @@ InterpretResult vm_run(VM *vm)
             result->count = len;
             PUSH(val_obj(result));
         }
-        else if (IS_STRING(obj_val))
+        else if (IS_STRING(target_obj))
         {
-            ObjString *str = AS_STRING(obj_val);
+            ObjString *str = AS_STRING(target_obj);
             if (start < 0)
                 start += str->length;
             if (end < 0)
@@ -1749,9 +2045,10 @@ InterpretResult vm_run(VM *vm)
     CASE(time) :
     {
         struct timespec ts;
-        clock_gettime(CLOCK_MONOTONIC, &ts);
-        int64_t ns = ts.tv_sec * 1000000000LL + ts.tv_nsec;
-        PUSH(val_num((double)ns));
+        clock_gettime(CLOCK_REALTIME, &ts);
+        // Return seconds since Unix epoch as a float (with sub-second precision)
+        double timestamp = (double)ts.tv_sec + (double)ts.tv_nsec / 1000000000.0;
+        PUSH(val_num(timestamp));
         DISPATCH();
     }
 
@@ -4362,36 +4659,209 @@ InterpretResult vm_run(VM *vm)
     }
 
     /* ============ REGEX ============ */
-    /* Note: Full regex would require linking with PCRE */
+    /* Full regex support using PCRE2 */
 
     CASE(regex_match) :
     {
-        POP();
-        POP();
-        PUSH(VAL_FALSE); /* TODO: Implement with PCRE */
+        Value pattern_val = POP();
+        Value text_val = POP();
+
+        if (!IS_STRING(text_val) || !IS_STRING(pattern_val))
+        {
+            PUSH(VAL_FALSE);
+            DISPATCH();
+        }
+
+        ObjString *text = AS_STRING(text_val);
+        ObjString *pattern = AS_STRING(pattern_val);
+
+        int errorcode;
+        PCRE2_SIZE erroroffset;
+        pcre2_code *re = pcre2_compile(
+            (PCRE2_SPTR)pattern->chars,
+            pattern->length,
+            0,
+            &errorcode,
+            &erroroffset,
+            NULL);
+
+        if (re == NULL)
+        {
+            PUSH(VAL_FALSE);
+            DISPATCH();
+        }
+
+        pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(re, NULL);
+        int rc = pcre2_match(
+            re,
+            (PCRE2_SPTR)text->chars,
+            text->length,
+            0,
+            0,
+            match_data,
+            NULL);
+
+        bool matched = (rc >= 0);
+
+        pcre2_match_data_free(match_data);
+        pcre2_code_free(re);
+
+        PUSH(matched ? VAL_TRUE : VAL_FALSE);
         DISPATCH();
     }
 
     CASE(regex_find) :
     {
-        POP();
-        POP();
+        Value pattern_val = POP();
+        Value text_val = POP();
+
         vm->sp = sp;
         ObjArray *arr = new_array(vm, 0);
         sp = vm->sp;
+
+        if (!IS_STRING(text_val) || !IS_STRING(pattern_val))
+        {
+            PUSH(val_obj(arr));
+            DISPATCH();
+        }
+
+        ObjString *text = AS_STRING(text_val);
+        ObjString *pattern = AS_STRING(pattern_val);
+
+        int errorcode;
+        PCRE2_SIZE erroroffset;
+        pcre2_code *re = pcre2_compile(
+            (PCRE2_SPTR)pattern->chars,
+            pattern->length,
+            0,
+            &errorcode,
+            &erroroffset,
+            NULL);
+
+        if (re == NULL)
+        {
+            PUSH(val_obj(arr));
+            DISPATCH();
+        }
+
+        pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(re, NULL);
+        PCRE2_SIZE offset = 0;
+
+        while (offset < text->length)
+        {
+            int rc = pcre2_match(
+                re,
+                (PCRE2_SPTR)text->chars,
+                text->length,
+                offset,
+                0,
+                match_data,
+                NULL);
+
+            if (rc < 0)
+                break;
+
+            PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(match_data);
+            PCRE2_SIZE start = ovector[0];
+            PCRE2_SIZE end_pos = ovector[1];
+
+            if (start == end_pos)
+            {
+                offset = end_pos + 1;
+            }
+            else
+            {
+                vm->sp = sp;
+                ObjString *match_str = copy_string(vm, text->chars + start, (int)(end_pos - start));
+                sp = vm->sp;
+
+                /* Push to array inline */
+                if (arr->count >= arr->capacity)
+                {
+                    uint32_t new_cap = arr->capacity < 8 ? 8 : arr->capacity * 2;
+                    arr->values = realloc(arr->values, sizeof(Value) * new_cap);
+                    arr->capacity = new_cap;
+                }
+                arr->values[arr->count++] = val_obj(match_str);
+
+                offset = end_pos;
+            }
+        }
+
+        pcre2_match_data_free(match_data);
+        pcre2_code_free(re);
+
         PUSH(val_obj(arr));
         DISPATCH();
     }
 
     CASE(regex_replace) :
     {
-        POP();
-        POP();
-        POP();
+        Value replacement_val = POP();
+        Value pattern_val = POP();
+        Value text_val = POP();
+
+        if (!IS_STRING(text_val) || !IS_STRING(pattern_val) || !IS_STRING(replacement_val))
+        {
+            vm->sp = sp;
+            ObjString *str = copy_string(vm, "", 0);
+            sp = vm->sp;
+            PUSH(val_obj(str));
+            DISPATCH();
+        }
+
+        ObjString *text = AS_STRING(text_val);
+        ObjString *pattern = AS_STRING(pattern_val);
+        ObjString *replacement = AS_STRING(replacement_val);
+
+        int errorcode;
+        PCRE2_SIZE erroroffset;
+        pcre2_code *re = pcre2_compile(
+            (PCRE2_SPTR)pattern->chars,
+            pattern->length,
+            0,
+            &errorcode,
+            &erroroffset,
+            NULL);
+
+        if (re == NULL)
+        {
+            PUSH(text_val);
+            DISPATCH();
+        }
+
+        /* Use PCRE2 substitute for replacement */
+        PCRE2_SIZE outlength = text->length * 2 + replacement->length * 10 + 256;
+        PCRE2_UCHAR *output = malloc(outlength);
+
+        int rc = pcre2_substitute(
+            re,
+            (PCRE2_SPTR)text->chars,
+            text->length,
+            0,
+            PCRE2_SUBSTITUTE_GLOBAL,
+            NULL,
+            NULL,
+            (PCRE2_SPTR)replacement->chars,
+            replacement->length,
+            output,
+            &outlength);
+
+        pcre2_code_free(re);
+
+        if (rc < 0)
+        {
+            free(output);
+            PUSH(text_val);
+            DISPATCH();
+        }
+
         vm->sp = sp;
-        ObjString *str = copy_string(vm, "", 0);
+        ObjString *result = copy_string(vm, (char *)output, (int)outlength);
         sp = vm->sp;
-        PUSH(val_obj(str));
+        free(output);
+
+        PUSH(val_obj(result));
         DISPATCH();
     }
 
@@ -5705,6 +6175,792 @@ InterpretResult vm_run(VM *vm)
         }
         double loss = tensor_cross_entropy_loss(AS_TENSOR(pred_val), AS_TENSOR(target_val));
         PUSH(val_num(loss));
+        DISPATCH();
+    }
+
+    /* ============ Exception Handling ============ */
+
+    CASE(try) :
+    {
+        /* OP_TRY: Push exception handler with catch offset */
+        uint16_t catch_offset = READ_SHORT();
+
+        if (vm->handler_count >= HANDLERS_MAX)
+        {
+            runtime_error(vm, "Exception handler stack overflow");
+            return INTERPRET_RUNTIME_ERROR;
+        }
+
+        ExceptionHandler *handler = &vm->handlers[vm->handler_count++];
+        handler->catch_ip = ip + catch_offset;
+        handler->stack_top = vm->sp;
+        handler->frame_count = vm->frame_count;
+        DISPATCH();
+    }
+
+    CASE(try_end) :
+    {
+        /* OP_TRY_END: Pop exception handler (normal exit from try block) */
+        if (vm->handler_count > 0)
+        {
+            vm->handler_count--;
+        }
+        DISPATCH();
+    }
+
+    CASE(throw) :
+    {
+        /* OP_THROW: Throw exception (value on stack) */
+        Value exception = POP();
+
+        if (vm->handler_count == 0)
+        {
+            /* No handler - runtime error */
+            if (IS_OBJ(exception) && ((Obj *)as_obj(exception))->type == OBJ_STRING)
+            {
+                ObjString *str = (ObjString *)as_obj(exception);
+                runtime_error(vm, "Unhandled exception: %s", str->chars);
+            }
+            else
+            {
+                runtime_error(vm, "Unhandled exception");
+            }
+            return INTERPRET_RUNTIME_ERROR;
+        }
+
+        /* Pop handler and jump to catch */
+        ExceptionHandler *handler = &vm->handlers[--vm->handler_count];
+        vm->current_exception = exception;
+        vm->sp = handler->stack_top;
+        vm->frame_count = handler->frame_count;
+        ip = handler->catch_ip;
+        DISPATCH();
+    }
+
+    CASE(catch) :
+    {
+        /* OP_CATCH: Push current exception onto stack */
+        PUSH(vm->current_exception);
+        vm->current_exception = VAL_NIL;
+        DISPATCH();
+    }
+
+    /* ============ CLASS OPCODES ============ */
+
+    CASE(class) :
+    {
+        /* OP_CLASS: Create new class with given name */
+        ObjString *name = AS_STRING(READ_CONST());
+        ObjClass *klass = (ObjClass *)pseudo_realloc(vm, NULL, 0, sizeof(ObjClass));
+        klass->obj.type = OBJ_CLASS;
+        klass->obj.next = vm->objects;
+        klass->obj.marked = false;
+        vm->objects = (Obj *)klass;
+        klass->name = name;
+        klass->superclass = NULL;
+        klass->field_count = 0;
+        klass->method_count = 0;
+        PUSH(val_obj(klass));
+        DISPATCH();
+    }
+
+    CASE(inherit) :
+    {
+        /* OP_INHERIT: Inherit from superclass on stack */
+        Value superclass_val = POP();
+        if (!IS_CLASS(superclass_val))
+        {
+            runtime_error(vm, "Superclass must be a class.");
+            return INTERPRET_RUNTIME_ERROR;
+        }
+        ObjClass *superclass = AS_CLASS(superclass_val);
+        ObjClass *subclass = AS_CLASS(PEEK(0));
+        subclass->superclass = superclass;
+
+        /* Copy superclass methods to subclass */
+        for (uint16_t i = 0; i < superclass->method_count; i++)
+        {
+            subclass->methods[i] = superclass->methods[i];
+            subclass->method_names[i] = superclass->method_names[i];
+        }
+        subclass->method_count = superclass->method_count;
+
+        /* Copy superclass field names */
+        for (uint16_t i = 0; i < superclass->field_count; i++)
+        {
+            subclass->field_names[i] = superclass->field_names[i];
+        }
+        subclass->field_count = superclass->field_count;
+        DISPATCH();
+    }
+
+    CASE(method) :
+    {
+        /* OP_METHOD: Add method to class on stack */
+        ObjString *name = AS_STRING(READ_CONST());
+        Value method = POP();
+        ObjClass *klass = AS_CLASS(PEEK(0));
+        if (klass->method_count < CLASS_MAX_METHODS)
+        {
+            klass->methods[klass->method_count] = method;
+            klass->method_names[klass->method_count] = name;
+            klass->method_count++;
+        }
+        DISPATCH();
+    }
+
+    CASE(field) :
+    {
+        /* OP_FIELD: Add field to class on stack */
+        ObjString *name = AS_STRING(READ_CONST());
+        ObjClass *klass = AS_CLASS(PEEK(0));
+        if (klass->field_count < CLASS_MAX_FIELDS)
+        {
+            klass->field_names[klass->field_count] = name;
+            klass->field_count++;
+        }
+        DISPATCH();
+    }
+
+    CASE(get_field) :
+    {
+        /* OP_GET_FIELD: Get field from instance */
+        Value instance_val = PEEK(0);
+        if (!IS_INSTANCE(instance_val))
+        {
+            runtime_error(vm, "Only instances have fields.");
+            return INTERPRET_RUNTIME_ERROR;
+        }
+        ObjInstance *instance = AS_INSTANCE(instance_val);
+        ObjString *name = AS_STRING(READ_CONST());
+
+        /* Look up field by name */
+        for (uint16_t i = 0; i < instance->klass->field_count; i++)
+        {
+            if (instance->klass->field_names[i] == name ||
+                (instance->klass->field_names[i]->length == name->length &&
+                 memcmp(instance->klass->field_names[i]->chars, name->chars, name->length) == 0))
+            {
+                POP();
+                PUSH(instance->fields[i]);
+                DISPATCH();
+            }
+        }
+
+        /* Not a field - look for method */
+        for (uint16_t i = 0; i < instance->klass->method_count; i++)
+        {
+            if (instance->klass->method_names[i] == name ||
+                (instance->klass->method_names[i]->length == name->length &&
+                 memcmp(instance->klass->method_names[i]->chars, name->chars, name->length) == 0))
+            {
+                /* Return bound method (just the function for now) */
+                POP();
+                PUSH(instance->klass->methods[i]);
+                DISPATCH();
+            }
+        }
+
+        runtime_error(vm, "Undefined property '%s'.", name->chars);
+        return INTERPRET_RUNTIME_ERROR;
+    }
+
+    CASE(set_field) :
+    {
+        /* OP_SET_FIELD: Set field on instance */
+        Value instance_val = PEEK(1);
+        if (!IS_INSTANCE(instance_val))
+        {
+            runtime_error(vm, "Only instances have fields.");
+            return INTERPRET_RUNTIME_ERROR;
+        }
+        ObjInstance *instance = AS_INSTANCE(instance_val);
+        ObjString *name = AS_STRING(READ_CONST());
+        Value value = POP();
+
+        /* Look up field by name */
+        for (uint16_t i = 0; i < instance->klass->field_count; i++)
+        {
+            if (instance->klass->field_names[i] == name ||
+                (instance->klass->field_names[i]->length == name->length &&
+                 memcmp(instance->klass->field_names[i]->chars, name->chars, name->length) == 0))
+            {
+                instance->fields[i] = value;
+                POP();       /* Pop instance */
+                PUSH(value); /* Result is the assigned value */
+                DISPATCH();
+            }
+        }
+
+        /* Field not found - add it dynamically */
+        if (instance->klass->field_count < CLASS_MAX_FIELDS)
+        {
+            uint16_t idx = instance->klass->field_count++;
+            instance->klass->field_names[idx] = name;
+            instance->fields[idx] = value;
+            POP();       /* Pop instance */
+            PUSH(value); /* Result is the assigned value */
+            DISPATCH();
+        }
+
+        runtime_error(vm, "Too many fields on instance.");
+        return INTERPRET_RUNTIME_ERROR;
+    }
+
+    CASE(invoke) :
+    {
+        /* OP_INVOKE: Invoke method on instance */
+        ObjString *method_name = AS_STRING(READ_CONST());
+        uint8_t arg_count = *ip++;
+        Value instance_val = PEEK(arg_count);
+
+        if (!IS_INSTANCE(instance_val))
+        {
+            /* Maybe it's a class call (constructor) */
+            if (IS_CLASS(instance_val))
+            {
+                ObjClass *klass = AS_CLASS(instance_val);
+                /* Create instance */
+                size_t size = sizeof(ObjInstance) + sizeof(Value) * klass->field_count;
+                ObjInstance *instance = (ObjInstance *)pseudo_realloc(vm, NULL, 0, size);
+                instance->obj.type = OBJ_INSTANCE;
+                instance->obj.next = vm->objects;
+                instance->obj.marked = false;
+                vm->objects = (Obj *)instance;
+                instance->klass = klass;
+
+                /* Initialize fields to nil */
+                for (uint16_t i = 0; i < klass->field_count; i++)
+                {
+                    instance->fields[i] = VAL_NIL;
+                }
+
+                /* Replace class with instance on stack */
+                vm->sp[-arg_count - 1] = val_obj(instance);
+
+                /* Look for init method and call it */
+                for (uint16_t i = 0; i < klass->method_count; i++)
+                {
+                    if (klass->method_names[i]->length == 4 &&
+                        memcmp(klass->method_names[i]->chars, "init", 4) == 0)
+                    {
+                        /* Call init */
+                        Value method = klass->methods[i];
+                        /* TODO: Proper method call */
+                        break;
+                    }
+                }
+
+                PUSH(val_obj(instance));
+                DISPATCH();
+            }
+            runtime_error(vm, "Only instances have methods.");
+            return INTERPRET_RUNTIME_ERROR;
+        }
+
+        ObjInstance *instance = AS_INSTANCE(instance_val);
+
+        /* Look up method */
+        for (uint16_t i = 0; i < instance->klass->method_count; i++)
+        {
+            if (instance->klass->method_names[i] == method_name ||
+                (instance->klass->method_names[i]->length == method_name->length &&
+                 memcmp(instance->klass->method_names[i]->chars, method_name->chars, method_name->length) == 0))
+            {
+                /* Found method - call it */
+                Value method_val = instance->klass->methods[i];
+                ObjFunction *method = NULL;
+                ObjClosure *method_closure = NULL;
+
+                if (IS_FUNCTION(method_val))
+                {
+                    method = AS_FUNCTION(method_val);
+                }
+                else if (IS_CLOSURE(method_val))
+                {
+                    method_closure = AS_CLOSURE(method_val);
+                    method = method_closure->function;
+                }
+                else
+                {
+                    vm->sp = sp;
+                    runtime_error(vm, "Method is not callable.");
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+
+                /* Check arity */
+                if (arg_count != method->arity)
+                {
+                    vm->sp = sp;
+                    runtime_error(vm, "Expected %d arguments but got %d.",
+                                  method->arity, arg_count);
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+
+                /* Push new call frame */
+                if (vm->frame_count == FRAMES_MAX)
+                {
+                    vm->sp = sp;
+                    runtime_error(vm, "Stack overflow.");
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+
+                CallFrame *frame = &vm->frames[vm->frame_count++];
+                frame->function = method;
+                frame->closure = method_closure;
+                frame->ip = ip;
+                frame->slots = sp - arg_count - 1; /* -1 for instance */
+                frame->is_init = false;
+                bp = frame->slots;
+
+                ip = vm->chunk.code + method->code_start;
+                DISPATCH();
+            }
+        }
+
+        runtime_error(vm, "Undefined method '%s'.", method_name->chars);
+        return INTERPRET_RUNTIME_ERROR;
+    }
+
+    /* ============ SUPER KEYWORD ============ */
+
+    CASE(get_super) :
+    {
+        /* OP_GET_SUPER: Get method from superclass */
+        ObjString *method_name = AS_STRING(READ_CONST());
+        Value instance_val = POP();
+
+        if (!IS_INSTANCE(instance_val))
+        {
+            runtime_error(vm, "Cannot use 'super' on non-instance.");
+            return INTERPRET_RUNTIME_ERROR;
+        }
+
+        ObjInstance *instance = AS_INSTANCE(instance_val);
+        ObjClass *superclass = instance->klass->superclass;
+
+        if (superclass == NULL)
+        {
+            runtime_error(vm, "Class has no superclass.");
+            return INTERPRET_RUNTIME_ERROR;
+        }
+
+        /* Look up method in superclass */
+        for (uint16_t i = 0; i < superclass->method_count; i++)
+        {
+            if (superclass->method_names[i] == method_name ||
+                (superclass->method_names[i]->length == method_name->length &&
+                 memcmp(superclass->method_names[i]->chars, method_name->chars, method_name->length) == 0))
+            {
+                /* Create bound method with instance receiver */
+                ObjBoundMethod *bound = (ObjBoundMethod *)alloc_object(vm, sizeof(ObjBoundMethod), OBJ_BOUND_METHOD);
+                bound->receiver = instance_val;
+                bound->method = AS_CLOSURE(superclass->methods[i]);
+                PUSH(val_obj((Obj *)bound));
+                DISPATCH();
+            }
+        }
+
+        runtime_error(vm, "Undefined superclass method '%s'.", method_name->chars);
+        return INTERPRET_RUNTIME_ERROR;
+    }
+
+    /* ============ STATIC METHODS ============ */
+
+    CASE(static) :
+    {
+        /* OP_STATIC: Add static method/property to class */
+        ObjString *name = AS_STRING(READ_CONST());
+        Value val = POP();
+        ObjClass *klass = AS_CLASS(PEEK(0));
+        if (klass->static_count < CLASS_MAX_STATIC)
+        {
+            klass->statics[klass->static_count] = val;
+            klass->static_names[klass->static_count] = name;
+            klass->static_count++;
+        }
+        DISPATCH();
+    }
+
+    CASE(get_static) :
+    {
+        /* OP_GET_STATIC: Get static property from class */
+        ObjString *name = AS_STRING(READ_CONST());
+        Value class_val = PEEK(0);
+        if (!IS_CLASS(class_val))
+        {
+            runtime_error(vm, "Only classes have static properties.");
+            return INTERPRET_RUNTIME_ERROR;
+        }
+        ObjClass *klass = AS_CLASS(class_val);
+        for (uint16_t i = 0; i < klass->static_count; i++)
+        {
+            if (klass->static_names[i] == name ||
+                (klass->static_names[i]->length == name->length &&
+                 memcmp(klass->static_names[i]->chars, name->chars, name->length) == 0))
+            {
+                POP();
+                PUSH(klass->statics[i]);
+                DISPATCH();
+            }
+        }
+        runtime_error(vm, "Undefined static property '%s'.", name->chars);
+        return INTERPRET_RUNTIME_ERROR;
+    }
+
+    CASE(set_static) :
+    {
+        /* OP_SET_STATIC: Set static property on class */
+        ObjString *name = AS_STRING(READ_CONST());
+        Value val = POP();
+        Value class_val = PEEK(0);
+        if (!IS_CLASS(class_val))
+        {
+            runtime_error(vm, "Only classes have static properties.");
+            return INTERPRET_RUNTIME_ERROR;
+        }
+        ObjClass *klass = AS_CLASS(class_val);
+        for (uint16_t i = 0; i < klass->static_count; i++)
+        {
+            if (klass->static_names[i] == name ||
+                (klass->static_names[i]->length == name->length &&
+                 memcmp(klass->static_names[i]->chars, name->chars, name->length) == 0))
+            {
+                klass->statics[i] = val;
+                PUSH(val);
+                DISPATCH();
+            }
+        }
+        runtime_error(vm, "Undefined static property '%s'.", name->chars);
+        return INTERPRET_RUNTIME_ERROR;
+    }
+
+    CASE(bind_method) :
+    {
+        /* OP_BIND_METHOD: Create bound method from method + receiver */
+        Value method_val = POP();
+        Value receiver = PEEK(0);
+
+        if (!IS_CLOSURE(method_val))
+        {
+            runtime_error(vm, "Cannot bind non-closure as method.");
+            return INTERPRET_RUNTIME_ERROR;
+        }
+
+        ObjBoundMethod *bound = (ObjBoundMethod *)alloc_object(vm, sizeof(ObjBoundMethod), OBJ_BOUND_METHOD);
+        bound->receiver = receiver;
+        bound->method = AS_CLOSURE(method_val);
+        POP();
+        PUSH(val_obj((Obj *)bound));
+        DISPATCH();
+    }
+
+    /* ============ GENERATORS ============ */
+
+    CASE(generator) :
+    {
+        /* OP_GENERATOR: Wrap closure in generator object */
+        Value closure_val = POP();
+        if (!IS_CLOSURE(closure_val))
+        {
+            runtime_error(vm, "Generator requires a closure.");
+            return INTERPRET_RUNTIME_ERROR;
+        }
+        ObjClosure *closure = AS_CLOSURE(closure_val);
+
+        ObjGenerator *gen = (ObjGenerator *)alloc_object(vm, sizeof(ObjGenerator), OBJ_GENERATOR);
+        gen->closure = closure;
+        gen->state = GEN_CREATED;
+        gen->stack_capacity = 64;
+        gen->stack = (Value *)malloc(sizeof(Value) * gen->stack_capacity);
+        gen->stack_size = 0;
+        gen->ip = NULL;
+        gen->sent_value = VAL_NIL;
+
+        PUSH(val_obj((Obj *)gen));
+        DISPATCH();
+    }
+
+    CASE(yield) :
+    {
+        /* OP_YIELD: Yield value from generator */
+        Value yield_value = POP();
+
+        /* Find current generator in call stack */
+        CallFrame *frame = &vm->frames[vm->frame_count - 1];
+
+        /* Save generator state - we need to find the generator object */
+        /* For now, just return the value (simplified implementation) */
+        PUSH(yield_value);
+
+        /* Generator suspension would save IP and stack here */
+        /* Full implementation requires generator call frame tracking */
+        DISPATCH();
+    }
+
+    CASE(yield_from) :
+    {
+        /* OP_YIELD_FROM: Yield all values from sub-iterator */
+        /* Simplified: just pass through for now */
+        DISPATCH();
+    }
+
+    CASE(gen_next) :
+    {
+        /* OP_GEN_NEXT: Resume generator, get next value */
+        Value gen_val = POP();
+        if (!IS_GENERATOR(gen_val))
+        {
+            runtime_error(vm, "Can only call next() on generator.");
+            return INTERPRET_RUNTIME_ERROR;
+        }
+        ObjGenerator *gen = AS_GENERATOR(gen_val);
+
+        if (gen->state == GEN_CLOSED)
+        {
+            PUSH(VAL_NIL);
+            DISPATCH();
+        }
+
+        /* Resume generator execution */
+        gen->state = GEN_RUNNING;
+        /* Full implementation would restore IP/stack and continue */
+        PUSH(VAL_NIL);
+        DISPATCH();
+    }
+
+    CASE(gen_send) :
+    {
+        /* OP_GEN_SEND: Send value into generator */
+        Value send_val = POP();
+        Value gen_val = POP();
+        if (!IS_GENERATOR(gen_val))
+        {
+            runtime_error(vm, "Can only send() to generator.");
+            return INTERPRET_RUNTIME_ERROR;
+        }
+        ObjGenerator *gen = AS_GENERATOR(gen_val);
+        gen->sent_value = send_val;
+        /* Resume with sent value */
+        PUSH(VAL_NIL);
+        DISPATCH();
+    }
+
+    CASE(gen_return) :
+    {
+        /* OP_GEN_RETURN: Return from generator (close it) */
+        Value ret_val = POP();
+
+        /* Mark generator as closed */
+        /* Would need to find generator context */
+        (void)ret_val;
+        DISPATCH();
+    }
+
+    /* ============ ASYNC/AWAIT ============ */
+
+    CASE(async) :
+    {
+        /* OP_ASYNC: Mark function as async (wrap result in Promise) */
+        Value closure_val = PEEK(0);
+        if (!IS_CLOSURE(closure_val))
+        {
+            DISPATCH(); /* Pass through if not a closure */
+        }
+
+        /* Create Promise wrapping the async function */
+        ObjPromise *promise = (ObjPromise *)alloc_object(vm, sizeof(ObjPromise), OBJ_PROMISE);
+        promise->state = PROMISE_PENDING;
+        promise->result = VAL_NIL;
+        promise->on_resolve = VAL_NIL;
+        promise->on_reject = VAL_NIL;
+        promise->next = NULL;
+
+        /* The closure will be executed and resolve the promise */
+        POP();
+        PUSH(val_obj((Obj *)promise));
+        DISPATCH();
+    }
+
+    CASE(await) :
+    {
+        /* OP_AWAIT: Await promise resolution */
+        Value promise_val = POP();
+
+        if (!IS_PROMISE(promise_val))
+        {
+            /* If not a promise, just return the value */
+            PUSH(promise_val);
+            DISPATCH();
+        }
+
+        ObjPromise *promise = AS_PROMISE(promise_val);
+
+        if (promise->state == PROMISE_RESOLVED)
+        {
+            PUSH(promise->result);
+        }
+        else if (promise->state == PROMISE_REJECTED)
+        {
+            runtime_error(vm, "Promise rejected.");
+            return INTERPRET_RUNTIME_ERROR;
+        }
+        else
+        {
+            /* PROMISE_PENDING - in real async, would suspend */
+            PUSH(VAL_NIL);
+        }
+        DISPATCH();
+    }
+
+    CASE(promise) :
+    {
+        /* OP_PROMISE: Create new Promise */
+        ObjPromise *promise = (ObjPromise *)alloc_object(vm, sizeof(ObjPromise), OBJ_PROMISE);
+        promise->state = PROMISE_PENDING;
+        promise->result = VAL_NIL;
+        promise->on_resolve = VAL_NIL;
+        promise->on_reject = VAL_NIL;
+        promise->next = NULL;
+        PUSH(val_obj((Obj *)promise));
+        DISPATCH();
+    }
+
+    CASE(resolve) :
+    {
+        /* OP_RESOLVE: Resolve promise with value */
+        Value val = POP();
+        Value promise_val = POP();
+        if (IS_PROMISE(promise_val))
+        {
+            ObjPromise *promise = AS_PROMISE(promise_val);
+            promise->state = PROMISE_RESOLVED;
+            promise->result = val;
+        }
+        PUSH(val);
+        DISPATCH();
+    }
+
+    CASE(reject) :
+    {
+        /* OP_REJECT: Reject promise with error */
+        Value err = POP();
+        Value promise_val = POP();
+        if (IS_PROMISE(promise_val))
+        {
+            ObjPromise *promise = AS_PROMISE(promise_val);
+            promise->state = PROMISE_REJECTED;
+            promise->result = err;
+        }
+        PUSH(err);
+        DISPATCH();
+    }
+
+    /* ============ DECORATORS ============ */
+
+    CASE(decorator) :
+    {
+        /* OP_DECORATOR: Apply decorator to function */
+        /* Stack: [decorator, function] -> [decorated_function] */
+        Value func = POP();
+        Value decorator = POP();
+
+        if (IS_CLOSURE(decorator))
+        {
+            /* Call decorator with function as argument */
+            /* Simplified: just return the function for now */
+            /* Full implementation would call decorator(func) */
+            PUSH(func);
+        }
+        else
+        {
+            PUSH(func);
+        }
+        DISPATCH();
+    }
+
+    /* ============ MODULES ============ */
+
+    CASE(module) :
+    {
+        /* OP_MODULE: Create module namespace */
+        ObjString *name = AS_STRING(READ_CONST());
+        ObjModule *mod = (ObjModule *)alloc_object(vm, sizeof(ObjModule), OBJ_MODULE);
+        mod->name = name;
+        mod->loaded = false;
+
+        /* Create exports dict */
+        ObjDict *exports = (ObjDict *)alloc_object(vm, sizeof(ObjDict), OBJ_DICT);
+        exports->count = 0;
+        exports->capacity = 16;
+        exports->keys = (ObjString **)calloc(exports->capacity, sizeof(ObjString *));
+        exports->values = (Value *)calloc(exports->capacity, sizeof(Value));
+        mod->exports = exports;
+
+        PUSH(val_obj((Obj *)mod));
+        DISPATCH();
+    }
+
+    CASE(export) :
+    {
+        /* OP_EXPORT: Export symbol from current module */
+        ObjString *name = AS_STRING(READ_CONST());
+        Value val = PEEK(0);
+
+        /* Find current module context and add to exports */
+        /* For now, also make it a global */
+        table_set(vm, name, val);
+        DISPATCH();
+    }
+
+    CASE(import_from) :
+    {
+        /* OP_IMPORT_FROM: Import specific symbol from module */
+        ObjString *name = AS_STRING(READ_CONST());
+
+        /* Look up in globals for now (modules would have separate namespace) */
+        Value val;
+        if (table_get(vm, name, &val))
+        {
+            PUSH(val);
+        }
+        else
+        {
+            /* Symbol not found - push nil */
+            PUSH(VAL_NIL);
+        }
+        DISPATCH();
+    }
+
+    CASE(import_as) :
+    {
+        /* OP_IMPORT_AS: Import module with alias */
+        ObjString *name = AS_STRING(READ_CONST());
+        uint8_t alias_idx = READ_BYTE();
+        ObjString *alias = AS_STRING(vm->chunk.constants[alias_idx]);
+
+        /* Look up module */
+        Value mod;
+        if (table_get(vm, name, &mod))
+        {
+            table_set(vm, alias, mod);
+            PUSH(mod);
+        }
+        else
+        {
+            PUSH(VAL_NIL);
+        }
+        DISPATCH();
+    }
+
+    CASE(super_invoke) :
+    {
+        /* OP_SUPER_INVOKE: Invoke superclass method */
+        ObjString *method_name = AS_STRING(READ_CONST());
+        uint8_t arg_count = *ip++;
+        (void)method_name;
+        (void)arg_count;
+        /* TODO: Implement super invoke */
         DISPATCH();
     }
 

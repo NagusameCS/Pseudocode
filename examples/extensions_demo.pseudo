@@ -1,0 +1,59 @@
+// Example: Using Header Files
+// Demonstrates the different file extensions
+
+// In a full implementation, these would be imports:
+// include "math.pseudoh"
+// include "strings.psch"
+
+// For now, we'll define inline examples
+
+print("=== Pseudocode File Extensions Demo ===")
+print("")
+
+// .pseudo / .psc - Main source files
+print("Main source files use .pseudo or .psc")
+
+// .pseudoh / .psch - Header files
+print("Header files use .pseudoh or .psch")
+
+// .pseudocode - Verbose extension
+print("The verbose extension is .pseudocode")
+
+print("")
+print("--- Extension Reference ---")
+print("| Extension   | Purpose                          |")
+print("|-------------|----------------------------------|")
+print("| .pseudo     | Primary source file              |")
+print("| .psc        | Short alias for .pseudo          |")
+print("| .pseudoh    | Header with declarations         |")
+print("| .psch       | Short alias for .pseudoh         |")
+print("| .pseudocode | Verbose/explicit extension       |")
+
+print("")
+print("--- Example Usage ---")
+
+// Math functions (would be from math.pseudoh)
+fn factorial(n)
+    if n <= 1 then
+        return 1
+    end
+    return n * factorial(n - 1)
+end
+
+print("factorial(5) = " + str(factorial(5)))
+print("factorial(10) = " + str(factorial(10)))
+
+// String functions (would be from strings.psch)
+fn repeat_str(s, count)
+    let result = ""
+    for i in 1..count+1 do
+        result = result + s
+    end
+    return result
+end
+
+print("")
+print("repeat_str('*', 10) = " + repeat_str("*", 10))
+
+print("")
+print("All extensions are recognized by the VS Code extension!")

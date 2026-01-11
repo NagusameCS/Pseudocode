@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Examples - Pseudocode</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <meta name="description"
+        content="Code examples for Pseudocode - algorithms, data structures, web APIs, file I/O, and more.">
+    <style>
+        :root {
+            --bg-primary: #1b1b1f;
+            --bg-secondary: #232327;
+            --bg-tertiary: #2a2a2e;
+            --text-primary: #f5f5f7;
+            --text-secondary: #b3b3b6;
+            --text-tertiary: #8e8e93;
+            --accent: #a78bfa;
+            --accent-dim: #7c5cbf;
+            --border: #3a3a3e;
+            --code-bg: #161618;
+            --success: #34d399;
+            --warning: #fbbf24;
+            --link: #93c5fd;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            font-size: 16px;
+        }
+
+        a {
+            color: var(--link);
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-inner {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 56px;
+            padding: 0 24px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .logo {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        nav ul {
+            display: flex;
+            gap: 24px;
+            list-style: none;
+        }
+
+        nav a {
+            color: var(--text-secondary);
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        nav a:hover {
+            color: var(--text-primary);
+            text-decoration: none;
+        }
+
+        nav a.active {
+            color: var(--accent);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 48px 24px;
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            font-size: 1.125rem;
+            color: var(--text-tertiary);
+            margin-bottom: 48px;
+        }
+
+        .category {
+            margin-bottom: 64px;
+        }
+
+        .category h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 24px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .category-icon {
+            width: 32px;
+            height: 32px;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--accent);
+        }
+
+        .examples-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+            gap: 24px;
+        }
+
+        .example-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .example-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .example-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .example-title {
+            font-weight: 600;
+            font-size: 15px;
+        }
+
+        .example-tag {
+            font-size: 11px;
+            padding: 4px 8px;
+            background: var(--bg-tertiary);
+            border-radius: 4px;
+            color: var(--text-tertiary);
+        }
+
+        .example-tag.beginner {
+            background: rgba(52, 211, 153, 0.2);
+            color: var(--success);
+        }
+
+        .example-tag.intermediate {
+            background: rgba(251, 191, 36, 0.2);
+            color: var(--warning);
+        }
+
+        .example-tag.advanced {
+            background: rgba(248, 113, 113, 0.2);
+            color: var(--error);
+        }
+
+        pre {
+            padding: 20px;
+            overflow-x: auto;
+            font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+            font-size: 12px;
+            line-height: 1.5;
+            margin: 0;
+            background: var(--code-bg);
+            max-height: 300px;
+        }
+
+        .keyword {
+            color: #c084fc;
+        }
+
+        .function {
+            color: #60a5fa;
+        }
+
+        .string {
+            color: #34d399;
+        }
+
+        .number {
+            color: #fb923c;
+        }
+
+        .comment {
+            color: #6b7280;
+        }
+
+        .example-footer {
+            padding: 12px 20px;
+            background: var(--bg-tertiary);
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 32px;
+            flex-wrap: wrap;
+        }
+
+        .tab {
+            padding: 8px 16px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .tab:hover {
+            border-color: var(--accent);
+            color: var(--text-primary);
+        }
+
+        .tab.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+
+        @media (max-width: 768px) {
+            .examples-grid {
+                grid-template-columns: 1fr;
+            }
+
+            nav ul {
+                display: none;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div class="header-inner">
+            <a href="index.html" class="logo">
+                <img src="favicon.svg" alt="Pseudocode" width="24" height="24" style="border-radius: 5px;">
+                Pseudocode
+            </a>
+            <nav>
+                <ul>
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="getting-started.html">Tutorial</a></li>
+                    <li><a href="examples.html" class="active">Examples</a></li>
+                    <li><a href="reference.html">Reference</a></li>
+                    <li><a href="install.html">Install</a></li>
+                    <li><a href="https://github.com/NagusameCS/Pseudocode" target="_blank">GitHub</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <div class="container">
+        <h1>Code Examples</h1>
+        <p class="subtitle">Real-world examples to learn from and use in your projects</p>
+
+        <div class="tabs">
+            <button class="tab active" onclick="showAll()">All</button>
+            <button class="tab" onclick="filterCategory('algorithms')">Algorithms</button>
+            <button class="tab" onclick="filterCategory('data')">Data Structures</button>
+            <button class="tab" onclick="filterCategory('io')">File I/O</button>
+            <button class="tab" onclick="filterCategory('web')">Web & APIs</button>
+            <button class="tab" onclick="filterCategory('math')">Math & Science</button>
+        </div>
+
+        <!-- Algorithms -->
+        <div class="category" data-category="algorithms">
+            <h2>
+                <span class="category-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                    </svg>
+                </span>
+                Algorithms
+            </h2>
+            <div class="examples-grid">
+                <div class="example-card">
+                    <div class="example-header">
+                        <span class="example-title">Quicksort</span>
+                        <span class="example-tag intermediate">Intermediate</span>
+                    </div>
+                    <pre><span class="keyword">fn</span> <span class="function">quicksort</span>(arr, low, high)
+    <span class="keyword">if</span> low < high <span class="keyword">then</span>
+        <span class="keyword">let</span> pivot = <span class="function">partition</span>(arr, low, high)
+        <span class="function">quicksort</span>(arr, low, pivot - <span class="number">1</span>)
+        <span class="function">quicksort</span>(arr, pivot + <span class="number">1</span>, high)
+    <span class="keyword">end</span>
+<span class="keyword">end</span>
+
+<span class="keyword">fn</span> <span class="function">partition</span>(arr, low, high)
+    <span class="keyword">let</span> pivot = arr[high]
+    <span class="keyword">let</span> i = low - <span class="number">1</span>
+    <span class="keyword">for</span> j <span class="keyword">in</span> low..high <span class="keyword">do</span>
+        <span class="keyword">if</span> arr[j] <= pivot <span class="keyword">then</span>
+            i = i + <span class="number">1</span>
+            <span class="keyword">let</span> temp = arr[i]
+            arr[i] = arr[j]
+            arr[j] = temp
+        <span class="keyword">end</span>
+    <span class="keyword">end</span>
+    <span class="keyword">let</span> temp = arr[i + <span class="number">1</span>]
+    arr[i + <span class="number">1</span>] = arr[high]
+    arr[high] = temp
+    <span class="keyword">return</span> i + <span class="number">1</span>
+<span class="keyword">end</span></pre>
+                    <div class="example-footer">Classic divide-and-conquer sorting algorithm</div>
+                </div>
+
+                <div class="example-card">
+                    <div class="example-header">
+                        <span class="example-title">Binary Search</span>
+                        <span class="example-tag beginner">Beginner</span>
+                    </div>
+                    <pre><span class="keyword">fn</span> <span class="function">binary_search</span>(arr, target)
+    <span class="keyword">let</span> left = <span class="number">0</span>
+    <span class="keyword">let</span> right = <span class="function">len</span>(arr) - <span class="number">1</span>
+    
+    <span class="keyword">while</span> left <= right <span class="keyword">do</span>
+        <span class="keyword">let</span> mid = <span class="function">floor</span>((left + right) / <span class="number">2</span>)
+        
+        <span class="keyword">if</span> arr[mid] == target <span class="keyword">then</span>
+            <span class="keyword">return</span> mid
+        <span class="keyword">elif</span> arr[mid] < target <span class="keyword">then</span>
+            left = mid + <span class="number">1</span>
+        <span class="keyword">else</span>
+            right = mid - <span class="number">1</span>
+        <span class="keyword">end</span>
+    <span class="keyword">end</span>
+    
+    <span class="keyword">return</span> -<span class="number">1</span>  <span class="comment">// Not found</span>
+<span class="keyword">end</span>
+
+<span class="keyword">let</span> nums = [<span class="number">1</span>, <span class="number">3</span>, <span class="number">5</span>, <span class="number">7</span>, <span class="number">9</span>, <span class="number">11</span>]
+<span class="function">print</span>(<span class="function">binary_search</span>(nums, <span class="number">7</span>))  <span class="comment">// 3</span></pre>
+                    <div class="example-footer">O(log n) search in sorted arrays</div>
+                </div>
+
+                <div class="example-card">
+                    <div class="example-header">
+                        <span class="example-title">Fibonacci with Memoization</span>
+                        <span class="example-tag intermediate">Intermediate</span>
+                    </div>
+                    <pre><span class="comment">// Dynamic programming approach</span>
+<span class="keyword">fn</span> <span class="function">fibonacci</span>(n)
+    <span class="keyword">let</span> memo = {<span class="string">"0"</span>: <span class="number">0</span>, <span class="string">"1"</span>: <span class="number">1</span>}
+    <span class="keyword">return</span> <span class="function">fib_helper</span>(n, memo)
+<span class="keyword">end</span>
+
+<span class="keyword">fn</span> <span class="function">fib_helper</span>(n, memo)
+    <span class="keyword">let</span> key = <span class="function">str</span>(n)
+    <span class="keyword">if</span> <span class="function">dict_has</span>(memo, key) <span class="keyword">then</span>
+        <span class="keyword">return</span> memo[key]
+    <span class="keyword">end</span>
+    
+    <span class="keyword">let</span> result = <span class="function">fib_helper</span>(n-<span class="number">1</span>, memo) + <span class="function">fib_helper</span>(n-<span class="number">2</span>, memo)
+    memo[key] = result
+    <span class="keyword">return</span> result
+<span class="keyword">end</span>
+
+<span class="function">print</span>(<span class="function">fibonacci</span>(<span class="number">50</span>))  <span class="comment">// 12586269025</span></pre>
+                    <div class="example-footer">O(n) time with memoization vs O(2^n) naive</div>
+                </div>
+
+                <div class="example-card">
+                    <div class="example-header">
+                        <span class="example-title">Merge Sort</span>
+                        <span class="example-tag intermediate">Intermediate</span>
+                    </div>
+                    <pre><span class="keyword">fn</span> <span class="function">merge_sort</span>(arr)
+    <span class="keyword">if</span> <span class="function">len</span>(arr) <= <span class="number">1</span> <span class="keyword">then</span>
+        <span class="keyword">return</span> arr
+    <span class="keyword">end</span>
+    
+    <span class="keyword">let</span> mid = <span class="function">floor</span>(<span class="function">len</span>(arr) / <span class="number">2</span>)
+    <span class="keyword">let</span> left = <span class="function">merge_sort</span>(<span class="function">slice</span>(arr, <span class="number">0</span>, mid))
+    <span class="keyword">let</span> right = <span class="function">merge_sort</span>(<span class="function">slice</span>(arr, mid))
+    
+    <span class="keyword">return</span> <span class="function">merge</span>(left, right)
+<span class="keyword">end</span>
+
+<span class="keyword">fn</span> <span class="function">merge</span>(left, right)
+    <span class="keyword">let</span> result = []
+    <span class="keyword">let</span> i = <span class="number">0</span>
+    <span class="keyword">let</span> j = <span class="number">0</span>
+    
+    <span class="keyword">while</span> i < <span class="function">len</span>(left) <span class="keyword">and</span> j < <span class="function">len</span>(right) <span class="keyword">do</span>
+        <span class="keyword">if</span> left[i] <= right[j] <span class="keyword">then</span>
+            <span class="function">push</span>(result, left[i])
+            i = i + <span class="number">1</span>
+        <span class="keyword">else</span>
+            <span class="function">push</span>(result, right[j])
+            j = j + <span class="number">1</span>
+        <span class="keyword">end</span>
+    <span class="keyword">end</span>
+    
+    <span class="keyword">return</span> <span class="function">concat</span>(result, <span class="function">concat</span>(<span class="function">slice</span>(left, i), <span class="function">slice</span>(right, j)))
+<span class="keyword">end</span></pre>
+                    <div class="example-footer">Stable O(n log n) sorting algorithm</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Web & APIs -->
+        <div class="category" data-category="web">
+            <h2>
+                <span class="category-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="2" y1="12" x2="22" y2="12"></line>
+                        <path
+                            d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z">
+                        </path>
+                    </svg>
+                </span>
+                Web & APIs
+            </h2>
+            <div class="examples-grid">
+                <div class="example-card">
+                    <div class="example-header">
+                        <span class="example-title">REST API Client</span>
+                        <span class="example-tag beginner">Beginner</span>
+                    </div>
+                    <pre><span class="comment">// Fetch data from a REST API</span>
+<span class="keyword">fn</span> <span class="function">get_user</span>(user_id)
+    <span class="keyword">let</span> url = <span class="string">"https://api.example.com/users/"</span> + <span class="function">str</span>(user_id)
+    <span class="keyword">let</span> response = <span class="function">http_get</span>(url)
+    <span class="keyword">return</span> <span class="function">json_parse</span>(response)
+<span class="keyword">end</span>
+
+<span class="keyword">fn</span> <span class="function">create_user</span>(name, email)
+    <span class="keyword">let</span> url = <span class="string">"https://api.example.com/users"</span>
+    <span class="keyword">let</span> data = <span class="function">json_stringify</span>({
+        <span class="string">"name"</span>: name,
+        <span class="string">"email"</span>: email
+    })
+    <span class="keyword">let</span> response = <span class="function">http_post</span>(url, data)
+    <span class="keyword">return</span> <span class="function">json_parse</span>(response)
+<span class="keyword">end</span>
+
+<span class="comment">// Usage</span>
+<span class="keyword">let</span> user = <span class="function">get_user</span>(<span class="number">123</span>)
+<span class="function">print</span>(<span class="string">"Name: "</span> + user[<span class="string">"name"</span>])</pre>
+                    <div class="example-footer">HTTP GET and POST with JSON parsing</div>
+                </div>
+
+                <div class="example-card">
+                    <div class="example-header">
+                        <span class="example-title">Weather API</span>
+                        <span class="example-tag beginner">Beginner</span>
+                    </div>
+                    <pre><span class="keyword">fn</span> <span class="function">get_weather</span>(city)
+    <span class="keyword">let</span> api_key = <span class="function">env</span>(<span class="string">"WEATHER_API_KEY"</span>)
+    <span class="keyword">let</span> url = <span class="string">"https://api.weather.com/v1/"</span> + city
+    url = url + <span class="string">"?key="</span> + api_key
+    
+    <span class="keyword">let</span> response = <span class="function">http_get</span>(url)
+    <span class="keyword">let</span> data = <span class="function">json_parse</span>(response)
+    
+    <span class="function">print</span>(<span class="string">"City: "</span> + data[<span class="string">"name"</span>])
+    <span class="function">print</span>(<span class="string">"Temp: "</span> + <span class="function">str</span>(data[<span class="string">"temp"</span>]) + <span class="string">"°C"</span>)
+    <span class="function">print</span>(<span class="string">"Conditions: "</span> + data[<span class="string">"conditions"</span>])
+    
+    <span class="keyword">return</span> data
+<span class="keyword">end</span>
+
+<span class="function">get_weather</span>(<span class="string">"Tokyo"</span>)</pre>
+                    <div class="example-footer">Real-world API integration with environment variables</div>
+                </div>
+
+                <div class="example-card">
+                    <div class="example-header">
+                        <span class="example-title">GitHub API</span>
+                        <span class="example-tag intermediate">Intermediate</span>
+                    </div>
+                    <pre><span class="keyword">fn</span> <span class="function">get_repos</span>(username)
+    <span class="keyword">let</span> url = <span class="string">"https://api.github.com/users/"</span>
+    url = url + username + <span class="string">"/repos"</span>
+    
+    <span class="keyword">let</span> response = <span class="function">http_get</span>(url)
+    <span class="keyword">let</span> repos = <span class="function">json_parse</span>(response)
+    
+    <span class="function">print</span>(<span class="string">"Repositories for "</span> + username + <span class="string">":"</span>)
+    <span class="function">print</span>(<span class="string">"========================="</span>)
+    
+    <span class="keyword">for</span> repo <span class="keyword">in</span> repos <span class="keyword">do</span>
+        <span class="keyword">let</span> stars = repo[<span class="string">"stargazers_count"</span>]
+        <span class="keyword">let</span> name = repo[<span class="string">"name"</span>]
+        <span class="function">print</span>(<span class="string">"⭐ "</span> + <span class="function">str</span>(stars) + <span class="string">" - "</span> + name)
+    <span class="keyword">end</span>
+<span class="keyword">end</span>
+
+<span class="function">get_repos</span>(<span class="string">"NagusameCS"</span>)</pre>
+                    <div class="example-footer">Fetch and display GitHub repositories</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- File I/O -->
+        <div class="category" data-category="io">
+            <h2>
+                <span class="category-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                    </svg>
+                </span>
+                File I/O
+            </h2>
+            <div class="examples-grid">
+                <div class="example-card">
+                    <div class="example-header">
+                        <span class="example-title">CSV Parser</span>
+                        <span class="example-tag intermediate">Intermediate</span>
+                    </div>
+                    <pre><span class="keyword">fn</span> <span class="function">parse_csv</span>(filename)
+    <span class="keyword">let</span> content = <span class="function">read_file</span>(filename)
+    <span class="keyword">let</span> lines = <span class="function">split</span>(content, <span class="string">"\n"</span>)
+    <span class="keyword">let</span> result = []
+    
+    <span class="comment">// Get headers from first line</span>
+    <span class="keyword">let</span> headers = <span class="function">split</span>(lines[<span class="number">0</span>], <span class="string">","</span>)
+    
+    <span class="comment">// Parse data rows</span>
+    <span class="keyword">for</span> i <span class="keyword">in</span> <span class="number">1</span>..<span class="function">len</span>(lines) <span class="keyword">do</span>
+        <span class="keyword">let</span> values = <span class="function">split</span>(lines[i], <span class="string">","</span>)
+        <span class="keyword">let</span> row = {}
+        
+        <span class="keyword">for</span> j <span class="keyword">in</span> <span class="number">0</span>..<span class="function">len</span>(headers) <span class="keyword">do</span>
+            row[<span class="function">trim</span>(headers[j])] = <span class="function">trim</span>(values[j])
+        <span class="keyword">end</span>
+        
+        <span class="function">push</span>(result, row)
+    <span class="keyword">end</span>
+    
+    <span class="keyword">return</span> result
+<span class="keyword">end</span>
+
+<span class="keyword">let</span> data = <span class="function">parse_csv</span>(<span class="string">"users.csv"</span>)
+<span class="keyword">for</span> row <span class="keyword">in</span> data <span class="keyword">do</span>
+    <span class="function">print</span>(row[<span class="string">"name"</span>] + <span class="string">": "</span> + row[<span class="string">"email"</span>])
+<span class="keyword">end</span></pre>
+                    <div class="example-footer">Parse CSV files into dictionaries</div>
+                </div>
+
+                <div class="example-card">
+                    <div class="example-header">
+                        <span class="example-title">Log File Analyzer</span>
+                        <span class="example-tag intermediate">Intermediate</span>
+                    </div>
+                    <pre><span class="keyword">fn</span> <span class="function">analyze_logs</span>(filename)
+    <span class="keyword">let</span> content = <span class="function">read_file</span>(filename)
+    <span class="keyword">let</span> lines = <span class="function">split</span>(content, <span class="string">"\n"</span>)
+    
+    <span class="keyword">let</span> errors = <span class="number">0</span>
+    <span class="keyword">let</span> warnings = <span class="number">0</span>
+    <span class="keyword">let</span> info = <span class="number">0</span>
+    
+    <span class="keyword">for</span> line <span class="keyword">in</span> lines <span class="keyword">do</span>
+        <span class="keyword">if</span> <span class="function">contains</span>(line, <span class="string">"ERROR"</span>) <span class="keyword">then</span>
+            errors = errors + <span class="number">1</span>
+        <span class="keyword">elif</span> <span class="function">contains</span>(line, <span class="string">"WARN"</span>) <span class="keyword">then</span>
+            warnings = warnings + <span class="number">1</span>
+        <span class="keyword">elif</span> <span class="function">contains</span>(line, <span class="string">"INFO"</span>) <span class="keyword">then</span>
+            info = info + <span class="number">1</span>
+        <span class="keyword">end</span>
+    <span class="keyword">end</span>
+    
+    <span class="function">print</span>(<span class="string">"=== Log Analysis ==="</span>)
+    <span class="function">print</span>(<span class="string">"Errors:   "</span> + <span class="function">str</span>(errors))
+    <span class="function">print</span>(<span class="string">"Warnings: "</span> + <span class="function">str</span>(warnings))
+    <span class="function">print</span>(<span class="string">"Info:     "</span> + <span class="function">str</span>(info))
+<span class="keyword">end</span>
+
+<span class="function">analyze_logs</span>(<span class="string">"server.log"</span>)</pre>
+                    <div class="example-footer">Count log levels in a log file</div>
+                </div>
+
+                <div class="example-card">
+                    <div class="example-header">
+                        <span class="example-title">JSON Config Handler</span>
+                        <span class="example-tag beginner">Beginner</span>
+                    </div>
+                    <pre><span class="keyword">fn</span> <span class="function">load_config</span>(path)
+    <span class="keyword">if</span> <span class="keyword">not</span> <span class="function">file_exists</span>(path) <span class="keyword">then</span>
+        <span class="function">print</span>(<span class="string">"Creating default config..."</span>)
+        <span class="function">save_config</span>(path, {
+            <span class="string">"theme"</span>: <span class="string">"dark"</span>,
+            <span class="string">"language"</span>: <span class="string">"en"</span>,
+            <span class="string">"debug"</span>: <span class="keyword">false</span>
+        })
+    <span class="keyword">end</span>
+    
+    <span class="keyword">let</span> content = <span class="function">read_file</span>(path)
+    <span class="keyword">return</span> <span class="function">json_parse</span>(content)
+<span class="keyword">end</span>
+
+<span class="keyword">fn</span> <span class="function">save_config</span>(path, config)
+    <span class="keyword">let</span> json = <span class="function">json_stringify</span>(config, <span class="number">2</span>)
+    <span class="function">write_file</span>(path, json)
+<span class="keyword">end</span>
+
+<span class="keyword">let</span> config = <span class="function">load_config</span>(<span class="string">"config.json"</span>)
+<span class="function">print</span>(<span class="string">"Theme: "</span> + config[<span class="string">"theme"</span>])</pre>
+                    <div class="example-footer">Load and save JSON configuration files</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Math & Science -->
+        <div class="category" data-category="math">
+            <h2>
+                <span class="category-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </span>
+                Math & Science
+            </h2>
+            <div class="examples-grid">
+                <div class="example-card">
+                    <div class="example-header">
+                        <span class="example-title">Prime Number Sieve</span>
+                        <span class="example-tag intermediate">Intermediate</span>
+                    </div>
+                    <pre><span class="keyword">fn</span> <span class="function">sieve_of_eratosthenes</span>(n)
+    <span class="keyword">let</span> is_prime = []
+    <span class="keyword">for</span> i <span class="keyword">in</span> <span class="number">0</span>..(n+<span class="number">1</span>) <span class="keyword">do</span>
+        <span class="function">push</span>(is_prime, <span class="keyword">true</span>)
+    <span class="keyword">end</span>
+    is_prime[<span class="number">0</span>] = <span class="keyword">false</span>
+    is_prime[<span class="number">1</span>] = <span class="keyword">false</span>
+    
+    <span class="keyword">let</span> p = <span class="number">2</span>
+    <span class="keyword">while</span> p * p <= n <span class="keyword">do</span>
+        <span class="keyword">if</span> is_prime[p] <span class="keyword">then</span>
+            <span class="keyword">let</span> multiple = p * p
+            <span class="keyword">while</span> multiple <= n <span class="keyword">do</span>
+                is_prime[multiple] = <span class="keyword">false</span>
+                multiple = multiple + p
+            <span class="keyword">end</span>
+        <span class="keyword">end</span>
+        p = p + <span class="number">1</span>
+    <span class="keyword">end</span>
+    
+    <span class="keyword">let</span> primes = []
+    <span class="keyword">for</span> i <span class="keyword">in</span> <span class="number">2</span>..(n+<span class="number">1</span>) <span class="keyword">do</span>
+        <span class="keyword">if</span> is_prime[i] <span class="keyword">then</span>
+            <span class="function">push</span>(primes, i)
+        <span class="keyword">end</span>
+    <span class="keyword">end</span>
+    <span class="keyword">return</span> primes
+<span class="keyword">end</span>
+
+<span class="function">print</span>(<span class="function">sieve_of_eratosthenes</span>(<span class="number">50</span>))</pre>
+                    <div class="example-footer">Efficient prime number generation</div>
+                </div>
+
+                <div class="example-card">
+                    <div class="example-header">
+                        <span class="example-title">Matrix Operations</span>
+                        <span class="example-tag advanced">Advanced</span>
+                    </div>
+                    <pre><span class="keyword">fn</span> <span class="function">matrix_multiply</span>(a, b)
+    <span class="keyword">let</span> rows_a = <span class="function">len</span>(a)
+    <span class="keyword">let</span> cols_a = <span class="function">len</span>(a[<span class="number">0</span>])
+    <span class="keyword">let</span> cols_b = <span class="function">len</span>(b[<span class="number">0</span>])
+    
+    <span class="comment">// Initialize result matrix</span>
+    <span class="keyword">let</span> result = []
+    <span class="keyword">for</span> i <span class="keyword">in</span> <span class="number">0</span>..rows_a <span class="keyword">do</span>
+        <span class="keyword">let</span> row = []
+        <span class="keyword">for</span> j <span class="keyword">in</span> <span class="number">0</span>..cols_b <span class="keyword">do</span>
+            <span class="function">push</span>(row, <span class="number">0</span>)
+        <span class="keyword">end</span>
+        <span class="function">push</span>(result, row)
+    <span class="keyword">end</span>
+    
+    <span class="comment">// Compute product</span>
+    <span class="keyword">for</span> i <span class="keyword">in</span> <span class="number">0</span>..rows_a <span class="keyword">do</span>
+        <span class="keyword">for</span> j <span class="keyword">in</span> <span class="number">0</span>..cols_b <span class="keyword">do</span>
+            <span class="keyword">for</span> k <span class="keyword">in</span> <span class="number">0</span>..cols_a <span class="keyword">do</span>
+                result[i][j] = result[i][j] + a[i][k] * b[k][j]
+            <span class="keyword">end</span>
+        <span class="keyword">end</span>
+    <span class="keyword">end</span>
+    
+    <span class="keyword">return</span> result
+<span class="keyword">end</span></pre>
+                    <div class="example-footer">Matrix multiplication implementation</div>
+                </div>
+
+                <div class="example-card">
+                    <div class="example-header">
+                        <span class="example-title">Statistical Functions</span>
+                        <span class="example-tag beginner">Beginner</span>
+                    </div>
+                    <pre><span class="keyword">fn</span> <span class="function">mean</span>(arr)
+    <span class="keyword">return</span> <span class="function">vec_sum</span>(arr) / <span class="function">len</span>(arr)
+<span class="keyword">end</span>
+
+<span class="keyword">fn</span> <span class="function">variance</span>(arr)
+    <span class="keyword">let</span> avg = <span class="function">mean</span>(arr)
+    <span class="keyword">let</span> sum_sq = <span class="number">0</span>
+    <span class="keyword">for</span> x <span class="keyword">in</span> arr <span class="keyword">do</span>
+        sum_sq = sum_sq + (x - avg) * (x - avg)
+    <span class="keyword">end</span>
+    <span class="keyword">return</span> sum_sq / <span class="function">len</span>(arr)
+<span class="keyword">end</span>
+
+<span class="keyword">fn</span> <span class="function">std_dev</span>(arr)
+    <span class="keyword">return</span> <span class="function">sqrt</span>(<span class="function">variance</span>(arr))
+<span class="keyword">end</span>
+
+<span class="keyword">let</span> data = [<span class="number">2</span>, <span class="number">4</span>, <span class="number">4</span>, <span class="number">4</span>, <span class="number">5</span>, <span class="number">5</span>, <span class="number">7</span>, <span class="number">9</span>]
+<span class="function">print</span>(<span class="string">"Mean: "</span> + <span class="function">str</span>(<span class="function">mean</span>(data)))
+<span class="function">print</span>(<span class="string">"Std Dev: "</span> + <span class="function">str</span>(<span class="function">std_dev</span>(data)))</pre>
+                    <div class="example-footer">Mean, variance, and standard deviation</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Structures -->
+        <div class="category" data-category="data">
+            <h2>
+                <span class="category-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="3" y1="9" x2="21" y2="9"></line>
+                        <line x1="9" y1="21" x2="9" y2="9"></line>
+                    </svg>
+                </span>
+                Data Structures
+            </h2>
+            <div class="examples-grid">
+                <div class="example-card">
+                    <div class="example-header">
+                        <span class="example-title">Stack</span>
+                        <span class="example-tag beginner">Beginner</span>
+                    </div>
+                    <pre><span class="comment">// Stack implementation using closures</span>
+<span class="keyword">fn</span> <span class="function">create_stack</span>()
+    <span class="keyword">let</span> items = []
+    
+    <span class="keyword">return</span> {
+        <span class="string">"push"</span>: <span class="keyword">fn</span>(item) <span class="function">push</span>(items, item) <span class="keyword">end</span>,
+        <span class="string">"pop"</span>: <span class="keyword">fn</span>() <span class="keyword">return</span> <span class="function">pop</span>(items) <span class="keyword">end</span>,
+        <span class="string">"peek"</span>: <span class="keyword">fn</span>() <span class="keyword">return</span> items[<span class="function">len</span>(items)-<span class="number">1</span>] <span class="keyword">end</span>,
+        <span class="string">"size"</span>: <span class="keyword">fn</span>() <span class="keyword">return</span> <span class="function">len</span>(items) <span class="keyword">end</span>,
+        <span class="string">"empty"</span>: <span class="keyword">fn</span>() <span class="keyword">return</span> <span class="function">len</span>(items) == <span class="number">0</span> <span class="keyword">end</span>
+    }
+<span class="keyword">end</span>
+
+<span class="keyword">let</span> stack = <span class="function">create_stack</span>()
+stack[<span class="string">"push"</span>](<span class="number">1</span>)
+stack[<span class="string">"push"</span>](<span class="number">2</span>)
+stack[<span class="string">"push"</span>](<span class="number">3</span>)
+<span class="function">print</span>(stack[<span class="string">"pop"</span>]())  <span class="comment">// 3</span>
+<span class="function">print</span>(stack[<span class="string">"peek"</span>]()) <span class="comment">// 2</span></pre>
+                    <div class="example-footer">LIFO data structure implementation</div>
+                </div>
+
+                <div class="example-card">
+                    <div class="example-header">
+                        <span class="example-title">Queue</span>
+                        <span class="example-tag beginner">Beginner</span>
+                    </div>
+                    <pre><span class="keyword">fn</span> <span class="function">create_queue</span>()
+    <span class="keyword">let</span> items = []
+    
+    <span class="keyword">return</span> {
+        <span class="string">"enqueue"</span>: <span class="keyword">fn</span>(item) <span class="function">push</span>(items, item) <span class="keyword">end</span>,
+        <span class="string">"dequeue"</span>: <span class="keyword">fn</span>() <span class="keyword">return</span> <span class="function">shift</span>(items) <span class="keyword">end</span>,
+        <span class="string">"front"</span>: <span class="keyword">fn</span>() <span class="keyword">return</span> items[<span class="number">0</span>] <span class="keyword">end</span>,
+        <span class="string">"size"</span>: <span class="keyword">fn</span>() <span class="keyword">return</span> <span class="function">len</span>(items) <span class="keyword">end</span>,
+        <span class="string">"empty"</span>: <span class="keyword">fn</span>() <span class="keyword">return</span> <span class="function">len</span>(items) == <span class="number">0</span> <span class="keyword">end</span>
+    }
+<span class="keyword">end</span>
+
+<span class="keyword">let</span> queue = <span class="function">create_queue</span>()
+queue[<span class="string">"enqueue"</span>](<span class="string">"first"</span>)
+queue[<span class="string">"enqueue"</span>](<span class="string">"second"</span>)
+queue[<span class="string">"enqueue"</span>](<span class="string">"third"</span>)
+<span class="function">print</span>(queue[<span class="string">"dequeue"</span>]())  <span class="comment">// first</span>
+<span class="function">print</span>(queue[<span class="string">"front"</span>]())   <span class="comment">// second</span></pre>
+                    <div class="example-footer">FIFO data structure implementation</div>
+                </div>
+
+                <div class="example-card">
+                    <div class="example-header">
+                        <span class="example-title">Hash Map with Chaining</span>
+                        <span class="example-tag advanced">Advanced</span>
+                    </div>
+                    <pre><span class="keyword">fn</span> <span class="function">create_hashmap</span>(size)
+    <span class="keyword">let</span> buckets = []
+    <span class="keyword">for</span> i <span class="keyword">in</span> <span class="number">0</span>..size <span class="keyword">do</span>
+        <span class="function">push</span>(buckets, [])
+    <span class="keyword">end</span>
+    
+    <span class="keyword">fn</span> <span class="function">hash_key</span>(key)
+        <span class="keyword">return</span> <span class="function">hash</span>(key) % size
+    <span class="keyword">end</span>
+    
+    <span class="keyword">return</span> {
+        <span class="string">"set"</span>: <span class="keyword">fn</span>(key, value)
+            <span class="keyword">let</span> idx = <span class="function">hash_key</span>(key)
+            <span class="keyword">let</span> bucket = buckets[idx]
+            <span class="keyword">for</span> pair <span class="keyword">in</span> bucket <span class="keyword">do</span>
+                <span class="keyword">if</span> pair[<span class="number">0</span>] == key <span class="keyword">then</span>
+                    pair[<span class="number">1</span>] = value
+                    <span class="keyword">return</span>
+                <span class="keyword">end</span>
+            <span class="keyword">end</span>
+            <span class="function">push</span>(bucket, [key, value])
+        <span class="keyword">end</span>,
+        <span class="string">"get"</span>: <span class="keyword">fn</span>(key)
+            <span class="keyword">let</span> idx = <span class="function">hash_key</span>(key)
+            <span class="keyword">for</span> pair <span class="keyword">in</span> buckets[idx] <span class="keyword">do</span>
+                <span class="keyword">if</span> pair[<span class="number">0</span>] == key <span class="keyword">then</span>
+                    <span class="keyword">return</span> pair[<span class="number">1</span>]
+                <span class="keyword">end</span>
+            <span class="keyword">end</span>
+            <span class="keyword">return</span> <span class="keyword">nil</span>
+        <span class="keyword">end</span>
+    }
+<span class="keyword">end</span></pre>
+                    <div class="example-footer">Hash table with collision resolution</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        function showAll() {
+            document.querySelectorAll('.category').forEach(cat => cat.style.display = 'block');
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelector('.tab').classList.add('active');
+        }
+
+        function filterCategory(name) {
+            document.querySelectorAll('.category').forEach(cat => {
+                cat.style.display = cat.dataset.category === name ? 'block' : 'none';
+            });
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,335 @@
+// Functional Library
+// Higher-order functions for functional programming
+//
+// Usage:
+//   import "./lib/functional.pseudo"
+
+// ============ Map/Filter/Reduce ============
+
+// Apply a function to each element of an array
+fn map(arr, func)
+    let result = []
+    let i = 0
+    while i < len(arr) do
+        push(result, func(arr[i]))
+        i = i + 1
+    end
+    return result
+end
+
+// Filter elements that satisfy a predicate
+fn filter(arr, pred)
+    let result = []
+    let i = 0
+    while i < len(arr) do
+        if pred(arr[i]) then
+            push(result, arr[i])
+        end
+        i = i + 1
+    end
+    return result
+end
+
+// Reduce array to single value using accumulator
+fn reduce(arr, func, initial)
+    let acc = initial
+    let i = 0
+    while i < len(arr) do
+        acc = func(acc, arr[i])
+        i = i + 1
+    end
+    return acc
+end
+
+// ============ Finding ============
+
+// Find first element matching predicate
+fn find_if(arr, pred)
+    let i = 0
+    while i < len(arr) do
+        if pred(arr[i]) then
+            return arr[i]
+        end
+        i = i + 1
+    end
+    return nil
+end
+
+// Find index of first element matching predicate
+fn find_index(arr, pred)
+    let i = 0
+    while i < len(arr) do
+        if pred(arr[i]) then
+            return i
+        end
+        i = i + 1
+    end
+    return -1
+end
+
+// Check if any element matches predicate
+fn any(arr, pred)
+    let i = 0
+    while i < len(arr) do
+        if pred(arr[i]) then
+            return true
+        end
+        i = i + 1
+    end
+    return false
+end
+
+// Check if all elements match predicate
+fn all(arr, pred)
+    let i = 0
+    while i < len(arr) do
+        if not pred(arr[i]) then
+            return false
+        end
+        i = i + 1
+    end
+    return true
+end
+
+// ============ Numeric Utilities ============
+
+// Apply function n times
+fn times(n, func)
+    let i = 0
+    while i < n do
+        func(i)
+        i = i + 1
+    end
+end
+
+// Create array of n values using generator function
+fn generate(n, func)
+    let result = []
+    let i = 0
+    while i < n do
+        push(result, func(i))
+        i = i + 1
+    end
+    return result
+end
+
+// Zip two arrays together
+fn zip(arr1, arr2)
+    let result = []
+    let minlen = len(arr1)
+    if len(arr2) < minlen then
+        minlen = len(arr2)
+    end
+    let i = 0
+    while i < minlen do
+        push(result, [arr1[i], arr2[i]])
+        i = i + 1
+    end
+    return result
+end
+
+// Flatten one level of nesting
+fn flatten(arr)
+    let result = []
+    let i = 0
+    while i < len(arr) do
+        let item = arr[i]
+        if type(item) == "array" then
+            let j = 0
+            while j < len(item) do
+                push(result, item[j])
+                j = j + 1
+            end
+        else
+            push(result, item)
+        end
+        i = i + 1
+    end
+    return result
+end
+
+// Map then flatten (flatMap)
+fn flat_map(arr, func)
+    return flatten(map(arr, func))
+end
+
+// ============ Numeric Utilities ============
+
+// Helper for sum
+fn _add(a, b)
+    return a + b
+end
+
+// Sum of array
+fn sum(arr)
+    return reduce(arr, _add, 0)
+end
+
+// Helper for product
+fn _mul(a, b)
+    return a * b
+end
+
+// Product of array
+fn product(arr)
+    return reduce(arr, _mul, 1)
+end
+
+// Count elements matching predicate
+fn count(arr, pred)
+    let c = 0
+    let i = 0
+    while i < len(arr) do
+        if pred(arr[i]) then
+            c = c + 1
+        end
+        i = i + 1
+    end
+    return c
+end
+
+// Group by key function
+fn group_by(arr, key_func)
+    let groups = dict()
+    let i = 0
+    while i < len(arr) do
+        let key = str(key_func(arr[i]))
+        if not dict_has(groups, key) then
+            dict_set(groups, key, [])
+        end
+        let group = dict_get(groups, key)
+        push(group, arr[i])
+        i = i + 1
+    end
+    return groups
+end
+
+// ============ Array Utilities ============
+
+// Take first n elements
+fn take(arr, n)
+    if n >= len(arr) then
+        return arr
+    end
+    let result = []
+    let i = 0
+    while i < n do
+        push(result, arr[i])
+        i = i + 1
+    end
+    return result
+end
+
+// Drop first n elements
+fn drop(arr, n)
+    if n >= len(arr) then
+        return []
+    end
+    let result = []
+    let i = n
+    while i < len(arr) do
+        push(result, arr[i])
+        i = i + 1
+    end
+    return result
+end
+
+// Take while predicate is true
+fn take_while(arr, pred)
+    let result = []
+    let i = 0
+    while i < len(arr) do
+        if not pred(arr[i]) then
+            return result
+        end
+        push(result, arr[i])
+        i = i + 1
+    end
+    return result
+end
+
+// Drop while predicate is true
+fn drop_while(arr, pred)
+    let i = 0
+    while i < len(arr) and pred(arr[i]) do
+        i = i + 1
+    end
+    let result = []
+    while i < len(arr) do
+        push(result, arr[i])
+        i = i + 1
+    end
+    return result
+end
+
+// Partition array by predicate
+fn partition(arr, pred)
+    let truthy = []
+    let falsy = []
+    let i = 0
+    while i < len(arr) do
+        if pred(arr[i]) then
+            push(truthy, arr[i])
+        else
+            push(falsy, arr[i])
+        end
+        i = i + 1
+    end
+    return [truthy, falsy]
+end
+
+// Unique elements (preserves order)
+fn unique(arr)
+    let seen = dict()
+    let result = []
+    let i = 0
+    while i < len(arr) do
+        let key = str(arr[i])
+        if not dict_has(seen, key) then
+            dict_set(seen, key, true)
+            push(result, arr[i])
+        end
+        i = i + 1
+    end
+    return result
+end
+
+// Reverse array
+fn reversed(arr)
+    let result = []
+    let i = len(arr) - 1
+    while i >= 0 do
+        push(result, arr[i])
+        i = i - 1
+    end
+    return result
+end
+
+// Range of integers
+fn range(start, stop)
+    let result = []
+    let i = start
+    while i < stop do
+        push(result, i)
+        i = i + 1
+    end
+    return result
+end
+
+// Range with step
+fn range_step(start, stop, step)
+    let result = []
+    let i = start
+    if step > 0 then
+        while i < stop do
+            push(result, i)
+            i = i + step
+        end
+    else
+        while i > stop do
+            push(result, i)
+            i = i + step
+        end
+    end
+    return result
+end

@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Install - Pseudocode</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <meta name="description"
+        content="Install Pseudocode - VS Code extension, pre-built binaries, or build from source.">
+    <style>
+        :root {
+            --bg-primary: #1b1b1f;
+            --bg-secondary: #232327;
+            --bg-tertiary: #2a2a2e;
+            --text-primary: #f5f5f7;
+            --text-secondary: #b3b3b6;
+            --text-tertiary: #8e8e93;
+            --accent: #a78bfa;
+            --accent-dim: #7c5cbf;
+            --border: #3a3a3e;
+            --code-bg: #161618;
+            --success: #34d399;
+            --warning: #fbbf24;
+            --link: #93c5fd;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            font-size: 16px;
+        }
+
+        a {
+            color: var(--link);
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-inner {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 56px;
+            padding: 0 24px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .logo {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        nav ul {
+            display: flex;
+            gap: 24px;
+            list-style: none;
+        }
+
+        nav a {
+            color: var(--text-secondary);
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        nav a:hover {
+            color: var(--text-primary);
+            text-decoration: none;
+        }
+
+        nav a.active {
+            color: var(--accent);
+        }
+
+        .hero {
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+            padding: 64px 24px;
+            text-align: center;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .hero h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+
+        .hero p {
+            font-size: 1.125rem;
+            color: var(--text-secondary);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 48px 24px;
+        }
+
+        .install-option {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 32px;
+            margin-bottom: 32px;
+        }
+
+        .install-option:hover {
+            border-color: var(--accent);
+        }
+
+        .option-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .option-icon {
+            width: 48px;
+            height: 48px;
+            background: var(--bg-tertiary);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--accent);
+        }
+
+        .option-header h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .option-header .badge {
+            background: var(--accent);
+            color: white;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 20px;
+            margin-left: auto;
+        }
+
+        .option-desc {
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+        }
+
+        .steps {
+            list-style: none;
+            counter-reset: step;
+        }
+
+        .steps li {
+            position: relative;
+            padding-left: 48px;
+            margin-bottom: 20px;
+        }
+
+        .steps li::before {
+            counter-increment: step;
+            content: counter(step);
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 32px;
+            height: 32px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--accent);
+        }
+
+        .steps li h3 {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .steps li p {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        pre {
+            background: var(--code-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px 20px;
+            overflow-x: auto;
+            font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+            font-size: 13px;
+            margin: 12px 0;
+        }
+
+        code {
+            background: var(--code-bg);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+            font-size: 13px;
+        }
+
+        .platform-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .platform-tab {
+            padding: 8px 16px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .platform-tab:hover {
+            border-color: var(--accent);
+            color: var(--text-primary);
+        }
+
+        .platform-tab.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+
+        .platform-content {
+            display: none;
+        }
+
+        .platform-content.active {
+            display: block;
+        }
+
+        .requirements {
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .requirements h4 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        .requirements ul {
+            list-style: none;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .requirements li {
+            padding: 4px 0;
+            padding-left: 20px;
+            position: relative;
+        }
+
+        .requirements li::before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: var(--success);
+        }
+
+        .cta-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            background: var(--accent);
+            color: white;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            margin-top: 16px;
+            transition: all 0.15s;
+        }
+
+        .cta-button:hover {
+            background: var(--accent-dim);
+            text-decoration: none;
+        }
+
+        .info-box {
+            background: rgba(147, 197, 253, 0.1);
+            border: 1px solid rgba(147, 197, 253, 0.3);
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin: 20px 0;
+            font-size: 14px;
+        }
+
+        .info-box strong {
+            color: var(--link);
+        }
+
+        .verify-section {
+            margin-top: 48px;
+            padding-top: 48px;
+            border-top: 1px solid var(--border);
+        }
+
+        .verify-section h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 24px;
+        }
+
+        @media (max-width: 768px) {
+            nav ul {
+                display: none;
+            }
+
+            .hero h1 {
+                font-size: 1.75rem;
+            }
+
+            .install-option {
+                padding: 24px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div class="header-inner">
+            <a href="index.html" class="logo">
+                <img src="favicon.svg" alt="Pseudocode" width="24" height="24" style="border-radius: 5px;">
+                Pseudocode
+            </a>
+            <nav>
+                <ul>
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="getting-started.html">Tutorial</a></li>
+                    <li><a href="examples.html">Examples</a></li>
+                    <li><a href="reference.html">Reference</a></li>
+                    <li><a href="install.html" class="active">Install</a></li>
+                    <li><a href="https://github.com/NagusameCS/Pseudocode" target="_blank">GitHub</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <div class="hero">
+        <h1>Install Pseudocode</h1>
+        <p>Get up and running in minutes with the VS Code extension or build from source</p>
+    </div>
+
+    <div class="container">
+
+        <!-- VS Code Extension -->
+        <div class="install-option">
+            <div class="option-header">
+                <div class="option-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                        <line x1="8" y1="21" x2="16" y2="21"></line>
+                        <line x1="12" y1="17" x2="12" y2="21"></line>
+                    </svg>
+                </div>
+                <div>
+                    <h2>VS Code Extension</h2>
+                </div>
+                <span class="badge">Recommended</span>
+            </div>
+
+            <p class="option-desc">
+                The easiest way to get started. The VS Code extension includes syntax highlighting,
+                IntelliSense, debugging support, and a built-in REPL.
+            </p>
+
+            <ol class="steps">
+                <li>
+                    <h3>Open VS Code</h3>
+                    <p>Launch Visual Studio Code on your computer</p>
+                </li>
+                <li>
+                    <h3>Open Extensions View</h3>
+                    <p>Press <code>Ctrl+Shift+X</code> (Windows/Linux) or <code>Cmd+Shift+X</code> (macOS)</p>
+                </li>
+                <li>
+                    <h3>Search for Pseudocode</h3>
+                    <p>Type "Pseudocode" in the search box</p>
+                </li>
+                <li>
+                    <h3>Install</h3>
+                    <p>Click the Install button on the "Pseudocode Language" extension</p>
+                </li>
+            </ol>
+
+            <a href="vscode:extension/NagusameCS.pseudocode-lang" class="cta-button">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                Open in VS Code
+            </a>
+
+            <div class="info-box">
+                <strong>Note:</strong> The extension will prompt you to install the Pseudocode runtime
+                the first time you run a <code>.pseudo</code> file. Follow the instructions in VS Code.
+            </div>
+        </div>
+
+        <!-- Build from Source -->
+        <div class="install-option">
+            <div class="option-header">
+                <div class="option-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="16 18 22 12 16 6"></polyline>
+                        <polyline points="8 6 2 12 8 18"></polyline>
+                    </svg>
+                </div>
+                <div>
+                    <h2>Build from Source</h2>
+                </div>
+            </div>
+
+            <p class="option-desc">
+                Build the Pseudocode interpreter from source for the best performance and latest features.
+                This method gives you access to the JIT compiler and all optimization flags.
+            </p>
+
+            <div class="requirements">
+                <h4>Requirements</h4>
+                <ul>
+                    <li>GCC or Clang (C11 compatible)</li>
+                    <li>Make</li>
+                    <li>LuaJIT (for DynASM, bundled)</li>
+                    <li>Git</li>
+                </ul>
+            </div>
+
+            <div class="platform-tabs">
+                <button class="platform-tab active" onclick="showPlatform('linux')">Linux</button>
+                <button class="platform-tab" onclick="showPlatform('macos')">macOS</button>
+                <button class="platform-tab" onclick="showPlatform('windows')">Windows (WSL)</button>
+            </div>
+
+            <div class="platform-content active" id="linux">
+                <ol class="steps">
+                    <li>
+                        <h3>Install dependencies</h3>
+                        <pre>sudo apt update
+sudo apt install build-essential git luajit</pre>
+                    </li>
+                    <li>
+                        <h3>Clone the repository</h3>
+                        <pre>git clone https://github.com/NagusameCS/Pseudocode.git
+cd Pseudocode/cvm</pre>
+                    </li>
+                    <li>
+                        <h3>Build the interpreter</h3>
+                        <pre>make</pre>
+                    </li>
+                    <li>
+                        <h3>Install globally (optional)</h3>
+                        <pre>sudo cp pseudo /usr/local/bin/</pre>
+                    </li>
+                </ol>
+            </div>
+
+            <div class="platform-content" id="macos">
+                <ol class="steps">
+                    <li>
+                        <h3>Install Homebrew (if not installed)</h3>
+                        <pre>/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"</pre>
+                    </li>
+                    <li>
+                        <h3>Install dependencies</h3>
+                        <pre>brew install luajit</pre>
+                    </li>
+                    <li>
+                        <h3>Clone and build</h3>
+                        <pre>git clone https://github.com/NagusameCS/Pseudocode.git
+cd Pseudocode/cvm
+make</pre>
+                    </li>
+                    <li>
+                        <h3>Install globally (optional)</h3>
+                        <pre>sudo cp pseudo /usr/local/bin/</pre>
+                    </li>
+                </ol>
+            </div>
+
+            <div class="platform-content" id="windows">
+                <ol class="steps">
+                    <li>
+                        <h3>Install WSL</h3>
+                        <p>Open PowerShell as Administrator and run:</p>
+                        <pre>wsl --install</pre>
+                    </li>
+                    <li>
+                        <h3>Open Ubuntu in WSL</h3>
+                        <p>After restart, open the Ubuntu app from the Start menu</p>
+                    </li>
+                    <li>
+                        <h3>Follow Linux instructions</h3>
+                        <p>Install dependencies and build as shown in the Linux tab above</p>
+                    </li>
+                </ol>
+                <div class="info-box">
+                    <strong>Tip:</strong> VS Code has excellent WSL integration. Install the
+                    "Remote - WSL" extension to develop in WSL seamlessly.
+                </div>
+            </div>
+        </div>
+
+        <!-- Docker -->
+        <div class="install-option">
+            <div class="option-header">
+                <div class="option-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h2>Docker</h2>
+                </div>
+            </div>
+
+            <p class="option-desc">
+                Run Pseudocode in a containerized environment without installing anything locally.
+            </p>
+
+            <ol class="steps">
+                <li>
+                    <h3>Pull and run</h3>
+                    <pre>docker run -it --rm -v $(pwd):/code nagusame/pseudocode</pre>
+                </li>
+                <li>
+                    <h3>Run a script</h3>
+                    <pre>docker run --rm -v $(pwd):/code nagusame/pseudocode /code/script.pseudo</pre>
+                </li>
+            </ol>
+        </div>
+
+        <!-- Verify Installation -->
+        <div class="verify-section">
+            <h2>Verify Installation</h2>
+
+            <p style="color: var(--text-secondary); margin-bottom: 24px;">
+                After installation, verify everything is working correctly:
+            </p>
+
+            <ol class="steps">
+                <li>
+                    <h3>Check version</h3>
+                    <pre>pseudo --version</pre>
+                    <p>You should see the Pseudocode version number</p>
+                </li>
+                <li>
+                    <h3>Create a test file</h3>
+                    <p>Create a file called <code>hello.pseudo</code> with:</p>
+                    <pre>print("Hello, Pseudocode!")</pre>
+                </li>
+                <li>
+                    <h3>Run the file</h3>
+                    <pre>pseudo hello.pseudo</pre>
+                    <p>You should see: <code>Hello, Pseudocode!</code></p>
+                </li>
+                <li>
+                    <h3>Try JIT compilation (optional)</h3>
+                    <pre>pseudo -j hello.pseudo</pre>
+                    <p>The <code>-j</code> flag enables the JIT compiler for faster execution</p>
+                </li>
+            </ol>
+
+            <div class="info-box">
+                <strong>Having trouble?</strong> Check out the
+                <a href="https://github.com/NagusameCS/Pseudocode/issues">GitHub Issues</a>
+                page or open a new issue if you encounter problems.
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        function showPlatform(platform) {
+            document.querySelectorAll('.platform-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.platform-tab').forEach(el => el.classList.remove('active'));
+            document.getElementById(platform).classList.add('active');
+            event.target.classList.add('active');
+        }
+    </script>
+</body>
+
+</html>

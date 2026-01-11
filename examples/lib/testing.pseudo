@@ -1,0 +1,242 @@
+// Pseudocode Testing Library
+// Zero-overhead unit testing framework
+// 
+// Usage:
+//   import "./lib/testing.pseudo"
+//   Then use: assert_equal(actual, expected, "message")
+
+// ============ Test State ============
+
+let _tests_passed = 0
+let _tests_failed = 0
+let _assertions_passed = 0
+let _assertions_failed = 0
+let _current_suite = ""
+
+// ============ Assertions ============
+
+// Basic assertion
+fn assert(condition, message)
+    if not condition then
+        _assertions_failed = _assertions_failed + 1
+        print("  ✗ FAIL: " + message)
+        return false
+    end
+    _assertions_passed = _assertions_passed + 1
+    return true
+end
+
+// Assert two values are equal
+fn assert_equal(actual, expected, message)
+    if actual != expected then
+        _assertions_failed = _assertions_failed + 1
+        print("  ✗ FAIL: " + message)
+        print("    Expected: " + str(expected))
+        print("    Actual:   " + str(actual))
+        return false
+    end
+    _assertions_passed = _assertions_passed + 1
+    return true
+end
+
+// Assert two values are not equal
+fn assert_not_equal(actual, expected, message)
+    if actual == expected then
+        _assertions_failed = _assertions_failed + 1
+        print("  ✗ FAIL: " + message)
+        print("    Values should not be equal: " + str(actual))
+        return false
+    end
+    _assertions_passed = _assertions_passed + 1
+    return true
+end
+
+// Assert value is true
+fn assert_true(value, message)
+    return assert(value == true, message)
+end
+
+// Assert value is false  
+fn assert_false(value, message)
+    return assert(value == false, message)
+end
+
+// Assert value is nil
+fn assert_nil(value, message)
+    return assert(value == nil, message)
+end
+
+// Assert value is not nil
+fn assert_not_nil(value, message)
+    return assert(value != nil, message)
+end
+
+// Assert approximate equality (for floats)
+fn assert_approx(actual, expected, tolerance, message)
+    let diff = actual - expected
+    if diff < 0 then
+        diff = -diff
+    end
+    if diff > tolerance then
+        _assertions_failed = _assertions_failed + 1
+        print("  ✗ FAIL: " + message)
+        print("    Expected: " + str(expected) + " ± " + str(tolerance))
+        print("    Actual:   " + str(actual))
+        return false
+    end
+    _assertions_passed = _assertions_passed + 1
+    return true
+end
+
+// Assert value is greater than expected
+fn assert_greater(actual, expected, message)
+    if actual <= expected then
+        _assertions_failed = _assertions_failed + 1
+        print("  ✗ FAIL: " + message)
+        print("    Expected > " + str(expected) + ", got " + str(actual))
+        return false
+    end
+    _assertions_passed = _assertions_passed + 1
+    return true
+end
+
+// Assert value is less than expected
+fn assert_less(actual, expected, message)
+    if actual >= expected then
+        _assertions_failed = _assertions_failed + 1
+        print("  ✗ FAIL: " + message)
+        print("    Expected < " + str(expected) + ", got " + str(actual))
+        return false
+    end
+    _assertions_passed = _assertions_passed + 1
+    return true
+end
+
+// Assert array contains value
+fn assert_contains(arr, value, message)
+    for item in arr do
+        if item == value then
+            _assertions_passed = _assertions_passed + 1
+            return true
+        end
+    end
+    _assertions_failed = _assertions_failed + 1
+    print("  ✗ FAIL: " + message)
+    print("    Array does not contain: " + str(value))
+    return false
+end
+
+// Assert array length
+fn assert_length(arr, expected_len, message)
+    let actual_len = len(arr)
+    if actual_len != expected_len then
+        _assertions_failed = _assertions_failed + 1
+        print("  ✗ FAIL: " + message)
+        print("    Expected length: " + str(expected_len))
+        print("    Actual length:   " + str(actual_len))
+        return false
+    end
+    _assertions_passed = _assertions_passed + 1
+    return true
+end
+
+// Helper: check if string starts with prefix
+fn _str_starts_with(s, prefix)
+    let plen = len(prefix)
+    if len(s) < plen then
+        return false
+    end
+    for i in 0..plen do
+        if s[i] != prefix[i] then
+            return false
+        end
+    end
+    return true
+end
+
+// Helper: check if string ends with suffix
+fn _str_ends_with(s, suffix)
+    let slen = len(s)
+    let suflen = len(suffix)
+    if slen < suflen then
+        return false
+    end
+    let start = slen - suflen
+    for i in 0..suflen do
+        if s[start + i] != suffix[i] then
+            return false
+        end
+    end
+    return true
+end
+
+// Assert string starts with prefix
+fn assert_starts_with(s, prefix, message)
+    if not _str_starts_with(s, prefix) then
+        _assertions_failed = _assertions_failed + 1
+        print("  ✗ FAIL: " + message)
+        return false
+    end
+    _assertions_passed = _assertions_passed + 1
+    return true
+end
+
+// Assert string ends with suffix
+fn assert_ends_with(s, suffix, message)
+    if not _str_ends_with(s, suffix) then
+        _assertions_failed = _assertions_failed + 1
+        print("  ✗ FAIL: " + message)
+        return false
+    end
+    _assertions_passed = _assertions_passed + 1
+    return true
+end
+
+// ============ Test Organization ============
+
+// Start a test suite
+fn suite(name)
+    _current_suite = name
+    print("")
+    print("▶ " + name)
+end
+
+// Mark a test as passed
+fn pass(description)
+    _tests_passed = _tests_passed + 1
+    print("  ✓ " + description)
+end
+
+// Mark a test as failed
+fn fail(description)
+    _tests_failed = _tests_failed + 1
+    print("  ✗ " + description)
+end
+
+// Print test summary
+fn test_summary()
+    print("")
+    print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+    print("Test Results")
+    print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+    print("Tests:      " + str(_tests_passed) + " passed, " + str(_tests_failed) + " failed")
+    print("Assertions: " + str(_assertions_passed) + " passed, " + str(_assertions_failed) + " failed")
+    print("")
+    
+    if _tests_failed == 0 and _assertions_failed == 0 then
+        print("✓ All tests passed!")
+        return true
+    else
+        print("✗ Some tests failed")
+        return false
+    end
+end
+
+// Reset test state
+fn reset_tests()
+    _tests_passed = 0
+    _tests_failed = 0
+    _assertions_passed = 0
+    _assertions_failed = 0
+    _current_suite = ""
+end

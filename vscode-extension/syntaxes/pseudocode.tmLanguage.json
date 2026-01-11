@@ -13,7 +13,13 @@
             "include": "#numbers"
         },
         {
+            "include": "#function-definition"
+        },
+        {
             "include": "#keywords"
+        },
+        {
+            "include": "#block-keywords"
         },
         {
             "include": "#functions"
@@ -26,6 +32,9 @@
         },
         {
             "include": "#variables"
+        },
+        {
+            "include": "#punctuation"
         }
     ],
     "repository": {
@@ -36,9 +45,15 @@
                     "match": "//.*$"
                 },
                 {
-                    "name": "comment.block.pseudocode",
-                    "begin": "/\\*",
-                    "end": "\\*/"
+                    "name": "comment.block.documentation.pseudocode",
+                    "begin": "///",
+                    "end": "$",
+                    "patterns": [
+                        {
+                            "name": "keyword.other.documentation.pseudocode",
+                            "match": "@(param|returns?|example|throws|see|deprecated|since|author)\\b"
+                        }
+                    ]
                 }
             ]
         },
@@ -51,7 +66,11 @@
                     "patterns": [
                         {
                             "name": "constant.character.escape.pseudocode",
-                            "match": "\\\\."
+                            "match": "\\\\(n|r|t|\\\\|\"|0|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4})"
+                        },
+                        {
+                            "name": "constant.character.format.pseudocode",
+                            "match": "\\{[^}]*\\}"
                         }
                     ]
                 },
@@ -62,7 +81,7 @@
                     "patterns": [
                         {
                             "name": "constant.character.escape.pseudocode",
-                            "match": "\\\\."
+                            "match": "\\\\(n|r|t|\\\\|'|0)"
                         }
                     ]
                 }
@@ -72,66 +91,162 @@
             "patterns": [
                 {
                     "name": "constant.numeric.hex.pseudocode",
-                    "match": "\\b0[xX][0-9a-fA-F]+\\b"
+                    "match": "\\b0[xX][0-9a-fA-F_]+\\b"
                 },
                 {
                     "name": "constant.numeric.binary.pseudocode",
-                    "match": "\\b0[bB][01]+\\b"
+                    "match": "\\b0[bB][01_]+\\b"
+                },
+                {
+                    "name": "constant.numeric.octal.pseudocode",
+                    "match": "\\b0[oO][0-7_]+\\b"
                 },
                 {
                     "name": "constant.numeric.float.pseudocode",
-                    "match": "\\b[0-9]+\\.[0-9]+([eE][+-]?[0-9]+)?\\b"
+                    "match": "\\b[0-9][0-9_]*\\.[0-9][0-9_]*([eE][+-]?[0-9_]+)?\\b"
                 },
                 {
                     "name": "constant.numeric.integer.pseudocode",
-                    "match": "\\b[0-9]+\\b"
+                    "match": "\\b[0-9][0-9_]*\\b"
+                }
+            ]
+        },
+        "function-definition": {
+            "patterns": [
+                {
+                    "match": "\\b(fn)\\s+([a-zA-Z_][a-zA-Z0-9_]*)\\s*\\(([^)]*)\\)",
+                    "captures": {
+                        "1": {
+                            "name": "keyword.declaration.function.pseudocode"
+                        },
+                        "2": {
+                            "name": "entity.name.function.definition.pseudocode"
+                        },
+                        "3": {
+                            "patterns": [
+                                {
+                                    "name": "variable.parameter.pseudocode",
+                                    "match": "[a-zA-Z_][a-zA-Z0-9_]*"
+                                },
+                                {
+                                    "name": "punctuation.separator.parameter.pseudocode",
+                                    "match": ","
+                                }
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        "block-keywords": {
+            "patterns": [
+                {
+                    "name": "keyword.control.block.end.pseudocode",
+                    "match": "\\bend\\b"
+                },
+                {
+                    "name": "keyword.control.block.then.pseudocode",
+                    "match": "\\bthen\\b"
+                },
+                {
+                    "name": "keyword.control.block.do.pseudocode",
+                    "match": "\\bdo\\b"
                 }
             ]
         },
         "keywords": {
             "patterns": [
                 {
-                    "name": "keyword.control.pseudocode",
-                    "match": "\\b(if|elif|else|while|for|in|return|break|continue|match|case|_)\\b"
+                    "name": "keyword.control.conditional.pseudocode",
+                    "match": "\\b(if|elif|else|match|case)\\b"
+                },
+                {
+                    "name": "keyword.control.loop.pseudocode",
+                    "match": "\\b(while|for|in|to)\\b"
+                },
+                {
+                    "name": "keyword.control.flow.pseudocode",
+                    "match": "\\b(return|break|continue)\\b"
                 },
                 {
                     "name": "keyword.declaration.pseudocode",
                     "match": "\\b(fn|let|const|var)\\b"
                 },
                 {
-                    "name": "constant.language.pseudocode",
-                    "match": "\\b(true|false|nil|null)\\b"
+                    "name": "constant.language.boolean.pseudocode",
+                    "match": "\\b(true|false)\\b"
+                },
+                {
+                    "name": "constant.language.nil.pseudocode",
+                    "match": "\\b(nil|null)\\b"
                 },
                 {
                     "name": "keyword.operator.logical.pseudocode",
                     "match": "\\b(and|or|not)\\b"
+                },
+                {
+                    "name": "variable.language.wildcard.pseudocode",
+                    "match": "\\b_\\b"
                 }
             ]
         },
         "functions": {
             "patterns": [
                 {
-                    "name": "entity.name.function.pseudocode",
+                    "name": "entity.name.function.call.pseudocode",
                     "match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\s*(?=\\()"
-                },
-                {
-                    "match": "\\b(fn)\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
-                    "captures": {
-                        "1": {
-                            "name": "keyword.declaration.pseudocode"
-                        },
-                        "2": {
-                            "name": "entity.name.function.definition.pseudocode"
-                        }
-                    }
                 }
             ]
         },
         "builtins": {
             "patterns": [
                 {
-                    "name": "support.function.builtin.pseudocode",
-                    "match": "\\b(print|println|input|len|str|int|float|type|push|pop|slice|concat|split|join|replace|upper|lower|trim|substr|index_of|contains|starts_with|ends_with|char_at|ord|chr|keys|values|has|sort|reverse|range|abs|min|max|floor|ceil|round|sqrt|pow|random|clock|bit_and|bit_or|bit_xor|bit_not|bit_lshift|bit_rshift|popcount|clz|ctz|read_file|write_file|append_file|file_exists|delete_file|list_dir|mkdir|http_get|http_post|json_parse|json_stringify|exec|env|set_env|args|exit|sleep|dict|dict_get|dict_set|dict_has|dict_keys|dict_values|dict_delete|sin|cos|tan|asin|acos|atan|atan2|log|log10|log2|exp|hypot|vec_add|vec_sub|vec_mul|vec_div|vec_dot|vec_sum|vec_prod|vec_min|vec_max|vec_mean|vec_sort|vec_reverse|vec_unique|vec_zip|vec_range|bytes|encode_utf8|decode_utf8|encode_base64|decode_base64|hash)\\b"
+                    "name": "support.function.io.pseudocode",
+                    "match": "\\b(print|println|input|read_file|write_file|append_file|file_exists|delete_file|list_dir|mkdir)\\b"
+                },
+                {
+                    "name": "support.function.string.pseudocode",
+                    "match": "\\b(len|str|split|join|replace|upper|lower|trim|substr|index_of|contains|starts_with|ends_with|char_at|ord|chr)\\b"
+                },
+                {
+                    "name": "support.function.array.pseudocode",
+                    "match": "\\b(push|pop|slice|concat|sort|reverse|range|keys|values|has|map|filter|reduce|find|every|some|flat|unique|zip)\\b"
+                },
+                {
+                    "name": "support.function.math.pseudocode",
+                    "match": "\\b(abs|min|max|floor|ceil|round|sqrt|pow|random|sin|cos|tan|asin|acos|atan|atan2|log|log10|log2|exp|hypot)\\b"
+                },
+                {
+                    "name": "support.function.type.pseudocode",
+                    "match": "\\b(int|float|type|bool|is_nil|is_string|is_number|is_array|is_dict|is_fn)\\b"
+                },
+                {
+                    "name": "support.function.bitwise.pseudocode",
+                    "match": "\\b(bit_and|bit_or|bit_xor|bit_not|bit_lshift|bit_rshift|popcount|clz|ctz)\\b"
+                },
+                {
+                    "name": "support.function.http.pseudocode",
+                    "match": "\\b(http_get|http_post|http_put|http_delete|http_request)\\b"
+                },
+                {
+                    "name": "support.function.json.pseudocode",
+                    "match": "\\b(json_parse|json_stringify)\\b"
+                },
+                {
+                    "name": "support.function.dict.pseudocode",
+                    "match": "\\b(dict|dict_get|dict_set|dict_has|dict_keys|dict_values|dict_delete|dict_merge)\\b"
+                },
+                {
+                    "name": "support.function.vector.pseudocode",
+                    "match": "\\b(vec_add|vec_sub|vec_mul|vec_div|vec_dot|vec_sum|vec_prod|vec_min|vec_max|vec_mean|vec_sort|vec_reverse|vec_unique|vec_zip|vec_range)\\b"
+                },
+                {
+                    "name": "support.function.system.pseudocode",
+                    "match": "\\b(exec|env|set_env|args|exit|sleep|clock)\\b"
+                },
+                {
+                    "name": "support.function.encoding.pseudocode",
+                    "match": "\\b(bytes|encode_utf8|decode_utf8|encode_base64|decode_base64|hash|md5|sha256)\\b"
                 }
             ]
         },
@@ -142,8 +257,12 @@
                     "match": "(==|!=|<=|>=|<|>)"
                 },
                 {
+                    "name": "keyword.operator.assignment.compound.pseudocode",
+                    "match": "(\\+=|-=|\\*=|/=|%=)"
+                },
+                {
                     "name": "keyword.operator.assignment.pseudocode",
-                    "match": "(=|\\+=|-=|\\*=|/=)"
+                    "match": "="
                 },
                 {
                     "name": "keyword.operator.arithmetic.pseudocode",
@@ -152,14 +271,65 @@
                 {
                     "name": "keyword.operator.range.pseudocode",
                     "match": "\\.\\."
+                },
+                {
+                    "name": "keyword.operator.spread.pseudocode",
+                    "match": "\\.\\.\\."
                 }
             ]
         },
         "variables": {
             "patterns": [
                 {
+                    "match": "\\b(let)\\s+([a-zA-Z_][a-zA-Z0-9_]*)\\b",
+                    "captures": {
+                        "1": {
+                            "name": "keyword.declaration.pseudocode"
+                        },
+                        "2": {
+                            "name": "variable.other.declaration.pseudocode"
+                        }
+                    }
+                },
+                {
                     "name": "variable.other.pseudocode",
                     "match": "\\b[a-zA-Z_][a-zA-Z0-9_]*\\b"
+                }
+            ]
+        },
+        "punctuation": {
+            "patterns": [
+                {
+                    "name": "punctuation.bracket.round.open.pseudocode",
+                    "match": "\\("
+                },
+                {
+                    "name": "punctuation.bracket.round.close.pseudocode",
+                    "match": "\\)"
+                },
+                {
+                    "name": "punctuation.bracket.square.open.pseudocode",
+                    "match": "\\["
+                },
+                {
+                    "name": "punctuation.bracket.square.close.pseudocode",
+                    "match": "\\]"
+                },
+                {
+                    "name": "punctuation.bracket.curly.open.pseudocode",
+                    "match": "\\{"
+                },
+                {
+                    "name": "punctuation.bracket.curly.close.pseudocode",
+                    "match": "\\}"
+                },
+                {
+                    "name": "punctuation.separator.comma.pseudocode",
+                    "match": ","
+                },
+                {
+                    "name": "punctuation.separator.colon.pseudocode",
+                    "match": ":"
                 }
             ]
         }

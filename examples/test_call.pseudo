@@ -1,0 +1,19 @@
+// Direct call test
+fn is_big(x)
+    print("is_big called with: " + str(x))
+    let result = x > 3
+    print("returning: " + str(result))
+    return result
+end
+
+// Direct call
+print("Direct call:")
+let r1 = is_big(4)
+print("r1=" + str(r1))
+
+// Indirect call through variable
+print("")
+print("Through variable:")
+let f = is_big
+let r2 = f(4)
+print("r2=" + str(r2))

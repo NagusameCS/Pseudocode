@@ -1,0 +1,7 @@
+// Tiny library
+fn tiny_caller(f, v)
+    print("tiny_caller calling f(" + str(v) + ")")
+    let r = f(v)
+    print("tiny_caller got: " + str(r))
+    return r
+end

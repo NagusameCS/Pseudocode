@@ -1,0 +1,141 @@
+// String Utilities Library for Pseudocode
+// Import with: import "strings.pseudo"
+
+// Repeat a string n times
+fn repeat_string(s, n)
+    let result = ""
+    for i in 0..n do
+        result = result + s
+    end
+    return result
+end
+
+// Pad a string on the left to reach target length
+fn pad_left(s, target_len, pad_char)
+    let current_len = len(s)
+    if current_len >= target_len then
+        return s
+    end
+    return repeat_string(pad_char, target_len - current_len) + s
+end
+
+// Pad a string on the right to reach target length
+fn pad_right(s, target_len, pad_char)
+    let current_len = len(s)
+    if current_len >= target_len then
+        return s
+    end
+    return s + repeat_string(pad_char, target_len - current_len)
+end
+
+// Center a string
+fn center(s, target_len, pad_char)
+    let current_len = len(s)
+    if current_len >= target_len then
+        return s
+    end
+    let total_pad = target_len - current_len
+    let left_pad = floor(total_pad / 2)
+    let right_pad = total_pad - left_pad
+    return repeat_string(pad_char, left_pad) + s + repeat_string(pad_char, right_pad)
+end
+
+// Reverse a string
+fn reverse_string(s)
+    let result = ""
+    let i = len(s) - 1
+    while i >= 0 do
+        result = result + substr(s, i, 1)
+        i = i - 1
+    end
+    return result
+end
+
+// Check if string is a palindrome
+fn is_palindrome(s)
+    let cleaned = lower(s)
+    return cleaned == reverse_string(cleaned)
+end
+
+// Count occurrences of a substring
+fn count_substring(s, sub)
+    let count = 0
+    let i = 0
+    while i <= len(s) - len(sub) do
+        if substr(s, i, len(sub)) == sub then
+            count = count + 1
+        end
+        i = i + 1
+    end
+    return count
+end
+
+// Word count (split by spaces)
+fn word_count(s)
+    let words = split(trim(s), " ")
+    let count = 0
+    for word in words do
+        if len(trim(word)) > 0 then
+            count = count + 1
+        end
+    end
+    return count
+end
+
+// Capitalize first letter of each word
+fn title_case(s)
+    let words = split(s, " ")
+    let result = []
+    for word in words do
+        if len(word) > 0 then
+            let first = upper(substr(word, 0, 1))
+            let rest = lower(substr(word, 1, len(word) - 1))
+            push(result, first + rest)
+        end
+    end
+    return join(result, " ")
+end
+
+// Truncate string with ellipsis
+fn truncate(s, max_len)
+    if len(s) <= max_len then
+        return s
+    end
+    return substr(s, 0, max_len - 3) + "..."
+end
+
+// Remove all whitespace
+fn remove_whitespace(s)
+    let result = ""
+    for i in 0..len(s) do
+        let c = substr(s, i, 1)
+        if c != " " and c != "\t" and c != "\n" and c != "\r" then
+            result = result + c
+        end
+    end
+    return result
+end
+
+// Wrap text at a given width
+fn word_wrap(s, width)
+    let words = split(s, " ")
+    let lines = []
+    let current_line = ""
+    
+    for word in words do
+        if len(current_line) == 0 then
+            current_line = word
+        elif len(current_line) + 1 + len(word) <= width then
+            current_line = current_line + " " + word
+        else
+            push(lines, current_line)
+            current_line = word
+        end
+    end
+    
+    if len(current_line) > 0 then
+        push(lines, current_line)
+    end
+    
+    return join(lines, "\n")
+end

@@ -1,0 +1,49 @@
+// Example: Using the Import System
+// This demonstrates Pseudocode's zero-overhead import system
+
+// Import libraries from the lib folder
+import "./lib/math.pseudo"
+import "./lib/strings.pseudo"
+import "./lib/collections.pseudo"
+
+// Now we can use all the functions from the imported libraries!
+
+print("=== Math Library Demo ===")
+print("PI = " + str(PI))
+print("E = " + str(E))
+print("5! = " + str(factorial(5)))
+print("fib(10) = " + str(fib(10)))
+print("gcd(48, 18) = " + str(gcd(48, 18)))
+print("lcm(4, 6) = " + str(lcm(4, 6)))
+print("is_prime(17) = " + str(is_prime(17)))
+print("is_prime(18) = " + str(is_prime(18)))
+print("power(2, 10) = " + str(power(2, 10)))
+print("")
+
+print("=== String Library Demo ===")
+print("repeat_string('ab', 3) = " + repeat_string("ab", 3))
+print("pad_left('42', 5, '0') = " + pad_left("42", 5, "0"))
+print("center('hello', 11, '-') = " + center("hello", 11, "-"))
+print("reverse_string('hello') = " + reverse_string("hello"))
+print("is_palindrome('racecar') = " + str(is_palindrome("racecar")))
+print("title_case('hello world') = " + title_case("hello world"))
+print("word_count('one two three') = " + str(word_count("one two three")))
+print("")
+
+print("=== Collections Library Demo ===")
+let nums = range_array(1, 6)
+print("range_array(1, 6) = " + str(nums))
+print("sum = " + str(sum(nums)))
+print("average = " + str(average(nums)))
+
+let arr = [3, 1, 4, 1, 5, 9, 2, 6, 5]
+print("array: " + str(arr))
+print("unique: " + str(unique(arr)))
+print("frequencies: " + str(frequencies(arr)))
+
+let nested = [[1, 2], [3, 4], [5, 6]]
+print("nested: " + str(nested))
+print("flattened: " + str(flatten(nested)))
+
+print("")
+print("=== All imports worked! Zero runtime overhead. ===")

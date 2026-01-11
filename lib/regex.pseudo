@@ -1,0 +1,184 @@
+// Pseudocode Standard Library - Regular Expressions
+// Provides high-level regex utilities using VM builtins
+// Uses PCRE2 syntax for patterns
+
+// ============================================================
+// BASIC REGEX FUNCTIONS (wrappers around builtins)
+// ============================================================
+
+// Check if pattern matches anywhere in text
+fn regex_test(text, pattern)
+    return regex_match(text, pattern)
+end
+
+// Find all matches of pattern in text
+fn regex_find_all(text, pattern)
+    return regex_find(text, pattern)
+end
+
+// Replace all occurrences of pattern with replacement
+fn regex_replace_all(text, pattern, replacement)
+    return regex_replace(text, pattern, replacement)
+end
+
+// ============================================================
+// PATTERN TESTING
+// ============================================================
+
+// Test if entire string matches pattern (anchored)
+fn regex_matches_full(text, pattern)
+    let anchored = "^" + pattern + "$"
+    return regex_match(text, anchored)
+end
+
+// Find first match of pattern in text (or nil if not found)
+fn regex_find_first(text, pattern)
+    let matches = regex_find(text, pattern)
+    if len(matches) > 0 then
+        return matches[0]
+    end
+    return nil
+end
+
+// Check if text starts with pattern
+fn regex_starts_with(text, pattern)
+    let anchored = "^" + pattern
+    return regex_match(text, anchored)
+end
+
+// Check if text ends with pattern
+fn regex_ends_with(text, pattern)
+    let anchored = pattern + "$"
+    return regex_match(text, anchored)
+end
+
+// ============================================================
+// COUNTING
+// ============================================================
+
+// Count number of matches in text
+fn regex_count(text, pattern)
+    let matches = regex_find(text, pattern)
+    return len(matches)
+end
+
+// ============================================================
+// VALIDATION FUNCTIONS
+// ============================================================
+
+// Validate email address
+fn is_email(text)
+    return regex_matches_full(text, "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}")
+end
+
+// Validate URL
+fn is_url(text)
+    return regex_match(text, "^https?://")
+end
+
+// Validate ISO date (YYYY-MM-DD)
+fn is_iso_date(text)
+    return regex_matches_full(text, "[0-9]{4}-[0-9]{2}-[0-9]{2}")
+end
+
+// Check if string is alphanumeric only
+fn is_alphanumeric(text)
+    return regex_matches_full(text, "[a-zA-Z0-9]+")
+end
+
+// Check if string is digits only
+fn is_numeric(text)
+    return regex_matches_full(text, "[0-9]+")
+end
+
+// Check if string is alphabetic only
+fn is_alpha(text)
+    return regex_matches_full(text, "[a-zA-Z]+")
+end
+
+// ============================================================
+// TEXT PROCESSING
+// ============================================================
+
+// Remove all matches of pattern from text
+fn regex_remove(text, pattern)
+    return regex_replace(text, pattern, "")
+end
+
+// Normalize whitespace (collapse multiple spaces to single)
+fn normalize_whitespace(text)
+    return regex_replace(text, "\\s+", " ")
+end
+
+// Strip HTML tags
+fn strip_html(text)
+    return regex_replace(text, "<[^>]+>", "")
+end
+
+// Extract all emails from text
+fn extract_emails(text)
+    return regex_find(text, "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}")
+end
+
+// Extract all URLs from text
+fn extract_urls(text)
+    return regex_find(text, "https?://[a-zA-Z0-9.-]+[/a-zA-Z0-9._~:/?#@!$&()*+,;=-]*")
+end
+
+// Extract all numbers from text
+fn extract_numbers(text)
+    return regex_find(text, "-?[0-9]+\\.?[0-9]*")
+end
+
+// Extract all words from text
+fn extract_words(text)
+    return regex_find(text, "[a-zA-Z]+")
+end
+
+// ============================================================
+// WORD BOUNDARIES
+// ============================================================
+
+// Match whole word only
+fn regex_match_word(text, word)
+    let pattern = "\\b" + word + "\\b"
+    return regex_match(text, pattern)
+end
+
+// Find all whole words matching pattern
+fn regex_find_words(text, pattern)
+    let word_pattern = "\\b" + pattern + "\\b"
+    return regex_find(text, word_pattern)
+end
+
+// Replace whole word only
+fn regex_replace_word(text, word, replacement)
+    let pattern = "\\b" + word + "\\b"
+    return regex_replace(text, pattern, replacement)
+end
+
+// ============================================================
+// SPLITTING
+// ============================================================
+
+// Split text by pattern
+fn regex_split(text, pattern)
+    let result = []
+    let remaining = text
+    let matches = regex_find(remaining, pattern)
+    
+    if len(matches) == 0 then
+        return [text]
+    end
+    
+    for m in matches do
+        let idx = index_of(remaining, m)
+        if idx >= 0 then
+            push(result, substr(remaining, 0, idx))
+            remaining = substr(remaining, idx + len(m), len(remaining) - idx - len(m))
+        end
+    end
+    
+    push(result, remaining)
+    return result
+end

@@ -936,32 +936,88 @@ export function createDiagnostics(
 // ============ Formatter ============
 
 export class PseudocodeDocumentFormatter implements vscode.DocumentFormattingEditProvider {
-    provideDocumentFormattingEdits(document: vscode.TextDocument): vscode.TextEdit[] {
+    provideDocumentFormattingEdits(document: vscode.TextDocument, options: vscode.FormattingOptions): vscode.TextEdit[] {
         const edits: vscode.TextEdit[] = [];
         const text = document.getText();
         const lines = text.split('\n');
 
+        const indentSize = options.tabSize || 4;
+        const insertSpaces = options.insertSpaces !== false;
+        const indentChar = insertSpaces ? ' '.repeat(indentSize) : '\t';
+
         let indentLevel = 0;
-        const indentStr = '    '; // 4 spaces
 
         for (let i = 0; i < lines.length; i++) {
-            const line = lines[i];
+            const originalLine = lines[i];
+            let line = originalLine;
+
+            // Remove trailing whitespace
+            const trimmedRight = line.trimEnd();
+            if (trimmedRight !== line) {
+                edits.push(vscode.TextEdit.replace(
+                    new vscode.Range(i, trimmedRight.length, i, line.length),
+                    ''
+                ));
+                line = trimmedRight;
+            }
+
             const trimmed = line.trim();
 
-            if (trimmed === '') continue;
+            // Skip empty lines and comments
+            if (trimmed === '' || trimmed.startsWith('//')) {
+                continue;
+            }
 
-            // Decrease indent for 'end', 'else', 'elif', 'case'
-            if (trimmed.match(/^(end|else|elif|case)\b/)) {
+            // Decrease indent for closing/continuation keywords
+            if (trimmed.match(/^(end|else|elif|case|catch|finally)\b/)) {
                 indentLevel = Math.max(0, indentLevel - 1);
             }
 
-            const expectedIndent = indentStr.repeat(indentLevel);
+            const expectedIndent = indentChar.repeat(indentLevel);
             const currentIndent = line.match(/^\s*/)?.[0] || '';
 
             if (currentIndent !== expectedIndent) {
                 edits.push(vscode.TextEdit.replace(
                     new vscode.Range(i, 0, i, currentIndent.length),
                     expectedIndent
+                ));
+            }
+
+            // Format operators with proper spacing
+            let formattedContent = trimmed;
+
+            // Normalize comparison operators (ensure single space around them)
+            formattedContent = formattedContent.replace(/\s*(==|!=|<=|>=|<|>)\s*/g, ' $1 ');
+
+            // Normalize assignment (but not ==)
+            formattedContent = formattedContent.replace(/([^=!<>])\s*=\s*([^=])/g, '$1 = $2');
+
+            // Normalize arithmetic operators
+            formattedContent = formattedContent.replace(/\s*(\+|-|\*|\/|%)\s*/g, ' $1 ');
+
+            // Fix double spaces
+            formattedContent = formattedContent.replace(/  +/g, ' ');
+
+            // Remove space after ( and before )
+            formattedContent = formattedContent.replace(/\(\s+/g, '(');
+            formattedContent = formattedContent.replace(/\s+\)/g, ')');
+
+            // Remove space after [ and before ]
+            formattedContent = formattedContent.replace(/\[\s+/g, '[');
+            formattedContent = formattedContent.replace(/\s+\]/g, ']');
+
+            // Ensure space after commas
+            formattedContent = formattedContent.replace(/,([^\s])/g, ', $1');
+
+            // Ensure space after keywords
+            formattedContent = formattedContent.replace(/\b(if|elif|while|for|match|return|and|or|not)\(/g, '$1 (');
+
+            // Apply content formatting if changed
+            if (formattedContent !== trimmed) {
+                const contentStart = line.indexOf(trimmed);
+                edits.push(vscode.TextEdit.replace(
+                    new vscode.Range(i, contentStart, i, contentStart + trimmed.length),
+                    formattedContent
                 ));
             }
 
@@ -973,13 +1029,16 @@ export class PseudocodeDocumentFormatter implements vscode.DocumentFormattingEdi
                 trimmed.match(/^match\s+/) ||
                 trimmed.match(/^else\s*$/) ||
                 trimmed.match(/^elif\s+.*\s+then\s*$/) ||
-                trimmed.match(/^case\s+/)) {
+                trimmed.match(/^case\s+/) ||
+                trimmed.match(/^try\s*$/) ||
+                trimmed.match(/^catch\b/) ||
+                trimmed.match(/^finally\s*$/) ||
+                trimmed.match(/^class\s+/)) {
                 indentLevel++;
             }
 
-            // 'end' already decreased, so re-increase for next line... wait no
-            // Actually 'else' and 'elif' should be at same level as 'if', then increase
-            if (trimmed.match(/^(else|elif)\b/)) {
+            // Continuation keywords: decrease happened, now increase for body
+            if (trimmed.match(/^(else|elif|catch|finally)\b/)) {
                 indentLevel++;
             }
         }

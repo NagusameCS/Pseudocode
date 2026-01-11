@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Getting Started - Pseudocode</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <meta name="description"
+        content="Learn Pseudocode in 10 minutes. A beginner-friendly tutorial for the fast, intuitive programming language.">
+    <style>
+        :root {
+            --bg-primary: #1b1b1f;
+            --bg-secondary: #232327;
+            --bg-tertiary: #2a2a2e;
+            --text-primary: #f5f5f7;
+            --text-secondary: #b3b3b6;
+            --text-tertiary: #8e8e93;
+            --accent: #a78bfa;
+            --accent-dim: #7c5cbf;
+            --border: #3a3a3e;
+            --code-bg: #161618;
+            --success: #34d399;
+            --warning: #fbbf24;
+            --error: #f87171;
+            --link: #93c5fd;
+            --sidebar-width: 260px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.7;
+            font-size: 16px;
+        }
+
+        a {
+            color: var(--link);
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+        }
+
+        .header-inner {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 56px;
+            padding: 0 24px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .logo {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        nav ul {
+            display: flex;
+            gap: 24px;
+            list-style: none;
+        }
+
+        nav a {
+            color: var(--text-secondary);
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        nav a:hover {
+            color: var(--text-primary);
+            text-decoration: none;
+        }
+
+        nav a.active {
+            color: var(--accent);
+        }
+
+        .layout {
+            display: flex;
+            margin-top: 56px;
+        }
+
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            position: fixed;
+            top: 56px;
+            bottom: 0;
+            overflow-y: auto;
+            padding: 24px 0;
+        }
+
+        .sidebar-section {
+            margin-bottom: 24px;
+        }
+
+        .sidebar-title {
+            padding: 0 20px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-tertiary);
+            margin-bottom: 8px;
+        }
+
+        .sidebar-link {
+            display: block;
+            padding: 8px 20px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            border-left: 2px solid transparent;
+            transition: all 0.15s;
+        }
+
+        .sidebar-link:hover {
+            color: var(--text-primary);
+            background: var(--bg-tertiary);
+            text-decoration: none;
+        }
+
+        .sidebar-link.active {
+            color: var(--accent);
+            border-left-color: var(--accent);
+            background: rgba(167, 139, 250, 0.1);
+        }
+
+        .content {
+            margin-left: var(--sidebar-width);
+            flex: 1;
+            padding: 48px 64px;
+            max-width: 900px;
+        }
+
+        .content h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+
+        .content h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-top: 48px;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+        }
+
+        .content h3 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-top: 32px;
+            margin-bottom: 12px;
+            color: var(--text-primary);
+        }
+
+        .content p {
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+        }
+
+        .subtitle {
+            font-size: 1.125rem;
+            color: var(--text-tertiary);
+            margin-bottom: 32px;
+        }
+
+        .code-block {
+            background: var(--code-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin: 20px 0;
+            overflow: hidden;
+        }
+
+        .code-header {
+            background: var(--bg-tertiary);
+            padding: 10px 16px;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .copy-btn {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .copy-btn:hover {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+
+        pre {
+            padding: 20px;
+            overflow-x: auto;
+            font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            margin: 0;
+        }
+
+        code {
+            font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+            font-size: 0.9em;
+            background: var(--bg-tertiary);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .keyword {
+            color: #c084fc;
+        }
+
+        .function {
+            color: #60a5fa;
+        }
+
+        .string {
+            color: #34d399;
+        }
+
+        .number {
+            color: #fb923c;
+        }
+
+        .comment {
+            color: #6b7280;
+        }
+
+        .builtin {
+            color: #fbbf24;
+        }
+
+        .info-box {
+            background: rgba(167, 139, 250, 0.1);
+            border: 1px solid rgba(167, 139, 250, 0.3);
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin: 20px 0;
+        }
+
+        .info-box.tip {
+            background: rgba(52, 211, 153, 0.1);
+            border-color: rgba(52, 211, 153, 0.3);
+        }
+
+        .info-box.warning {
+            background: rgba(251, 191, 36, 0.1);
+            border-color: rgba(251, 191, 36, 0.3);
+        }
+
+        .info-box-title {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .info-box p {
+            margin: 0;
+            font-size: 14px;
+        }
+
+        .step-list {
+            counter-reset: step;
+            list-style: none;
+            padding: 0;
+        }
+
+        .step-list li {
+            counter-increment: step;
+            position: relative;
+            padding-left: 48px;
+            margin-bottom: 24px;
+        }
+
+        .step-list li::before {
+            content: counter(step);
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 32px;
+            height: 32px;
+            background: var(--accent);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 14px;
+            color: white;
+        }
+
+        .step-list li h4 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .step-list li p {
+            font-size: 14px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        th,
+        td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+            font-size: 14px;
+        }
+
+        th {
+            color: var(--text-tertiary);
+            font-weight: 500;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            background: var(--bg-secondary);
+        }
+
+        td code {
+            color: var(--accent);
+        }
+
+        .nav-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 64px;
+            padding-top: 32px;
+            border-top: 1px solid var(--border);
+        }
+
+        .nav-btn {
+            display: flex;
+            flex-direction: column;
+            padding: 16px 24px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .nav-btn:hover {
+            border-color: var(--accent);
+            text-decoration: none;
+        }
+
+        .nav-btn-label {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            margin-bottom: 4px;
+        }
+
+        .nav-btn-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                display: none;
+            }
+
+            .content {
+                margin-left: 0;
+                padding: 24px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div class="header-inner">
+            <a href="index.html" class="logo">
+                <img src="favicon.svg" alt="Pseudocode" width="24" height="24" style="border-radius: 5px;">
+                Pseudocode
+            </a>
+            <nav>
+                <ul>
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="getting-started.html" class="active">Tutorial</a></li>
+                    <li><a href="examples.html">Examples</a></li>
+                    <li><a href="reference.html">Reference</a></li>
+                    <li><a href="install.html">Install</a></li>
+                    <li><a href="https://github.com/NagusameCS/Pseudocode" target="_blank">GitHub</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <div class="layout">
+        <aside class="sidebar">
+            <div class="sidebar-section">
+                <div class="sidebar-title">Getting Started</div>
+                <a href="#introduction" class="sidebar-link active">Introduction</a>
+                <a href="#installation" class="sidebar-link">Installation</a>
+                <a href="#hello-world" class="sidebar-link">Hello World</a>
+            </div>
+            <div class="sidebar-section">
+                <div class="sidebar-title">Basics</div>
+                <a href="#variables" class="sidebar-link">Variables</a>
+                <a href="#data-types" class="sidebar-link">Data Types</a>
+                <a href="#operators" class="sidebar-link">Operators</a>
+                <a href="#functions" class="sidebar-link">Functions</a>
+            </div>
+            <div class="sidebar-section">
+                <div class="sidebar-title">Control Flow</div>
+                <a href="#conditionals" class="sidebar-link">Conditionals</a>
+                <a href="#loops" class="sidebar-link">Loops</a>
+                <a href="#pattern-matching" class="sidebar-link">Pattern Matching</a>
+            </div>
+            <div class="sidebar-section">
+                <div class="sidebar-title">Next Steps</div>
+                <a href="#builtin-functions" class="sidebar-link">Built-in Functions</a>
+                <a href="#next-steps" class="sidebar-link">What's Next</a>
+            </div>
+        </aside>
+
+        <main class="content">
+            <h1 id="introduction">Getting Started with Pseudocode</h1>
+            <p class="subtitle">Learn Pseudocode in 10 minutes — from zero to productive</p>
+
+            <p>
+                Pseudocode is a high-performance programming language designed to look like the pseudocode you'd write
+                in a textbook. It's fast (2-5x faster than Python), intuitive, and comes with 80+ built-in functions
+                for common tasks.
+            </p>
+
+            <div class="info-box">
+                <div class="info-box-title">💡 Why Pseudocode?</div>
+                <p>
+                    If you've ever written pseudocode in a algorithms class and wished it would just run —
+                    that's exactly what this language does. No semicolons, no braces, just clear readable code.
+                </p>
+            </div>
+
+            <h2 id="installation">Installation</h2>
+
+            <p>There are two ways to get started with Pseudocode:</p>
+
+            <h3>Option 1: VS Code Extension (Recommended)</h3>
+            <p>The easiest way to get started. Install the VS Code extension for full IntelliSense, debugging, and
+                one-click execution.</p>
+
+            <ol class="step-list">
+                <li>
+                    <h4>Install VS Code</h4>
+                    <p>Download from <a href="https://code.visualstudio.com/" target="_blank">code.visualstudio.com</a>
+                    </p>
+                </li>
+                <li>
+                    <h4>Install the Extension</h4>
+                    <p>Search for "Pseudocode" in the Extensions panel, or <a
+                            href="https://marketplace.visualstudio.com/items?itemName=NagusameCS.pseudocode-lang"
+                            target="_blank">install directly</a>.</p>
+                </li>
+                <li>
+                    <h4>Create a .pseudo file</h4>
+                    <p>Create a new file with the <code>.pseudo</code> extension and start coding!</p>
+                </li>
+            </ol>
+
+            <h3>Option 2: Build from Source</h3>
+            <p>For advanced users who want the command-line compiler:</p>
+
+            <div class="code-block">
+                <div class="code-header">Terminal</div>
+                <pre>git clone https://github.com/NagusameCS/Pseudocode.git
+cd Pseudocode/cvm
+make
+./pseudo examples/hello.pseudo</pre>
+            </div>
+
+            <h2 id="hello-world">Hello World</h2>
+
+            <p>Let's write your first Pseudocode program:</p>
+
+            <div class="code-block">
+                <div class="code-header">hello.pseudo</div>
+                <pre><span class="comment">// Your first Pseudocode program</span>
+<span class="function">print</span>(<span class="string">"Hello, World!"</span>)</pre>
+            </div>
+
+            <p>Run it with <code>Ctrl+Shift+R</code> in VS Code, or from the terminal:</p>
+
+            <div class="code-block">
+                <div class="code-header">Terminal</div>
+                <pre>./pseudo hello.pseudo</pre>
+            </div>
+
+            <p>Output:</p>
+            <div class="code-block">
+                <div class="code-header">Output</div>
+                <pre>Hello, World!</pre>
+            </div>
+
+            <h2 id="variables">Variables</h2>
+
+            <p>Use <code>let</code> to declare variables. Pseudocode is dynamically typed.</p>
+
+            <div class="code-block">
+                <div class="code-header">variables.pseudo</div>
+                <pre><span class="comment">// Declare variables with 'let'</span>
+<span class="keyword">let</span> name = <span class="string">"Alice"</span>
+<span class="keyword">let</span> age = <span class="number">25</span>
+<span class="keyword">let</span> pi = <span class="number">3.14159</span>
+<span class="keyword">let</span> is_student = <span class="keyword">true</span>
+
+<span class="function">print</span>(<span class="string">"Name: "</span> + name)
+<span class="function">print</span>(<span class="string">"Age: "</span> + <span class="function">str</span>(age))
+
+<span class="comment">// Reassign without 'let'</span>
+age = <span class="number">26</span>
+<span class="function">print</span>(<span class="string">"Happy birthday! Now: "</span> + <span class="function">str</span>(age))</pre>
+            </div>
+
+            <h2 id="data-types">Data Types</h2>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Type</th>
+                        <th>Example</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Number</td>
+                        <td><code>42</code>, <code>3.14</code></td>
+                        <td>64-bit floating point</td>
+                    </tr>
+                    <tr>
+                        <td>String</td>
+                        <td><code>"hello"</code>, <code>'world'</code></td>
+                        <td>UTF-8 text</td>
+                    </tr>
+                    <tr>
+                        <td>Boolean</td>
+                        <td><code>true</code>, <code>false</code></td>
+                        <td>Logical values</td>
+                    </tr>
+                    <tr>
+                        <td>Nil</td>
+                        <td><code>nil</code></td>
+                        <td>No value</td>
+                    </tr>
+                    <tr>
+                        <td>Array</td>
+                        <td><code>[1, 2, 3]</code></td>
+                        <td>Ordered collection</td>
+                    </tr>
+                    <tr>
+                        <td>Dictionary</td>
+                        <td><code>{"key": "value"}</code></td>
+                        <td>Key-value pairs</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="code-block">
+                <div class="code-header">data_types.pseudo</div>
+                <pre><span class="comment">// Arrays</span>
+<span class="keyword">let</span> numbers = [<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>]
+<span class="function">print</span>(numbers[<span class="number">0</span>])     <span class="comment">// 1</span>
+<span class="function">print</span>(<span class="function">len</span>(numbers))   <span class="comment">// 5</span>
+
+<span class="comment">// Dictionaries</span>
+<span class="keyword">let</span> person = {<span class="string">"name"</span>: <span class="string">"Alice"</span>, <span class="string">"age"</span>: <span class="number">25</span>}
+<span class="function">print</span>(person[<span class="string">"name"</span>])  <span class="comment">// Alice</span></pre>
+            </div>
+
+            <h2 id="operators">Operators</h2>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Category</th>
+                        <th>Operators</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Arithmetic</td>
+                        <td><code>+</code> <code>-</code> <code>*</code> <code>/</code> <code>%</code></td>
+                    </tr>
+                    <tr>
+                        <td>Comparison</td>
+                        <td><code>==</code> <code>!=</code> <code><</code> <code>></code> <code><=</code>
+                            <code>>=</code></td>
+                    </tr>
+                    <tr>
+                        <td>Logical</td>
+                        <td><code>and</code> <code>or</code> <code>not</code></td>
+                    </tr>
+                    <tr>
+                        <td>String</td>
+                        <td><code>+</code> (concatenation)</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h2 id="functions">Functions</h2>
+
+            <p>Define functions with <code>fn</code> and close with <code>end</code>:</p>
+
+            <div class="code-block">
+                <div class="code-header">functions.pseudo</div>
+                <pre><span class="comment">// Define a function</span>
+<span class="keyword">fn</span> <span class="function">greet</span>(name)
+    <span class="function">print</span>(<span class="string">"Hello, "</span> + name + <span class="string">"!"</span>)
+<span class="keyword">end</span>
+
+<span class="comment">// Call it</span>
+<span class="function">greet</span>(<span class="string">"World"</span>)
+
+<span class="comment">// Function with return value</span>
+<span class="keyword">fn</span> <span class="function">add</span>(a, b)
+    <span class="keyword">return</span> a + b
+<span class="keyword">end</span>
+
+<span class="keyword">let</span> result = <span class="function">add</span>(<span class="number">5</span>, <span class="number">3</span>)
+<span class="function">print</span>(result)  <span class="comment">// 8</span>
+
+<span class="comment">// Recursive function</span>
+<span class="keyword">fn</span> <span class="function">factorial</span>(n)
+    <span class="keyword">if</span> n <= <span class="number">1</span> <span class="keyword">then</span>
+        <span class="keyword">return</span> <span class="number">1</span>
+    <span class="keyword">end</span>
+    <span class="keyword">return</span> n * <span class="function">factorial</span>(n - <span class="number">1</span>)
+<span class="keyword">end</span>
+
+<span class="function">print</span>(<span class="function">factorial</span>(<span class="number">5</span>))  <span class="comment">// 120</span></pre>
+            </div>
+
+            <h2 id="conditionals">Conditionals</h2>
+
+            <p>Use <code>if/then/end</code>, <code>elif</code>, and <code>else</code>:</p>
+
+            <div class="code-block">
+                <div class="code-header">conditionals.pseudo</div>
+                <pre><span class="keyword">let</span> score = <span class="number">85</span>
+
+<span class="keyword">if</span> score >= <span class="number">90</span> <span class="keyword">then</span>
+    <span class="function">print</span>(<span class="string">"A - Excellent!"</span>)
+<span class="keyword">elif</span> score >= <span class="number">80</span> <span class="keyword">then</span>
+    <span class="function">print</span>(<span class="string">"B - Good job!"</span>)
+<span class="keyword">elif</span> score >= <span class="number">70</span> <span class="keyword">then</span>
+    <span class="function">print</span>(<span class="string">"C - Passing"</span>)
+<span class="keyword">else</span>
+    <span class="function">print</span>(<span class="string">"Need improvement"</span>)
+<span class="keyword">end</span>
+
+<span class="comment">// Logical operators</span>
+<span class="keyword">let</span> age = <span class="number">20</span>
+<span class="keyword">let</span> has_id = <span class="keyword">true</span>
+
+<span class="keyword">if</span> age >= <span class="number">18</span> <span class="keyword">and</span> has_id <span class="keyword">then</span>
+    <span class="function">print</span>(<span class="string">"Access granted"</span>)
+<span class="keyword">end</span></pre>
+            </div>
+
+            <h2 id="loops">Loops</h2>
+
+            <h3>For Loops</h3>
+            <p>Iterate over ranges or arrays with <code>for/in/do</code>:</p>
+
+            <div class="code-block">
+                <div class="code-header">loops.pseudo</div>
+                <pre><span class="comment">// Range loop (0 to 4)</span>
+<span class="keyword">for</span> i <span class="keyword">in</span> <span class="number">0</span>..<span class="number">5</span> <span class="keyword">do</span>
+    <span class="function">print</span>(i)
+<span class="keyword">end</span>
+
+<span class="comment">// Loop over array</span>
+<span class="keyword">let</span> fruits = [<span class="string">"apple"</span>, <span class="string">"banana"</span>, <span class="string">"cherry"</span>]
+<span class="keyword">for</span> fruit <span class="keyword">in</span> fruits <span class="keyword">do</span>
+    <span class="function">print</span>(<span class="string">"I like "</span> + fruit)
+<span class="keyword">end</span>
+
+<span class="comment">// Range with step (using range function)</span>
+<span class="keyword">for</span> i <span class="keyword">in</span> <span class="function">range</span>(<span class="number">0</span>, <span class="number">10</span>, <span class="number">2</span>) <span class="keyword">do</span>
+    <span class="function">print</span>(i)  <span class="comment">// 0, 2, 4, 6, 8</span>
+<span class="keyword">end</span></pre>
+            </div>
+
+            <h3>While Loops</h3>
+
+            <div class="code-block">
+                <div class="code-header">while.pseudo</div>
+                <pre><span class="keyword">let</span> count = <span class="number">0</span>
+
+<span class="keyword">while</span> count < <span class="number">5</span> <span class="keyword">do</span>
+    <span class="function">print</span>(<span class="string">"Count: "</span> + <span class="function">str</span>(count))
+    count = count + <span class="number">1</span>
+<span class="keyword">end</span></pre>
+            </div>
+
+            <div class="info-box tip">
+                <div class="info-box-title">⚡ Performance Tip</div>
+                <p>
+                    For loops with numeric ranges are automatically JIT-compiled to native machine code.
+                    This makes them as fast as C for compute-intensive operations!
+                </p>
+            </div>
+
+            <h2 id="pattern-matching">Pattern Matching</h2>
+
+            <p>Use <code>match/case</code> for elegant branching:</p>
+
+            <div class="code-block">
+                <div class="code-header">match.pseudo</div>
+                <pre><span class="keyword">fn</span> <span class="function">describe_number</span>(n)
+    <span class="keyword">match</span> n
+        <span class="keyword">case</span> <span class="number">0</span> <span class="keyword">then</span>
+            <span class="keyword">return</span> <span class="string">"zero"</span>
+        <span class="keyword">case</span> <span class="number">1</span> <span class="keyword">then</span>
+            <span class="keyword">return</span> <span class="string">"one"</span>
+        <span class="keyword">case</span> n <span class="keyword">if</span> n < <span class="number">0</span> <span class="keyword">then</span>
+            <span class="keyword">return</span> <span class="string">"negative"</span>
+        <span class="keyword">case</span> _ <span class="keyword">then</span>
+            <span class="keyword">return</span> <span class="string">"positive"</span>
+    <span class="keyword">end</span>
+<span class="keyword">end</span>
+
+<span class="function">print</span>(<span class="function">describe_number</span>(<span class="number">0</span>))   <span class="comment">// zero</span>
+<span class="function">print</span>(<span class="function">describe_number</span>(-<span class="number">5</span>))  <span class="comment">// negative</span>
+<span class="function">print</span>(<span class="function">describe_number</span>(<span class="number">42</span>))  <span class="comment">// positive</span></pre>
+            </div>
+
+            <h2 id="builtin-functions">Built-in Functions</h2>
+
+            <p>Pseudocode comes with 80+ built-in functions. Here are some commonly used ones:</p>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Category</th>
+                        <th>Functions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>I/O</td>
+                        <td><code>print</code>, <code>input</code>, <code>read_file</code>, <code>write_file</code></td>
+                    </tr>
+                    <tr>
+                        <td>Strings</td>
+                        <td><code>len</code>, <code>upper</code>, <code>lower</code>, <code>split</code>,
+                            <code>join</code>, <code>trim</code></td>
+                    </tr>
+                    <tr>
+                        <td>Arrays</td>
+                        <td><code>push</code>, <code>pop</code>, <code>sort</code>, <code>reverse</code>,
+                            <code>map</code>, <code>filter</code></td>
+                    </tr>
+                    <tr>
+                        <td>Math</td>
+                        <td><code>abs</code>, <code>sqrt</code>, <code>pow</code>, <code>floor</code>,
+                            <code>ceil</code>, <code>random</code></td>
+                    </tr>
+                    <tr>
+                        <td>HTTP</td>
+                        <td><code>http_get</code>, <code>http_post</code></td>
+                    </tr>
+                    <tr>
+                        <td>JSON</td>
+                        <td><code>json_parse</code>, <code>json_stringify</code></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <p>See the <a href="reference.html">full reference</a> for complete documentation.</p>
+
+            <h2 id="next-steps">What's Next?</h2>
+
+            <p>Congratulations! You now know the basics of Pseudocode. Here's where to go next:</p>
+
+            <ul style="list-style: disc; padding-left: 24px; color: var(--text-secondary);">
+                <li><a href="examples.html">Examples</a> — See real-world code samples</li>
+                <li><a href="reference.html">API Reference</a> — Complete documentation for all 80+ functions</li>
+                <li><a href="https://github.com/NagusameCS/Pseudocode/tree/main/examples" target="_blank">GitHub
+                        Examples</a> — More example programs</li>
+                <li><a href="https://marketplace.visualstudio.com/items?itemName=NagusameCS.pseudocode-lang"
+                        target="_blank">VS Code Extension</a> — Get full IDE support</li>
+            </ul>
+
+            <div class="nav-buttons">
+                <a href="index.html" class="nav-btn">
+                    <span class="nav-btn-label">← Previous</span>
+                    <span class="nav-btn-title">Home</span>
+                </a>
+                <a href="examples.html" class="nav-btn">
+                    <span class="nav-btn-label">Next →</span>
+                    <span class="nav-btn-title">Examples</span>
+                </a>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Highlight current section in sidebar based on scroll
+        const sections = document.querySelectorAll('h2[id], h1[id]');
+        const sidebarLinks = document.querySelectorAll('.sidebar-link');
+
+        window.addEventListener('scroll', () => {
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                if (scrollY >= sectionTop - 100) {
+                    current = section.getAttribute('id');
+                }
+            });
+
+            sidebarLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === '#' + current) {
+                    link.classList.add('active');
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>

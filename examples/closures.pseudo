@@ -1,0 +1,68 @@
+// Test closures and upvalue capture
+
+// Basic closure - capture a variable
+fn make_counter()
+    let count = 0
+    return fn()
+        count = count + 1
+        return count
+    end
+end
+
+let counter = make_counter()
+print("Counter test:")
+print(counter())  // Should print 1
+print(counter())  // Should print 2
+print(counter())  // Should print 3
+
+// Multiple closures sharing state
+fn make_shared_counter()
+    let count = 0
+    let inc = fn()
+        count = count + 1
+        return count
+    end
+    let get = fn()
+        return count
+    end
+    return [inc, get]
+end
+
+print("\nShared state test:")
+let funcs = make_shared_counter()
+let inc = funcs[0]
+let get = funcs[1]
+print(inc())  // 1
+print(inc())  // 2
+print(get())  // 2
+
+// Closure capturing parameter
+fn make_adder(x)
+    return fn(y)
+        return x + y
+    end
+end
+
+print("\nAdder test:")
+let add5 = make_adder(5)
+let add10 = make_adder(10)
+print(add5(3))   // Should print 8
+print(add10(3))  // Should print 13
+
+// Nested closures
+fn outer()
+    let x = "outer"
+    fn middle()
+        let y = "middle"
+        fn inner()
+            return x + " " + y + " inner"
+        end
+        return inner()
+    end
+    return middle()
+end
+
+print("\nNested closure test:")
+print(outer())  // Should print "outer middle inner"
+
+print("\nAll closure tests passed!")

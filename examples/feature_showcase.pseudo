@@ -1,0 +1,56 @@
+// Pseudocode v1.2.0+ Feature Showcase
+// Demonstrates: selective imports, try/catch, classes
+
+print("=== Pseudocode Feature Showcase ===")
+print("")
+
+// ============ Selective Imports ============
+print("1. Selective Imports")
+from "./lib/math.pseudo" import factorial, PI
+print("   PI = " + str(PI))
+print("   5! = " + str(factorial(5)))
+print("")
+
+// ============ Try/Catch/Throw ============
+print("2. Exception Handling")
+
+fn risky_divide(a, b)
+    if b == 0 then
+        throw "Division by zero"
+    end
+    return a / b
+end
+
+try
+    print("   10 / 2 = " + str(risky_divide(10, 2)))
+    print("   10 / 0 = " + str(risky_divide(10, 0)))
+catch e then
+    print("   Caught: " + e)
+end
+print("")
+
+// ============ Classes ============
+print("3. Classes")
+
+class Point
+    fn get_x()
+        return 5
+    end
+end
+
+print("   Class Point defined")
+print("")
+
+// ============ Testing Library ============
+print("4. Testing Library")
+import "./lib/testing.pseudo"
+
+suite("Math Tests")
+if assert_equal(factorial(5), 120, "factorial(5) = 120") then
+    pass("Factorial test")
+end
+if assert_approx(PI, 3.14, 0.01, "PI is approximately 3.14") then
+    pass("PI approximation")
+end
+
+test_summary()

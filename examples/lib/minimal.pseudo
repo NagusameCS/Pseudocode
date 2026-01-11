@@ -1,0 +1,17 @@
+// Minimal functional library
+fn find(arr, pred)
+    print("find: entering, arr len=" + str(len(arr)))
+    let i = 0
+    while i < len(arr) do
+        print("find: i=" + str(i) + " arr[i]=" + str(arr[i]))
+        let elem = arr[i]
+        print("find: calling pred...")
+        let result = pred(elem)
+        print("find: pred returned " + str(result))
+        if result then
+            return elem
+        end
+        i = i + 1
+    end
+    return nil
+end

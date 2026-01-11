@@ -1,0 +1,49 @@
+# Build artifacts
+*.o
+*.a
+*.so
+*.dylib
+cvm/pseudo
+cvm/pseudo_*
+
+# IDE
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Node modules (VS Code extension)
+vscode-extension/node_modules/
+vscode-extension/out/
+vscode-extension/*.vsix
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.env
+venv/
+
+# Temp files
+*.tmp
+*.log
+
+# === GITIGNORED DISTRIBUTION FOLDERS ===
+# These folders contain content for external platforms
+# They are not part of the main repo but stored here for convenience
+
+# Example repos for Linguist 200-repo requirement
+/example-repos/
+
+# Rosetta Code submissions
+/rosetta-code/
+
+# Hugging Face dataset entries
+/huggingface/
+
+# Linguist submission files
+/linguist-submission/

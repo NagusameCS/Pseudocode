@@ -1,0 +1,344 @@
+// Pseudocode Standard Library - WebSocket Client
+// Provides WebSocket connectivity for real-time communication
+
+// ============================================================
+// WEBSOCKET CONSTANTS
+// ============================================================
+
+let WS_TEXT = 1
+let WS_BINARY = 2
+let WS_CLOSE = 8
+let WS_PING = 9
+let WS_PONG = 10
+
+let WS_CONNECTING = 0
+let WS_OPEN = 1
+let WS_CLOSING = 2
+let WS_CLOSED = 3
+
+// ============================================================
+// GLOBAL STATE (simple key-value stores)
+// ============================================================
+
+// We use a simpler approach: store state in arrays indexed by connection id
+let _ws_urls = []
+let _ws_states = []
+let _ws_next_id = 0
+
+// ============================================================
+// WEBSOCKET CONNECTION
+// ============================================================
+
+// Create a new WebSocket connection, returns connection ID
+fn ws_create(url)
+    let id = _ws_next_id
+    _ws_next_id = _ws_next_id + 1
+    push(_ws_urls, url)
+    push(_ws_states, WS_CONNECTING)
+    return id
+end
+
+// Get URL for connection
+fn ws_get_url(ws_id)
+    if ws_id >= 0 and ws_id < len(_ws_urls) then
+        return _ws_urls[ws_id]
+    end
+    return nil
+end
+
+// Simulate connection
+fn ws_connect(ws_id)
+    if ws_id >= 0 and ws_id < len(_ws_states) then
+        _ws_states[ws_id] = WS_OPEN
+    end
+    return ws_id
+end
+
+// Check if WebSocket is open
+fn ws_is_open(ws_id)
+    if ws_id >= 0 and ws_id < len(_ws_states) then
+        return _ws_states[ws_id] == WS_OPEN
+    end
+    return false
+end
+
+// Check if WebSocket is closed
+fn ws_is_closed(ws_id)
+    if ws_id >= 0 and ws_id < len(_ws_states) then
+        return _ws_states[ws_id] == WS_CLOSED
+    end
+    return true
+end
+
+// Get WebSocket state
+fn ws_get_state(ws_id)
+    if ws_id >= 0 and ws_id < len(_ws_states) then
+        return _ws_states[ws_id]
+    end
+    return WS_CLOSED
+end
+
+// Close WebSocket connection
+fn ws_close(ws_id)
+    if ws_id >= 0 and ws_id < len(_ws_states) then
+        _ws_states[ws_id] = WS_CLOSING
+    end
+    return ws_id
+end
+
+// ============================================================
+// MESSAGE QUEUE (per-connection message buffers)
+// ============================================================
+
+let _ws_send_queues = []
+
+// Initialize send queue for connection
+fn ws_init_queue(ws_id)
+    while len(_ws_send_queues) <= ws_id do
+        push(_ws_send_queues, "")
+    end
+end
+
+// Send text message
+fn ws_send(ws_id, message)
+    if ws_id < 0 or ws_id >= len(_ws_states) then
+        return false
+    end
+    if _ws_states[ws_id] != WS_OPEN then
+        return false
+    end
+    ws_init_queue(ws_id)
+    // Append to queue with separator
+    if len(_ws_send_queues[ws_id]) > 0 then
+        _ws_send_queues[ws_id] = _ws_send_queues[ws_id] + "\n" + message
+    else
+        _ws_send_queues[ws_id] = message
+    end
+    return true
+end
+
+// Get queued messages
+fn ws_get_queue(ws_id)
+    ws_init_queue(ws_id)
+    return _ws_send_queues[ws_id]
+end
+
+// Clear queue
+fn ws_clear_queue(ws_id)
+    ws_init_queue(ws_id)
+    _ws_send_queues[ws_id] = ""
+end
+
+// ============================================================
+// MESSAGE FORMATTING
+// ============================================================
+
+// Create a JSON message from dict
+fn ws_json_message(data)
+    return json_stringify(data)
+end
+
+// Parse JSON message
+fn ws_parse_json(message)
+    return json_parse(message)
+end
+
+// Create typed message as string
+fn ws_typed_message(msg_type, msg_content)
+    return msg_type + ":" + msg_content
+end
+
+// Parse typed message (returns array [type, content])
+fn ws_parse_typed(message)
+    let colon = index_of(message, ":")
+    if colon < 0 then
+        return ["", message]
+    end
+    let t = substr(message, 0, colon)
+    let c = substr(message, colon + 1, len(message) - colon - 1)
+    return [t, c]
+end
+
+// ============================================================
+// HEARTBEAT / KEEP-ALIVE
+// ============================================================
+
+let _hb_intervals = []
+let _hb_last_pings = []
+let _hb_last_pongs = []
+
+// Create heartbeat config for connection
+fn ws_heartbeat_init(ws_id, interval)
+    while len(_hb_intervals) <= ws_id do
+        push(_hb_intervals, 0)
+        push(_hb_last_pings, 0)
+        push(_hb_last_pongs, 0)
+    end
+    _hb_intervals[ws_id] = interval
+    _hb_last_pings[ws_id] = time()
+    _hb_last_pongs[ws_id] = time()
+end
+
+// Check if heartbeat is needed
+fn ws_needs_heartbeat(ws_id)
+    if ws_id >= len(_hb_intervals) then
+        return false
+    end
+    let now = time()
+    return (now - _hb_last_pings[ws_id]) > _hb_intervals[ws_id]
+end
+
+// Record ping sent
+fn ws_record_ping(ws_id)
+    if ws_id < len(_hb_last_pings) then
+        _hb_last_pings[ws_id] = time()
+    end
+end
+
+// Record pong received
+fn ws_record_pong(ws_id)
+    if ws_id < len(_hb_last_pongs) then
+        _hb_last_pongs[ws_id] = time()
+    end
+end
+
+// Check if connection timed out
+fn ws_is_timed_out(ws_id)
+    if ws_id >= len(_hb_intervals) then
+        return true
+    end
+    let now = time()
+    let timeout = _hb_intervals[ws_id] * 2
+    return (now - _hb_last_pongs[ws_id]) > timeout
+end
+
+// ============================================================
+// RECONNECTION LOGIC
+// ============================================================
+
+let _rc_max = []
+let _rc_base = []
+let _rc_attempt = []
+let _rc_delay = []
+
+// Create reconnection config
+fn ws_reconnect_init(ws_id, max_attempts, base_delay)
+    while len(_rc_max) <= ws_id do
+        push(_rc_max, 0)
+        push(_rc_base, 0)
+        push(_rc_attempt, 0)
+        push(_rc_delay, 0)
+    end
+    _rc_max[ws_id] = max_attempts
+    _rc_base[ws_id] = base_delay
+    _rc_attempt[ws_id] = 0
+    _rc_delay[ws_id] = base_delay
+end
+
+// Get next reconnection delay (exponential backoff)
+fn ws_next_delay(ws_id)
+    if ws_id >= len(_rc_delay) then
+        return 1000
+    end
+    let delay = _rc_delay[ws_id]
+    _rc_attempt[ws_id] = _rc_attempt[ws_id] + 1
+    _rc_delay[ws_id] = _rc_delay[ws_id] * 2
+    return delay
+end
+
+// Check if should retry
+fn ws_should_retry(ws_id)
+    if ws_id >= len(_rc_max) then
+        return false
+    end
+    return _rc_attempt[ws_id] < _rc_max[ws_id]
+end
+
+// Reset reconnection state
+fn ws_reset_reconnect(ws_id)
+    if ws_id < len(_rc_attempt) then
+        _rc_attempt[ws_id] = 0
+        _rc_delay[ws_id] = _rc_base[ws_id]
+    end
+end
+
+// ============================================================
+// URL HELPERS
+// ============================================================
+
+// Helper: check if string starts with prefix
+fn _starts_with(s, prefix)
+    if len(s) < len(prefix) then
+        return false
+    end
+    return substr(s, 0, len(prefix)) == prefix
+end
+
+// Convert HTTP URL to WebSocket URL
+fn http_to_ws(url)
+    if _starts_with(url, "https://") then
+        return "wss://" + substr(url, 8, len(url) - 8)
+    elif _starts_with(url, "http://") then
+        return "ws://" + substr(url, 7, len(url) - 7)
+    end
+    return url
+end
+
+// Check if URL is secure WebSocket
+fn ws_is_secure(url)
+    return _starts_with(url, "wss://")
+end
+
+// Extract host from WebSocket URL
+fn ws_get_host(url)
+    let start = 0
+    if _starts_with(url, "wss://") then
+        start = 6
+    elif _starts_with(url, "ws://") then
+        start = 5
+    end
+    
+    let rest = substr(url, start, len(url) - start)
+    let slash_idx = index_of(rest, "/")
+    if slash_idx > 0 then
+        return substr(rest, 0, slash_idx)
+    end
+    return rest
+end
+
+// ============================================================
+// ROOM/CHANNEL MANAGEMENT
+// ============================================================
+
+let _room_subscriptions = []
+
+// Initialize room manager
+fn ws_rooms_init()
+    _room_subscriptions = []
+end
+
+// Join a room
+fn ws_join_room(room_name)
+    push(_room_subscriptions, room_name)
+end
+
+// Leave a room
+fn ws_leave_room(room_name)
+    let new_subs = []
+    for sub in _room_subscriptions do
+        if sub != room_name then
+            push(new_subs, sub)
+        end
+    end
+    _room_subscriptions = new_subs
+end
+
+// Get list of rooms
+fn ws_get_rooms()
+    return _room_subscriptions
+end
+
+// Create room message
+fn ws_room_message(room_name, message)
+    return room_name + ":" + message
+end

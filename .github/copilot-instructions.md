@@ -4,7 +4,17 @@ This repository contains the Pseudocode programming language, a high-performance
 
 ## Language Overview
 
-Pseudocode is a compiled language that runs on a bytecode VM with an x86-64 JIT compiler. Files use the `.pseudo` extension.
+Pseudocode is a compiled language that runs on a bytecode VM with an x86-64 JIT compiler.
+
+### File Extensions
+
+| Extension | Purpose | Description |
+|-----------|---------|-------------|
+| `.pseudo` | Main source | Primary source file extension |
+| `.psc` | Main source | Short alias for `.pseudo` |
+| `.pseudoh` | Header | Header files with declarations and interfaces |
+| `.psch` | Header | Short alias for `.pseudoh` |
+| `.pseudocode` | Main source | Verbose, explicit extension |
 
 ## Syntax Rules
 
@@ -17,7 +27,9 @@ Pseudocode is a compiled language that runs on a bytecode VM with an x86-64 JIT 
 ### Keywords
 ```
 fn, let, if, then, elif, else, end, for, in, to, do, while, 
-return, match, case, true, false, nil, and, or, not
+return, match, case, true, false, nil, and, or, not,
+class, extends, self, super, static, async, await, yield,
+module, export, import, from, as, enum
 ```
 
 ### Variable Declaration
@@ -49,8 +61,8 @@ end
 
 **For loops (range-based):**
 ```pseudocode
-for i in 1 to 10 do
-    // i goes from 1 to 10 inclusive
+for i in 1..11 do
+    // i goes from 1 to 10 inclusive (range is exclusive of end)
 end
 
 for item in array do
@@ -84,6 +96,75 @@ end
 - **Nil**: `nil`
 - **Arrays**: `[1, 2, 3]`, `["a", "b"]`
 - **Dictionaries**: `{"key": "value", "num": 42}`
+- **Classes**: User-defined object types with methods
+- **Enums**: Named constants `enum Color = Red, Green, Blue end`
+
+### Classes and OOP
+
+**Class definition:**
+```pseudocode
+class Animal
+    fn init(name)
+        self.name = name
+    end
+    
+    fn speak()
+        return self.name + " makes a sound"
+    end
+end
+
+let dog = Animal("Buddy")
+print(dog.speak())
+```
+
+**Inheritance:**
+```pseudocode
+class Dog extends Animal
+    fn speak()
+        return self.name + " says Woof!"
+    end
+end
+```
+
+**Static methods and properties:**
+```pseudocode
+class Math
+    static fn add(a, b)
+        return a + b
+    end
+    
+    static let PI = 3.14159
+end
+```
+
+### Lambda Expressions
+```pseudocode
+let double = fn(x) return x * 2 end
+let result = double(5)  // 10
+
+// With closures
+fn make_counter()
+    let count = 0
+    return fn()
+        count = count + 1
+        return count
+    end
+end
+
+let counter = make_counter()
+print(counter())  // 1
+print(counter())  // 2
+```
+
+### Enums
+```pseudocode
+enum Color = Red, Green, Blue end
+
+let c = Color_Red
+if c == Color_Red then
+    print("It's red!")
+end
+```
 
 ### Operators
 - **Arithmetic**: `+`, `-`, `*`, `/`, `%` (modulo)

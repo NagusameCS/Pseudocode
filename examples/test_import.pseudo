@@ -1,0 +1,14 @@
+// Test with import
+import "./lib/functional.pseudo"
+
+fn is_big(x)
+    print("is_big called with: " + str(x))
+    let result = x > 3
+    print("returning: " + str(result))
+    return result
+end
+
+let nums = [1, 2, 3, 4, 5]
+print("calling find...")
+let found = find(nums, is_big)
+print("found=" + str(found))

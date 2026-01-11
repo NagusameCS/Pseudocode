@@ -2,58 +2,98 @@
     "Function Definition": {
         "prefix": "fn",
         "body": [
-            "fn ${1:name}(${2:params}) {",
+            "fn ${1:name}(${2:params})",
             "\t${0}",
-            "}"
+            "end"
         ],
         "description": "Define a function"
+    },
+    "Function with Return": {
+        "prefix": "fnr",
+        "body": [
+            "fn ${1:name}(${2:params})",
+            "\t${3:// body}",
+            "\treturn ${0:result}",
+            "end"
+        ],
+        "description": "Function with return statement"
+    },
+    "Anonymous Function": {
+        "prefix": "fna",
+        "body": [
+            "fn(${1:params}) return ${0:expr} end"
+        ],
+        "description": "Anonymous function (lambda)"
     },
     "If Statement": {
         "prefix": "if",
         "body": [
-            "if ${1:condition} {",
+            "if ${1:condition} then",
             "\t${0}",
-            "}"
+            "end"
         ],
         "description": "If statement"
     },
     "If-Else Statement": {
         "prefix": "ife",
         "body": [
-            "if ${1:condition} {",
+            "if ${1:condition} then",
             "\t${2}",
-            "} else {",
+            "else",
             "\t${0}",
-            "}"
+            "end"
         ],
         "description": "If-else statement"
+    },
+    "If-Elif-Else Statement": {
+        "prefix": "ifeif",
+        "body": [
+            "if ${1:condition} then",
+            "\t${2}",
+            "elif ${3:condition} then",
+            "\t${4}",
+            "else",
+            "\t${0}",
+            "end"
+        ],
+        "description": "If-elif-else statement"
     },
     "While Loop": {
         "prefix": "while",
         "body": [
-            "while ${1:condition} {",
+            "while ${1:condition} do",
             "\t${0}",
-            "}"
+            "end"
         ],
         "description": "While loop"
     },
-    "For Loop": {
+    "For Loop (Range)": {
         "prefix": "for",
         "body": [
-            "for ${1:item} in ${2:iterable} {",
+            "for ${1:i} in ${2:0}..${3:10} do",
             "\t${0}",
-            "}"
-        ],
-        "description": "For-in loop"
-    },
-    "For Range": {
-        "prefix": "forr",
-        "body": [
-            "for ${1:i} in range(${2:start}, ${3:end}) {",
-            "\t${0}",
-            "}"
+            "end"
         ],
         "description": "For loop with range"
+    },
+    "For Loop (Array)": {
+        "prefix": "fora",
+        "body": [
+            "for ${1:item} in ${2:array} do",
+            "\t${0}",
+            "end"
+        ],
+        "description": "For loop over array"
+    },
+    "For Loop with Index": {
+        "prefix": "fori",
+        "body": [
+            "for ${1:i} in 0..len(${2:arr}) do",
+            "\tlet ${3:item} = ${2:arr}[${1:i}]",
+            "\t${0}",
+            "end"
+        ],
+        "description": "For loop with index access"
     },
     "Let Variable": {
         "prefix": "let",
@@ -62,29 +102,66 @@
         ],
         "description": "Declare a variable"
     },
+    "Let Array": {
+        "prefix": "leta",
+        "body": [
+            "let ${1:arr} = [${0}]"
+        ],
+        "description": "Declare an array"
+    },
+    "Let Dictionary": {
+        "prefix": "letd",
+        "body": [
+            "let ${1:dict} = {\"${2:key}\": ${3:value}${0}}"
+        ],
+        "description": "Declare a dictionary"
+    },
     "Print": {
-        "prefix": "print",
+        "prefix": "pr",
         "body": [
             "print(${0})"
         ],
         "description": "Print to console"
     },
-    "Println": {
-        "prefix": "println",
+    "Print String": {
+        "prefix": "prs",
         "body": [
-            "println(${0})"
+            "print(\"${0}\")"
         ],
-        "description": "Print with newline"
+        "description": "Print a string"
+    },
+    "Print Variable": {
+        "prefix": "prv",
+        "body": [
+            "print(\"${1:name}: \" + str(${1:name}))"
+        ],
+        "description": "Print variable with label"
     },
     "Match Expression": {
         "prefix": "match",
         "body": [
-            "match ${1:value} {",
-            "\tcase ${2:pattern} => ${3:result}",
-            "\tcase _ => ${0:default}",
-            "}"
+            "match ${1:value}",
+            "\tcase ${2:pattern} then",
+            "\t\t${3:// handle}",
+            "\tcase _ then",
+            "\t\t${0:// default}",
+            "end"
         ],
         "description": "Pattern matching"
+    },
+    "Match with Guard": {
+        "prefix": "matchg",
+        "body": [
+            "match ${1:value}",
+            "\tcase ${2:n} if ${2:n} ${3:> 0} then",
+            "\t\t${4:// positive}",
+            "\tcase ${2:n} if ${2:n} ${5:< 0} then",
+            "\t\t${6:// negative}",
+            "\tcase _ then",
+            "\t\t${0:// zero}",
+            "end"
+        ],
+        "description": "Pattern matching with guards"
     },
     "Read File": {
         "prefix": "readfile",
@@ -103,72 +180,352 @@
     "HTTP GET": {
         "prefix": "httpget",
         "body": [
-            "let ${1:response} = http_get(\"${2:url}\")"
+            "let ${1:response} = http_get(\"${2:url}\")",
+            "let ${3:data} = json_parse(${1:response})"
         ],
-        "description": "HTTP GET request"
+        "description": "HTTP GET request with JSON parse"
     },
     "HTTP POST": {
         "prefix": "httppost",
         "body": [
-            "let ${1:response} = http_post(\"${2:url}\", ${3:body})"
+            "let ${1:body} = json_stringify(${2:data})",
+            "let ${3:response} = http_post(\"${4:url}\", ${1:body})"
         ],
-        "description": "HTTP POST request"
+        "description": "HTTP POST request with JSON"
     },
-    "Dictionary": {
-        "prefix": "dict",
+    "Map Function": {
+        "prefix": "map",
         "body": [
-            "let ${1:d} = dict()",
-            "dict_set(${1:d}, \"${2:key}\", ${3:value})"
+            "let ${1:result} = map(${2:arr}, fn(${3:x}) return ${0:x * 2} end)"
         ],
-        "description": "Create and populate a dictionary"
+        "description": "Map over array"
     },
-    "JSON Parse": {
-        "prefix": "jsonparse",
+    "Filter Function": {
+        "prefix": "filter",
         "body": [
-            "let ${1:data} = json_parse(${2:json_string})"
+            "let ${1:result} = filter(${2:arr}, fn(${3:x}) return ${0:x > 0} end)"
         ],
-        "description": "Parse JSON string"
+        "description": "Filter array"
     },
-    "JSON Stringify": {
-        "prefix": "jsonstringify",
+    "Reduce Function": {
+        "prefix": "reduce",
         "body": [
-            "let ${1:json} = json_stringify(${2:value})"
+            "let ${1:result} = reduce(${2:arr}, fn(${3:acc}, ${4:x}) return ${3:acc} + ${4:x} end, ${0:0})"
         ],
-        "description": "Convert value to JSON string"
+        "description": "Reduce array"
     },
     "Recursive Fibonacci": {
         "prefix": "fib",
         "body": [
-            "fn fib(n) {",
-            "\tif n < 2 { return n }",
+            "fn fib(n)",
+            "\tif n < 2 then",
+            "\t\treturn n",
+            "\tend",
             "\treturn fib(n - 1) + fib(n - 2)",
-            "}",
+            "end",
             "",
-            "println(fib(${1:30}))"
+            "print(\"fib(${1:30}) = \" + str(fib(${1:30})))"
         ],
         "description": "Recursive Fibonacci function"
     },
-    "Vector Operations": {
-        "prefix": "vecops",
+    "Quicksort": {
+        "prefix": "qsort",
         "body": [
-            "let ${1:v} = [${2:1, 2, 3, 4, 5}]",
-            "println(\"Sum: \" + str(vec_sum(${1:v})))",
-            "println(\"Mean: \" + str(vec_mean(${1:v})))",
-            "println(\"Sorted: \" + str(vec_sort(${1:v})))"
+            "fn quicksort(arr, low, high)",
+            "\tif low < high then",
+            "\t\tlet pivot = partition(arr, low, high)",
+            "\t\tquicksort(arr, low, pivot - 1)",
+            "\t\tquicksort(arr, pivot + 1, high)",
+            "\tend",
+            "end",
+            "",
+            "fn partition(arr, low, high)",
+            "\tlet pivot = arr[high]",
+            "\tlet i = low - 1",
+            "\t",
+            "\tfor j in low..high do",
+            "\t\tif arr[j] <= pivot then",
+            "\t\t\ti = i + 1",
+            "\t\t\tlet temp = arr[i]",
+            "\t\t\tarr[i] = arr[j]",
+            "\t\t\tarr[j] = temp",
+            "\t\tend",
+            "\tend",
+            "\t",
+            "\tlet temp = arr[i + 1]",
+            "\tarr[i + 1] = arr[high]",
+            "\tarr[high] = temp",
+            "\treturn i + 1",
+            "end"
         ],
-        "description": "Common vector operations"
+        "description": "Quicksort implementation"
+    },
+    "Binary Search": {
+        "prefix": "bsearch",
+        "body": [
+            "fn binary_search(arr, target)",
+            "\tlet left = 0",
+            "\tlet right = len(arr) - 1",
+            "\t",
+            "\twhile left <= right do",
+            "\t\tlet mid = floor((left + right) / 2)",
+            "\t\t",
+            "\t\tif arr[mid] == target then",
+            "\t\t\treturn mid",
+            "\t\telif arr[mid] < target then",
+            "\t\t\tleft = mid + 1",
+            "\t\telse",
+            "\t\t\tright = mid - 1",
+            "\t\tend",
+            "\tend",
+            "\t",
+            "\treturn -1",
+            "end"
+        ],
+        "description": "Binary search implementation"
+    },
+    "Class Pattern": {
+        "prefix": "class",
+        "body": [
+            "fn create_${1:ClassName}(${2:params})",
+            "\treturn {",
+            "\t\t\"${3:field}\": ${2:params}",
+            "\t}",
+            "end",
+            "",
+            "fn ${1:ClassName}_${4:method}(self)",
+            "\treturn self[\"${3:field}\"]",
+            "end",
+            "",
+            "let ${5:obj} = create_${1:ClassName}(${0:value})"
+        ],
+        "description": "Class-like pattern with methods"
+    },
+    "Test Function": {
+        "prefix": "test",
+        "body": [
+            "fn test_${1:name}()",
+            "\tlet expected = ${2:expected_value}",
+            "\tlet actual = ${3:function_call()}",
+            "\t",
+            "\tif actual == expected then",
+            "\t\tprint(\"✓ test_${1:name} passed\")",
+            "\telse",
+            "\t\tprint(\"✗ test_${1:name} failed: expected \" + str(expected) + \", got \" + str(actual))",
+            "\tend",
+            "end",
+            "",
+            "test_${1:name}()"
+        ],
+        "description": "Test function template"
+    },
+    "Benchmark": {
+        "prefix": "bench",
+        "body": [
+            "fn benchmark(name, iterations, func)",
+            "\tlet start = clock()",
+            "\t",
+            "\tfor i in 0..iterations do",
+            "\t\tfunc()",
+            "\tend",
+            "\t",
+            "\tlet elapsed = clock() - start",
+            "\tprint(name + \": \" + str(elapsed) + \"ms for \" + str(iterations) + \" iterations\")",
+            "end",
+            "",
+            "benchmark(\"${1:test}\", ${2:1000}, fn()",
+            "\t${0:// code to benchmark}",
+            "end)"
+        ],
+        "description": "Benchmark template"
     },
     "Main Template": {
         "prefix": "main",
         "body": [
             "// ${1:Description}",
             "",
-            "fn main() {",
+            "fn main()",
             "\t${0}",
-            "}",
+            "end",
             "",
             "main()"
         ],
         "description": "Main function template"
+    },
+    "Header Comment": {
+        "prefix": "header",
+        "body": [
+            "// ============================================",
+            "// ${1:Title}",
+            "// ${2:Description}",
+            "// ============================================",
+            ""
+        ],
+        "description": "File header comment"
+    },
+    "Section Comment": {
+        "prefix": "section",
+        "body": [
+            "// --- ${1:Section Name} ---"
+        ],
+        "description": "Section divider comment"
+    },
+    "TODO Comment": {
+        "prefix": "todo",
+        "body": [
+            "// TODO: ${0}"
+        ],
+        "description": "TODO comment"
+    },
+    "Memoization": {
+        "prefix": "memo",
+        "body": [
+            "let ${1:cache} = {}",
+            "",
+            "fn memoized_${2:func}(${3:arg})",
+            "\tlet key = str(${3:arg})",
+            "\t",
+            "\tif has_key(${1:cache}, key) then",
+            "\t\treturn ${1:cache}[key]",
+            "\tend",
+            "\t",
+            "\tlet result = ${0:compute(${3:arg})}",
+            "\t${1:cache}[key] = result",
+            "\treturn result",
+            "end"
+        ],
+        "description": "Memoization pattern"
+    },
+    "Event Emitter": {
+        "prefix": "events",
+        "body": [
+            "let handlers = {}",
+            "",
+            "fn on(event, handler)",
+            "\tif not has_key(handlers, event) then",
+            "\t\thandlers[event] = []",
+            "\tend",
+            "\tpush(handlers[event], handler)",
+            "end",
+            "",
+            "fn emit(event, data)",
+            "\tif has_key(handlers, event) then",
+            "\t\tfor i in 0..len(handlers[event]) do",
+            "\t\t\thandlers[event][i](data)",
+            "\t\tend",
+            "\tend",
+            "end"
+        ],
+        "description": "Event emitter pattern"
+    },
+    "CLI Arguments": {
+        "prefix": "cli",
+        "body": [
+            "let arguments = args()",
+            "",
+            "if len(arguments) < ${1:2} then",
+            "\tprint(\"Usage: program <${2:arg}>\")",
+            "\texit(1)",
+            "end",
+            "",
+            "let ${3:input} = arguments[1]",
+            "${0}"
+        ],
+        "description": "Command line argument handling"
+    },
+    "API Client": {
+        "prefix": "api",
+        "body": [
+            "fn fetch_${1:resource}(${2:id})",
+            "\tlet url = \"${3:https://api.example.com/}\" + str(${2:id})",
+            "\tlet response = http_get(url)",
+            "\t",
+            "\tif response == nil then",
+            "\t\treturn nil",
+            "\tend",
+            "\t",
+            "\treturn json_parse(response)",
+            "end"
+        ],
+        "description": "API client function"
+    },
+    "Stack": {
+        "prefix": "stack",
+        "body": [
+            "fn create_stack()",
+            "\treturn {\"items\": []}",
+            "end",
+            "",
+            "fn stack_push(s, item)",
+            "\tpush(s[\"items\"], item)",
+            "end",
+            "",
+            "fn stack_pop(s)",
+            "\treturn pop(s[\"items\"])",
+            "end",
+            "",
+            "fn stack_peek(s)",
+            "\tlet items = s[\"items\"]",
+            "\tif len(items) == 0 then",
+            "\t\treturn nil",
+            "\tend",
+            "\treturn items[len(items) - 1]",
+            "end",
+            "",
+            "fn stack_empty(s)",
+            "\treturn len(s[\"items\"]) == 0",
+            "end"
+        ],
+        "description": "Stack data structure"
+    },
+    "Queue": {
+        "prefix": "queue",
+        "body": [
+            "fn create_queue()",
+            "\treturn {\"items\": []}",
+            "end",
+            "",
+            "fn enqueue(q, item)",
+            "\tpush(q[\"items\"], item)",
+            "end",
+            "",
+            "fn dequeue(q)",
+            "\tif len(q[\"items\"]) == 0 then",
+            "\t\treturn nil",
+            "\tend",
+            "\tlet item = q[\"items\"][0]",
+            "\tq[\"items\"] = slice(q[\"items\"], 1, len(q[\"items\"]))",
+            "\treturn item",
+            "end",
+            "",
+            "fn queue_empty(q)",
+            "\treturn len(q[\"items\"]) == 0",
+            "end"
+        ],
+        "description": "Queue data structure"
+    },
+    "Linked List": {
+        "prefix": "linkedlist",
+        "body": [
+            "fn create_node(value)",
+            "\treturn {\"value\": value, \"next\": nil}",
+            "end",
+            "",
+            "fn list_append(head, value)",
+            "\tlet node = create_node(value)",
+            "\t",
+            "\tif head == nil then",
+            "\t\treturn node",
+            "\tend",
+            "\t",
+            "\tlet current = head",
+            "\twhile current[\"next\"] != nil do",
+            "\t\tcurrent = current[\"next\"]",
+            "\tend",
+            "\tcurrent[\"next\"] = node",
+            "\treturn head",
+            "end"
+        ],
+        "description": "Linked list implementation"
     }
 }

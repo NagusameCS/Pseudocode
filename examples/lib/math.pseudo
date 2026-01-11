@@ -1,0 +1,154 @@
+// Standard Math Library for Pseudocode
+// This file can be imported with: import "math.pseudo"
+
+// Constants
+let PI = 3.141592653589793
+let E = 2.718281828459045
+let TAU = 6.283185307179586
+
+// Basic math functions (wrappers around built-ins for consistency)
+fn square(x)
+    return x * x
+end
+
+fn cube(x)
+    return x * x * x
+end
+
+fn clamp(value, min_val, max_val)
+    if value < min_val then
+        return min_val
+    elif value > max_val then
+        return max_val
+    else
+        return value
+    end
+end
+
+fn lerp(a, b, t)
+    return a + (b - a) * t
+end
+
+fn map_range(value, in_min, in_max, out_min, out_max)
+    return (value - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
+end
+
+// Factorial
+fn factorial(n)
+    if n <= 1 then
+        return 1
+    end
+    return n * factorial(n - 1)
+end
+
+// Greatest common divisor (Euclidean algorithm)
+// Greatest common divisor (Euclidean algorithm)
+fn gcd(a, b)
+    if b == 0 then
+        return a
+    end
+    return gcd(b, a % b)
+end
+
+// Least common multiple
+fn lcm(a, b)
+    return abs(a * b) / gcd(a, b)
+end
+
+// Check if a number is prime
+fn is_prime(n)
+    if n < 2 then
+        return false
+    end
+    if n == 2 then
+        return true
+    end
+    if n % 2 == 0 then
+        return false
+    end
+    let i = 3
+    while i * i <= n do
+        if n % i == 0 then
+            return false
+        end
+        i = i + 2
+    end
+    return true
+end
+
+// Fibonacci (iterative for performance)
+fn fib(n)
+    if n <= 1 then
+        return n
+    end
+    let a = 0
+    let b = 1
+    for i in 2..(n + 1) do
+        let temp = a + b
+        a = b
+        b = temp
+    end
+    return b
+end
+
+// Power function (integer exponent)
+fn power(base, exp)
+    if exp == 0 then
+        return 1
+    end
+    let result = 1
+    let b = base
+    let e = exp
+    while e > 0 do
+        if e % 2 == 1 then
+            result = result * b
+        end
+        b = b * b
+        e = floor(e / 2)
+    end
+    return result
+end
+
+// Sum of an array
+fn sum(arr)
+    let total = 0
+    for item in arr do
+        total = total + item
+    end
+    return total
+end
+
+// Average of an array
+fn average(arr)
+    return sum(arr) / len(arr)
+end
+
+// Min and max of an array
+fn array_min(arr)
+    let m = arr[0]
+    for i in 1..len(arr) do
+        if arr[i] < m then
+            m = arr[i]
+        end
+    end
+    return m
+end
+
+fn array_max(arr)
+    let m = arr[0]
+    for i in 1..len(arr) do
+        if arr[i] > m then
+            m = arr[i]
+        end
+    end
+    return m
+end
+
+// Degrees to radians and vice versa
+fn deg_to_rad(degrees)
+    return degrees * PI / 180
+end
+
+fn rad_to_deg(radians)
+    return radians * 180 / PI
+end
