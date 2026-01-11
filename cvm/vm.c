@@ -952,6 +952,7 @@ InterpretResult vm_run(VM *vm)
         [OP_GT_JMP_FALSE] = &&op_gt_jmp_false,
         [OP_GTE_JMP_FALSE] = &&op_gte_jmp_false,
         [OP_EQ_JMP_FALSE] = &&op_eq_jmp_false,
+        [OP_NEQ_JMP_FALSE] = &&op_neq_jmp_false,
         [OP_GET_LOCAL_ADD] = &&op_get_local_add,
         [OP_GET_LOCAL_SUB] = &&op_get_local_sub,
         [OP_INC_LOCAL] = &&op_inc_local,
@@ -2948,6 +2949,16 @@ InterpretResult vm_run(VM *vm)
         Value b = POP();
         Value a = POP();
         if (a != b)
+            ip += offset;
+        DISPATCH();
+    }
+
+    CASE(neq_jmp_false) :
+    {
+        uint16_t offset = READ_SHORT();
+        Value b = POP();
+        Value a = POP();
+        if (a == b)  /* != is false when equal */
             ip += offset;
         DISPATCH();
     }

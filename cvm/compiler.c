@@ -4295,6 +4295,15 @@ static void peephole_optimize(Chunk* chunk) {
             continue;
         }
         
+        /* Pattern: NEQ JMP_FALSE -> NEQ_JMP_FALSE */
+        if (code[i] == OP_NEQ && code[i+1] == OP_JMP_FALSE) {
+            code[i] = OP_NEQ_JMP_FALSE;
+            memmove(&code[i+1], &code[i+2], count - i - 2);
+            chunk->count--;
+            count--;
+            continue;
+        }
+        
         /* Pattern: POP POP -> POPN 2 (but we don't have POPN yet) */
         /* Pattern: NIL POP -> nothing */
         if (code[i] == OP_NIL && code[i+1] == OP_POP) {

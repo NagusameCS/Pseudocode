@@ -620,6 +620,7 @@ typedef enum
     OP_GT_JMP_FALSE,  /* Compare > and jump if false */
     OP_GTE_JMP_FALSE, /* Compare >= and jump if false */
     OP_EQ_JMP_FALSE,  /* Compare == and jump if false */
+    OP_NEQ_JMP_FALSE, /* Compare != and jump if false */
 
     /* Fused local operations */
     OP_GET_LOCAL_ADD, /* Get local and add to TOS */
