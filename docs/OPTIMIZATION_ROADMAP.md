@@ -6,12 +6,31 @@
 
 ---
 
+## Progress Summary (January 2026)
+
+### Completed
+- [DONE] 64 IR operations implemented in JIT codegen (88% coverage)
+- [DONE] Strength reduction for simple loop patterns (O(1) for x=x+1)
+- [DONE] General loop JIT compilation
+- [DONE] Global variable JIT support
+- [DONE] Array operations in JIT (ARRAY_GET, ARRAY_SET, ARRAY_LEN)
+- [DONE] All arithmetic, comparison, logical, bitwise operations
+- [DONE] Type conversion operations (INT_TO_DOUBLE, BOX/UNBOX)
+
+### Remaining (11 IR operations)
+- [TODO] IR_CALL, IR_CALL_INLINE - **Critical for function inlining**
+- [TODO] IR_ARG, IR_RET_VAL - Function call support
+- [TODO] IR_PHI, IR_SNAPSHOT - SSA/deoptimization
+- [TODO] Guard operations (GUARD_DOUBLE, GUARD_BOUNDS, GUARD_FUNC, GUARD_OVERFLOW, GUARD_TYPE)
+
+---
+
 ## Recommended Next Steps (Priority Order)
 
-### Immediate ( HIGH Priority)
-1. **Function Inlining** - Fix recursive function performance (currently 400x slower than Python for recursion)
-2. **Constant Folding** - Evaluate `3 + 4` → `7` at compile time
-3. **Integer-Specialized Opcodes** - `OP_ADD_II` for int+int avoids boxing
+### Immediate (HIGH Priority)
+1. **Function Call Codegen (IR_CALL)** - Required before any inlining can happen
+2. **Function Inlining** - Fix recursive function performance (currently 400x slower than Python)
+3. **Constant Folding** - Evaluate `3 + 4` -> `7` at compile time
 
 ### Short Term
 4. **Box Elimination** - Remove redundant box/unbox pairs in JIT traces
@@ -20,8 +39,8 @@
 
 ### Medium Term
 7. **Inline Caching** - Cache property lookups for objects
-8. **Register Allocation** - Keep values in CPU registers, not memory
-9. **Tail Call Optimization** - Reuse stack frames for tail calls
+8. **Tail Call Optimization** - Reuse stack frames for tail calls
+9. **Guard operations** - Enable speculative optimizations
 
 ### Benchmarks (January 2026)
 | Benchmark | Pseudocode JIT | Python | C | Notes |
@@ -29,7 +48,7 @@
 | Tight loop (100M x++) | **0.03ms** | 10,950ms | ~0.02ms | 365,000x faster than Python! |
 | Arithmetic loop (100M) | 125ms | ~15s | ~40ms | 3x JIT speedup |
 | Branch loop (100M) | 78ms | ~25s | ~50ms | 37x JIT speedup |
-| Recursive factorial (100k) | ~27s | 63ms | ~5ms | **Needs function inlining** |
+| Recursive factorial (100k) | ~27s | 63ms | ~5ms | **Needs IR_CALL + inlining** |
 
 ---
 
@@ -37,7 +56,7 @@
 
 ### 1.1 Constant Folding at Compile Time
 **Current**: All arithmetic happens at runtime  
-**Goal**: Evaluate `3 + 4` → `7` during compilation
+**Goal**: Evaluate `3 + 4` -> `7` during compilation
 
 ```c
 // In compiler.c, during number() parsing

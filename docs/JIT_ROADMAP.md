@@ -3,10 +3,15 @@
 ## Current State (January 2026)
 
 **What we have:**
--  Pattern-based strength reduction JIT for ~5 specific loop patterns
--  **General loop JIT compiler** - compiles ANY for-loop to native code
--  **Global variable JIT support** - top-level scripts now JIT-compiled
+- [DONE] Pattern-based strength reduction JIT for ~5 specific loop patterns
+- [DONE] **General loop JIT compiler** - compiles ANY for-loop to native code
+- [DONE] **Global variable JIT support** - top-level scripts now JIT-compiled
+- [DONE] **64 IR operations implemented** in trace_codegen.c (out of 73 defined)
 - Fast bytecode interpreter (~15-20 ns/op)
+
+**IR Operations Status:**
+- Implemented: 64 operations (arithmetic, comparisons, bitwise, logical, arrays, control flow, type conversions)
+- Remaining: 11 operations (IR_CALL, IR_CALL_INLINE, IR_ARG, IR_RET_VAL, IR_PHI, IR_SNAPSHOT, guards)
 
 **Performance Comparison (vs C with volatile):**
 | Pattern | C (O3) | Pseudocode JIT | Ratio |
@@ -16,7 +21,7 @@
 | x=x+i (10M) | 3.2ms | 37ms | ~12x slower |
 | x=x+i*2-1 (10M) | 7.7ms | 40ms | ~5x slower |
 | if i<5M (10M) | 10ms | 22ms | ~2x slower |
-| Global x=x+1 (10M) | - | 20ms |  Working |
+| Global x=x+1 (10M) | - | 20ms | Working |
 
 **Analysis:**
 - Strength-reducible patterns achieve **O(1)** time complexity
@@ -32,32 +37,36 @@
 - Extended JIT calling convention to pass globals pointer
 - Proper loop epilogue with counter increment and back-edge
 - Fixed var_slot synchronization bug for correct loop variable tracking
+- All arithmetic, comparison, logical, bitwise operations
+- Array operations (ARRAY_GET, ARRAY_SET, ARRAY_LEN)
+- Type conversions (INT_TO_DOUBLE, DOUBLE_TO_INT, BOX/UNBOX)
+- Control flow (JUMP, BRANCH, EXIT, LOOP, RET)
 
 ---
 
-## Phase 1: Basic Method JIT (2-3 weeks) -  COMPLETE
+## Phase 1: Basic Method JIT (2-3 weeks) - 90% COMPLETE
 
 **Goal:** Compile entire functions to native code, not just recognized patterns.
 
-### 1.1 Extend IR to Cover All Opcodes
+### 1.1 Extend IR to Cover All Opcodes - [DONE]
 ```
-Current IR ops: ~15 (LOAD_LOCAL, ADD_INT, BOX, UNBOX, etc.)
-Needed IR ops: ~50 (all bytecode ops mapped to IR)
+Defined IR ops: 73
+Implemented IR ops: 64 (88%)
+Remaining: IR_CALL, IR_CALL_INLINE, IR_ARG, IR_RET_VAL, IR_PHI, IR_SNAPSHOT, guards
 ```
 
-**New IR operations needed:**
-- `IR_LOAD_GLOBAL`, `IR_STORE_GLOBAL`
-- `IR_CALL`, `IR_RETURN`
-- `IR_ARRAY_GET`, `IR_ARRAY_SET`, `IR_ARRAY_NEW`
-- `IR_JMP`, `IR_JMP_IF`, `IR_JMP_IFNOT`
-- `IR_LT`, `IR_GT`, `IR_EQ`, `IR_NEQ` (comparisons)
-- `IR_MUL_INT`, `IR_DIV_INT`, `IR_MOD_INT`
-- `IR_AND`, `IR_OR`, `IR_NOT`
-- String operations, type checks, etc.
+**Implemented IR operations:**
+- [DONE] `IR_LOAD_GLOBAL`, `IR_STORE_GLOBAL`
+- [TODO] `IR_CALL`, `IR_CALL_INLINE` - **Critical for function inlining**
+- [DONE] `IR_ARRAY_GET`, `IR_ARRAY_SET`, `IR_ARRAY_LEN`
+- [DONE] `IR_JUMP`, `IR_BRANCH`, `IR_EXIT`
+- [DONE] All comparisons (LT, GT, EQ, NE, LE, GE for int and double)
+- [DONE] `IR_MUL_INT`, `IR_DIV_INT`, `IR_MOD_INT`
+- [DONE] `IR_AND`, `IR_OR`, `IR_NOT`
+- [DONE] Bitwise operations (BAND, BOR, BXOR, BNOT, SHL, SHR)
+- [DONE] Type conversions (INT_TO_DOUBLE, DOUBLE_TO_INT, BOX/UNBOX)
 
-**Effort:** ~500-800 lines of C
-
-### 1.2 Bytecode-to-IR Translation
+### 1.2 Bytecode-to-IR Translation - [DONE]
 Instead of pattern matching, translate ANY bytecode sequence to IR:
 
 ```c

@@ -25,21 +25,36 @@ Already part of the VM - no import needed:
 | **Types** | `int`, `float`, `str`, `type` |
 | **Time** | `time`, `sleep` |
 
-###  Implemented Standard Libraries (v1.2.0)
-Located in `examples/lib/`:
+### Implemented Standard Libraries (v1.2.0)
+
+**Core Libraries** (in `lib/`):
+
+| Library | Import | Status | Functions |
+|---------|--------|--------|-----------|
+| **io** | `import "io"` | [DONE] | path_join, path_dirname, path_basename, path_extension, temp_file, temp_dir, path_exists, is_file, is_dir |
+| **csv** | `import "csv"` | [DONE] | csv_parse, csv_parse_file, csv_stringify, csv_write_file, csv_get_column, csv_filter_rows |
+| **http_ext** | `import "http_ext"` | [DONE] | http_request, http_get_json, http_post_json, build_query_string, parse_url |
+| **regex** | `import "regex"` | [DONE] | regex_match, regex_find_all, regex_replace, regex_split, is_email, is_url, extract_numbers |
+| **websocket** | `import "websocket"` | [DONE] | ws_connect, ws_send, ws_receive, ws_close, ws_on_message, ws_on_error, ws_on_close |
+| **database** | `import "database"` | [DONE] | db_open, db_create_table, db_insert, db_select_all, db_select_where, db_update_by_id, db_delete_by_id, kv_set, kv_get, kv_has, kv_delete, kv_keys |
+
+**Utility Libraries** (in `examples/lib/`):
 
 | Library | Import | Functions |
 |---------|--------|-----------|
 | **math** | `import "./lib/math.pseudo"` | PI, E, TAU, factorial, gcd, lcm, fib, is_prime, power, sum, average, clamp, lerp, deg_to_rad, rad_to_deg |
 | **strings** | `import "./lib/strings.pseudo"` | repeat_string, pad_left, pad_right, center, reverse_string, is_palindrome, count_substring, word_count, title_case, truncate, word_wrap |
 | **collections** | `import "./lib/collections.pseudo"` | range_array, range_step, index_of, array_contains, unique, flatten, zip, reverse_array, take, drop, chunk, frequencies, group_by, Stack, Queue |
+| **functional** | `import "./lib/functional.pseudo"` | compose, pipe, curry, partial, memoize |
+| **datetime** | `import "./lib/datetime.pseudo"` | now, format_date, parse_date, add_days, diff_days |
+| **testing** | `import "./lib/testing.pseudo"` | assert, assert_equal, describe, it, run_tests |
 
 ---
 
-## Phase 1: Core Libraries (Priority: HIGH)
+## Phase 1: Core Libraries (Priority: HIGH) - MOSTLY COMPLETE
 
-### 1.1 Testing Library 
-**Path:** `lib/testing.pseudo`  
+### 1.1 Testing Library - [DONE]
+**Path:** `examples/lib/testing.pseudo`  
 **Purpose:** Unit testing and assertions
 
 ```pseudocode

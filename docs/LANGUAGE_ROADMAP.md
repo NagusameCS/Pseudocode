@@ -8,33 +8,37 @@
 
 ## Current State (v1.2.0)
 
-###  Implemented Features
+### Implemented Features
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Variables (`let`) |  | Dynamic typing |
-| Functions (`fn`) |  | First-class, closures |
-| Control flow |  | if/elif/else, for, while, match |
-| Pattern matching |  | match/case with guards |
-| Arrays |  | Dynamic, `[1, 2, 3]` |
-| Dictionaries |  | Hash maps, `{"k": "v"}` |
-| Operators |  | Arithmetic, logical, comparison |
-| String operations |  | Concatenation, 80+ builtins |
-| Import system |  | Compile-time, zero overhead |
-| REPL |  | Multi-line, .commands |
-| CLI |  | -e, -h, -v, -j, -d flags |
-| JIT compiler |  | Trace-based, x86-64 |
+| Variables (`let`) | [DONE] | Dynamic typing |
+| Functions (`fn`) | [DONE] | First-class, closures |
+| Control flow | [DONE] | if/elif/else, for, while, match |
+| Pattern matching | [DONE] | match/case with guards |
+| Arrays | [DONE] | Dynamic, `[1, 2, 3]` |
+| Dictionaries | [DONE] | Hash maps via dict(), dict_set(), dict_get() |
+| Operators | [DONE] | Arithmetic, logical, comparison |
+| String operations | [DONE] | Concatenation, 80+ builtins |
+| Import system | [DONE] | Compile-time, zero overhead |
+| REPL | [DONE] | Multi-line, .commands |
+| CLI | [DONE] | -e, -h, -v, -j, -d flags |
+| JIT compiler | [DONE] | Trace-based, x86-64, 64 IR ops |
+| Regex | [DONE] | PCRE2-based, via lib/regex.pseudo |
+| Classes | [DONE] | Basic classes with init/methods |
 
-###  Missing (Compared to Python/JS/Ruby)
-| Feature | Difficulty | Priority |
-|---------|------------|----------|
-| Classes/OOP | Medium | HIGH |
-| Try/catch exceptions | Medium | HIGH |
-| Async/await | Hard | MEDIUM |
-| Generators/iterators | Medium | MEDIUM |
-| Decorators | Easy | LOW |
-| Enums | Easy | LOW |
-| Modules/namespaces | Medium | MEDIUM |
-| Optional typing | Hard | LOW |
+### Missing (Compared to Python/JS/Ruby)
+| Feature | Difficulty | Priority | Status |
+|---------|------------|----------|--------|
+| Try/catch exceptions | Medium | HIGH | Not started |
+| Class inheritance | Easy | HIGH | Not started |
+| Async/await | Hard | MEDIUM | Not started |
+| Generators/iterators | Medium | MEDIUM | Not started |
+| Decorators | Easy | LOW | Not started |
+| Selective imports | Easy | MEDIUM | Not started |
+| Optional typing | Hard | LOW | Not started |
+
+### Known Issues
+- **VM if-condition bug**: Direct comparisons in `if` statements inside for-loops may not work correctly. Workaround: store comparison result in a variable first.
 
 ---
 
