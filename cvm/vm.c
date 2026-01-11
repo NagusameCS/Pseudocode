@@ -976,6 +976,7 @@ InterpretResult vm_run(VM *vm)
         [OP_CONST_0] = &&op_const_0,
         [OP_CONST_1] = &&op_const_1,
         [OP_CONST_2] = &&op_const_2,
+        [OP_CONST_NEG1] = &&op_const_neg1,
         /* Integer-specialized opcodes */
         [OP_ADD_II] = &&op_add_ii,
         [OP_SUB_II] = &&op_sub_ii,
@@ -2675,6 +2676,12 @@ InterpretResult vm_run(VM *vm)
     CASE(const_2) :
     {
         PUSH(val_int(2));
+        DISPATCH();
+    }
+
+    CASE(const_neg1) :
+    {
+        PUSH(val_int(-1));
         DISPATCH();
     }
 

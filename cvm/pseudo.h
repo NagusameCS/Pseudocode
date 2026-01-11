@@ -657,6 +657,7 @@ typedef enum
     OP_CONST_0,
     OP_CONST_1,
     OP_CONST_2,
+    OP_CONST_NEG1, /* -1, common for decrementing and array end access */
 
     /* ============ INTEGER-SPECIALIZED OPCODES ============ */
     /* These skip type checks and NaN-boxing for hot integer loops */

@@ -2424,10 +2424,34 @@ static void unary(bool can_assign)
             /* Remove the constant instruction */
             current_chunk()->count = last_emit.bytecode_pos;
 
-            /* Emit negated value */
+            /* Emit negated value - use specialized opcodes for common values */
             if (result == (double)(int32_t)result && result >= INT32_MIN && result <= INT32_MAX)
             {
-                emit_constant(val_int((int32_t)result));
+                int32_t int_result = (int32_t)result;
+                if (int_result == -1)
+                {
+                    emit_byte(OP_CONST_NEG1);
+                    second_last_emit = last_emit;
+                    last_emit.is_constant = true;
+                    last_emit.value = val_int(-1);
+                    last_emit.bytecode_pos = current_chunk()->count - 1;
+                    last_emit.const_idx = 0;
+                    last_emit.type = CTYPE_INT;
+                }
+                else if (int_result == 0)
+                {
+                    emit_byte(OP_CONST_0);
+                    second_last_emit = last_emit;
+                    last_emit.is_constant = true;
+                    last_emit.value = val_int(0);
+                    last_emit.bytecode_pos = current_chunk()->count - 1;
+                    last_emit.const_idx = 0;
+                    last_emit.type = CTYPE_INT;
+                }
+                else
+                {
+                    emit_constant(val_int(int_result));
+                }
             }
             else
             {
