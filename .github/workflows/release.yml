@@ -6,6 +6,9 @@ on:
       - 'v*'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build-linux:
     runs-on: ubuntu-22.04
@@ -43,7 +46,7 @@ jobs:
           path: artifacts
       
       - name: Create Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: artifacts/*
           draft: false
@@ -57,5 +60,3 @@ jobs:
             
             ### VS Code Extension
             Build locally with: `cd vscode-extension && npm install && npx @vscode/vsce package`
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
