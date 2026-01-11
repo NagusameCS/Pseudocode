@@ -1,17 +1,18 @@
 # JIT Roadmap: Path to Generally Fast
 
-## Current State (January 2026)
+## Current State (January 2025)
 
 **What we have:**
 - [DONE] Pattern-based strength reduction JIT for ~5 specific loop patterns
 - [DONE] **General loop JIT compiler** - compiles ANY for-loop to native code
 - [DONE] **Global variable JIT support** - top-level scripts now JIT-compiled
-- [DONE] **64 IR operations implemented** in trace_codegen.c (out of 73 defined)
+- [DONE] **100% IR operations implemented** in trace_codegen.c (75 cases for 73 defined ops)
+- [DONE] **and/or short-circuit bug fixed** - jump fusion now inhibited after logical operators
 - Fast bytecode interpreter (~15-20 ns/op)
 
 **IR Operations Status:**
-- Implemented: 64 operations (arithmetic, comparisons, bitwise, logical, arrays, control flow, type conversions)
-- Remaining: 11 operations (IR_CALL, IR_CALL_INLINE, IR_ARG, IR_RET_VAL, IR_PHI, IR_SNAPSHOT, guards)
+- Implemented: 73/73 operations (100% complete!)
+- All guards, function calls, PHI nodes, and snapshots implemented
 
 **Performance Comparison (vs C with volatile):**
 | Pattern | C (O3) | Pseudocode JIT | Ratio |
@@ -41,23 +42,27 @@
 - Array operations (ARRAY_GET, ARRAY_SET, ARRAY_LEN)
 - Type conversions (INT_TO_DOUBLE, DOUBLE_TO_INT, BOX/UNBOX)
 - Control flow (JUMP, BRANCH, EXIT, LOOP, RET)
+- Function calls (CALL, CALL_INLINE, ARG, RET_VAL)
+- Guards (GUARD_TYPE, GUARD_DOUBLE, GUARD_OVERFLOW, GUARD_BOUNDS, GUARD_FUNC)
+- SSA nodes (PHI, SNAPSHOT)
 
 ---
 
-## Phase 1: Basic Method JIT (2-3 weeks) - 90% COMPLETE
+## Phase 1: Basic Method JIT (2-3 weeks) - COMPLETE
 
 **Goal:** Compile entire functions to native code, not just recognized patterns.
 
 ### 1.1 Extend IR to Cover All Opcodes - [DONE]
 ```
 Defined IR ops: 73
-Implemented IR ops: 64 (88%)
-Remaining: IR_CALL, IR_CALL_INLINE, IR_ARG, IR_RET_VAL, IR_PHI, IR_SNAPSHOT, guards
+Implemented IR ops: 73 (100%)
+All operations complete!
 ```
 
 **Implemented IR operations:**
 - [DONE] `IR_LOAD_GLOBAL`, `IR_STORE_GLOBAL`
-- [TODO] `IR_CALL`, `IR_CALL_INLINE` - **Critical for function inlining**
+- [DONE] `IR_CALL`, `IR_CALL_INLINE` - function call support
+- [DONE] `IR_ARG`, `IR_RET_VAL` - ABI register handling
 - [DONE] `IR_ARRAY_GET`, `IR_ARRAY_SET`, `IR_ARRAY_LEN`
 - [DONE] `IR_JUMP`, `IR_BRANCH`, `IR_EXIT`
 - [DONE] All comparisons (LT, GT, EQ, NE, LE, GE for int and double)
@@ -65,6 +70,8 @@ Remaining: IR_CALL, IR_CALL_INLINE, IR_ARG, IR_RET_VAL, IR_PHI, IR_SNAPSHOT, gua
 - [DONE] `IR_AND`, `IR_OR`, `IR_NOT`
 - [DONE] Bitwise operations (BAND, BOR, BXOR, BNOT, SHL, SHR)
 - [DONE] Type conversions (INT_TO_DOUBLE, DOUBLE_TO_INT, BOX/UNBOX)
+- [DONE] Guards (GUARD_TYPE, GUARD_DOUBLE, GUARD_OVERFLOW, GUARD_BOUNDS, GUARD_FUNC)
+- [DONE] SSA (PHI, SNAPSHOT)
 
 ### 1.2 Bytecode-to-IR Translation - [DONE]
 Instead of pattern matching, translate ANY bytecode sequence to IR:

@@ -248,6 +248,9 @@ typedef struct
 static LastEmit last_emit = {false, 0, 0, 0, CTYPE_UNKNOWN};
 static LastEmit second_last_emit = {false, 0, 0, 0, CTYPE_UNKNOWN};
 
+/* Flag to prevent fusion after and/or expressions (they have internal jumps) */
+static bool inhibit_jump_fusion = false;
+
 static void reset_last_emit(void)
 {
     second_last_emit = last_emit;
@@ -418,7 +421,8 @@ static int emit_jump(uint8_t instruction)
     Chunk *chunk = current_chunk();
 
     /* INLINE FUSION: Fuse comparison + JMP_FALSE into single superinstruction */
-    if (instruction == OP_JMP_FALSE && chunk->count >= 1)
+    /* Skip fusion if inhibited (after and/or expressions with internal jumps) */
+    if (instruction == OP_JMP_FALSE && chunk->count >= 1 && !inhibit_jump_fusion)
     {
         uint8_t last = chunk->code[chunk->count - 1];
         uint8_t fused = 0;
@@ -454,6 +458,9 @@ static int emit_jump(uint8_t instruction)
             return -(int)(chunk->count - 2);
         }
     }
+
+    /* Clear fusion inhibit after use */
+    inhibit_jump_fusion = false;
 
     emit_byte(instruction);
     emit_byte(0xff);
@@ -2758,6 +2765,8 @@ static void and_(bool can_assign)
     emit_byte(OP_POP);
     parse_precedence(PREC_AND);
     patch_jump(end_jump);
+    /* Prevent outer if/while from fusing with internal comparison */
+    inhibit_jump_fusion = true;
 }
 
 static void or_(bool can_assign)
@@ -2775,6 +2784,8 @@ static void or_(bool can_assign)
 
     parse_precedence(PREC_OR);
     patch_jump(end_jump);
+    /* Prevent outer if/while from fusing with internal comparison */
+    inhibit_jump_fusion = true;
 }
 
 static uint8_t argument_list(void)

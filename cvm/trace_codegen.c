@@ -1702,6 +1702,162 @@ static void compile_ir_op(MCode *mc, TraceIR *ir, IRIns *ins,
 #undef ARRAY_COUNT_OFFSET
 #undef ARRAY_VALUES_OFFSET
 
+    /* SSA/Deopt operations */
+    case IR_PHI:
+        /* PHI nodes are resolved during register allocation, no codegen needed */
+        break;
+
+    case IR_SNAPSHOT:
+        /* Snapshot is metadata for deoptimization, no codegen needed */
+        break;
+
+    /* Additional guard operations */
+    case IR_GUARD_TYPE:
+        /* Guard that value has expected type tag */
+        if (src1 >= 0)
+        {
+            /* Extract type bits and compare */
+            emit_mov_rr(mc, R11, src1);
+            emit_mov_ri64(mc, R10, QNAN | 0x7);
+            emit(mc, rex(1, R10, 0, R11));
+            emit(mc, 0x21); /* AND */
+            emit(mc, 0xc0 | ((R10 & 7) << 3) | (R11 & 7));
+            /* Compare with expected type (in aux) */
+            emit_mov_ri64(mc, R10, QNAN | ins->aux);
+            emit_cmp_rr(mc, R11, R10);
+            if (*num_exits < IR_MAX_EXITS)
+            {
+                exits[*num_exits].code_offset = emit_jne(mc);
+                exits[*num_exits].snapshot_idx = ins->imm.snapshot;
+                (*num_exits)++;
+            }
+        }
+        break;
+
+    case IR_GUARD_DOUBLE:
+        /* Guard that value is a double (not NaN-boxed) */
+        if (src1 >= 0)
+        {
+            /* Doubles have top bits != QNAN pattern */
+            emit_mov_rr(mc, R11, src1);
+            emit_mov_ri64(mc, R10, QNAN);
+            emit(mc, rex(1, R10, 0, R11));
+            emit(mc, 0x21); /* AND */
+            emit(mc, 0xc0 | ((R10 & 7) << 3) | (R11 & 7));
+            emit_cmp_rr(mc, R11, R10);
+            if (*num_exits < IR_MAX_EXITS)
+            {
+                exits[*num_exits].code_offset = emit_je(mc); /* Exit if IS NaN-boxed */
+                exits[*num_exits].snapshot_idx = ins->imm.snapshot;
+                (*num_exits)++;
+            }
+        }
+        break;
+
+    case IR_GUARD_OVERFLOW:
+        /* Guard that previous arithmetic didn't overflow */
+        /* Check overflow flag (OF) after arithmetic */
+        if (*num_exits < IR_MAX_EXITS)
+        {
+            /* JO - jump if overflow */
+            emit(mc, 0x0f);
+            emit(mc, 0x80); /* JO rel32 */
+            exits[*num_exits].code_offset = mc->length;
+            emit32(mc, 0); /* Placeholder */
+            exits[*num_exits].snapshot_idx = ins->imm.snapshot;
+            (*num_exits)++;
+        }
+        break;
+
+    case IR_GUARD_BOUNDS:
+        /* Guard array index within bounds: index < array.count */
+        if (src1 >= 0 && src2 >= 0)
+        {
+            /* src1 = index, src2 = array length */
+            emit_cmp_rr(mc, src1, src2);
+            if (*num_exits < IR_MAX_EXITS)
+            {
+                exits[*num_exits].code_offset = emit_jge(mc); /* Exit if index >= len */
+                exits[*num_exits].snapshot_idx = ins->imm.snapshot;
+                (*num_exits)++;
+            }
+        }
+        break;
+
+    case IR_GUARD_FUNC:
+        /* Guard that function pointer matches expected */
+        if (src1 >= 0)
+        {
+            /* Compare function pointer with expected (stored in imm) */
+            emit_mov_ri64(mc, R11, ins->imm.i64);
+            emit_cmp_rr(mc, src1, R11);
+            if (*num_exits < IR_MAX_EXITS)
+            {
+                exits[*num_exits].code_offset = emit_jne(mc);
+                exits[*num_exits].snapshot_idx = ins->aux;
+                (*num_exits)++;
+            }
+        }
+        break;
+
+    /* Function call operations */
+    case IR_ARG:
+        /* Prepare argument for function call - move to arg register */
+        if (src1 >= 0)
+        {
+            /* Arguments go to RDI, RSI, RDX, RCX, R8, R9 per x64 ABI */
+            int arg_idx = ins->aux;
+            int arg_regs[] = {RDI, RSI, RDX, RCX, R8, R9};
+            if (arg_idx < 6)
+            {
+                emit_mov_rr(mc, arg_regs[arg_idx], src1);
+            }
+            else
+            {
+                /* Stack args: push in reverse order */
+                emit_push(mc, src1);
+            }
+        }
+        break;
+
+    case IR_CALL:
+        /* Call a function - aux contains number of args */
+        if (src1 >= 0)
+        {
+            /* src1 = function pointer (boxed), aux = nargs */
+            /* Unbox function pointer */
+            emit_mov_ri64(mc, R11, 0x0000FFFFFFFFFFFFULL);
+            emit(mc, rex(1, src1, 0, R11));
+            emit(mc, 0x21);
+            emit(mc, 0xc0 | ((src1 & 7) << 3) | (R11 & 7));
+            /* Call through R11 */
+            emit(mc, 0x41); /* REX.B */
+            emit(mc, 0xff); /* CALL r/m64 */
+            emit(mc, 0xd0 | (R11 & 7));
+            /* Result is in RAX, move to dst if needed */
+            if (dst >= 0 && dst != RAX)
+            {
+                emit_mov_rr(mc, dst, RAX);
+            }
+        }
+        break;
+
+    case IR_CALL_INLINE:
+        /* Marker for inlined call - no actual codegen, just marks boundary */
+        break;
+
+    case IR_RET_VAL:
+        /* Set return value */
+        if (src1 >= 0)
+        {
+            /* Move return value to RAX */
+            if (src1 != RAX)
+            {
+                emit_mov_rr(mc, RAX, src1);
+            }
+        }
+        break;
+
     default:
         /* Unhandled - skip */
         break;
