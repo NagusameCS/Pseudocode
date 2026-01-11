@@ -27,12 +27,12 @@
 /* SIMD intrinsics for vectorized operations */
 #if defined(__AVX__)
 #include <immintrin.h>
-#define SIMD_WIDTH 4  /* 4 doubles per AVX register */
+#define SIMD_WIDTH 4 /* 4 doubles per AVX register */
 #elif defined(__SSE2__) || defined(_M_X64)
 #include <emmintrin.h>
-#define SIMD_WIDTH 2  /* 2 doubles per SSE register */
+#define SIMD_WIDTH 2 /* 2 doubles per SSE register */
 #else
-#define SIMD_WIDTH 1  /* Scalar fallback */
+#define SIMD_WIDTH 1 /* Scalar fallback */
 #endif
 
 /* PCRE2 for regex support */
@@ -856,36 +856,65 @@ static void print_value(Value value)
 
 /* Debug: Opcode name lookup table */
 static const char *opcode_names[] = {
-    [OP_CONST] = "CONST", [OP_CONST_LONG] = "CONST_LONG", [OP_NIL] = "NIL",
-    [OP_TRUE] = "TRUE", [OP_FALSE] = "FALSE", [OP_POP] = "POP",
-    [OP_GET_LOCAL] = "GET_LOCAL", [OP_SET_LOCAL] = "SET_LOCAL",
-    [OP_GET_GLOBAL] = "GET_GLOBAL", [OP_SET_GLOBAL] = "SET_GLOBAL",
-    [OP_ADD] = "ADD", [OP_SUB] = "SUB", [OP_MUL] = "MUL", [OP_DIV] = "DIV",
-    [OP_EQ] = "EQ", [OP_NEQ] = "NEQ", [OP_LT] = "LT", [OP_GT] = "GT",
-    [OP_JMP] = "JMP", [OP_JMP_FALSE] = "JMP_FALSE", [OP_LOOP] = "LOOP",
-    [OP_CALL] = "CALL", [OP_RETURN] = "RETURN", [OP_PRINT] = "PRINT",
-    [OP_ARRAY] = "ARRAY", [OP_INDEX] = "INDEX", [OP_LEN] = "LEN",
+    [OP_CONST] = "CONST",
+    [OP_CONST_LONG] = "CONST_LONG",
+    [OP_NIL] = "NIL",
+    [OP_TRUE] = "TRUE",
+    [OP_FALSE] = "FALSE",
+    [OP_POP] = "POP",
+    [OP_GET_LOCAL] = "GET_LOCAL",
+    [OP_SET_LOCAL] = "SET_LOCAL",
+    [OP_GET_GLOBAL] = "GET_GLOBAL",
+    [OP_SET_GLOBAL] = "SET_GLOBAL",
+    [OP_ADD] = "ADD",
+    [OP_SUB] = "SUB",
+    [OP_MUL] = "MUL",
+    [OP_DIV] = "DIV",
+    [OP_EQ] = "EQ",
+    [OP_NEQ] = "NEQ",
+    [OP_LT] = "LT",
+    [OP_GT] = "GT",
+    [OP_JMP] = "JMP",
+    [OP_JMP_FALSE] = "JMP_FALSE",
+    [OP_LOOP] = "LOOP",
+    [OP_CALL] = "CALL",
+    [OP_RETURN] = "RETURN",
+    [OP_PRINT] = "PRINT",
+    [OP_ARRAY] = "ARRAY",
+    [OP_INDEX] = "INDEX",
+    [OP_LEN] = "LEN",
 };
 
 static void debug_trace_op(VM *vm, uint8_t *ip, Value *sp)
 {
-    if (!vm->debug_mode) return;
-    
+    if (!vm->debug_mode)
+        return;
+
     int offset = (int)(ip - vm->chunk.code);
     uint8_t op = *ip;
-    const char *name = (op < sizeof(opcode_names)/sizeof(opcode_names[0]) && opcode_names[op]) 
-                       ? opcode_names[op] : "???";
-    
+    const char *name = (op < sizeof(opcode_names) / sizeof(opcode_names[0]) && opcode_names[op])
+                           ? opcode_names[op]
+                           : "???";
+
     fprintf(stderr, "[%04d] %-12s  stack: [", offset, name);
-    for (Value *slot = vm->stack; slot < sp; slot++) {
-        if (slot > vm->stack) fprintf(stderr, ", ");
-        if (IS_INT(*slot)) fprintf(stderr, "%d", as_int(*slot));
-        else if (IS_NUM(*slot)) fprintf(stderr, "%.2f", as_num(*slot));
-        else if (IS_TRUE(*slot)) fprintf(stderr, "true");
-        else if (IS_FALSE(*slot)) fprintf(stderr, "false");
-        else if (IS_NIL(*slot)) fprintf(stderr, "nil");
-        else if (IS_STRING(*slot)) fprintf(stderr, "\"%s\"", AS_STRING(*slot)->chars);
-        else fprintf(stderr, "<obj>");
+    for (Value *slot = vm->stack; slot < sp; slot++)
+    {
+        if (slot > vm->stack)
+            fprintf(stderr, ", ");
+        if (IS_INT(*slot))
+            fprintf(stderr, "%d", as_int(*slot));
+        else if (IS_NUM(*slot))
+            fprintf(stderr, "%.2f", as_num(*slot));
+        else if (IS_TRUE(*slot))
+            fprintf(stderr, "true");
+        else if (IS_FALSE(*slot))
+            fprintf(stderr, "false");
+        else if (IS_NIL(*slot))
+            fprintf(stderr, "nil");
+        else if (IS_STRING(*slot))
+            fprintf(stderr, "\"%s\"", AS_STRING(*slot)->chars);
+        else
+            fprintf(stderr, "<obj>");
     }
     fprintf(stderr, "]\n");
 }
@@ -1242,19 +1271,32 @@ InterpretResult vm_run(VM *vm)
         [OP_ARRAY_REDUCE] = &&op_array_reduce,
     };
 
-#define DISPATCH() do { if (vm->debug_mode) debug_trace_op(vm, ip, sp); goto *dispatch_table[*ip++]; } while(0)
+#define DISPATCH()                      \
+    do                                  \
+    {                                   \
+        if (vm->debug_mode)             \
+            debug_trace_op(vm, ip, sp); \
+        goto *dispatch_table[*ip++];    \
+    } while (0)
 #define CASE(name) op_##name
 
     DISPATCH();
 
 #else
 /* Traditional switch dispatch */
-#define DISPATCH() do { if (vm->debug_mode) debug_trace_op(vm, ip, sp); continue; } while(0)
+#define DISPATCH()                      \
+    do                                  \
+    {                                   \
+        if (vm->debug_mode)             \
+            debug_trace_op(vm, ip, sp); \
+        continue;                       \
+    } while (0)
 #define CASE(name) case OP_##name
 
     for (;;)
     {
-        if (vm->debug_mode) debug_trace_op(vm, ip, sp);
+        if (vm->debug_mode)
+            debug_trace_op(vm, ip, sp);
         switch (*ip++)
         {
 #endif
@@ -7527,22 +7569,22 @@ InterpretResult vm_run(VM *vm)
         for (uint32_t i = 0; i < simd_len; i += 4)
         {
             __m256d va = _mm256_set_pd(
-                IS_INT(a->values[i+3]) ? (double)as_int(a->values[i+3]) : as_num(a->values[i+3]),
-                IS_INT(a->values[i+2]) ? (double)as_int(a->values[i+2]) : as_num(a->values[i+2]),
-                IS_INT(a->values[i+1]) ? (double)as_int(a->values[i+1]) : as_num(a->values[i+1]),
-                IS_INT(a->values[i])   ? (double)as_int(a->values[i])   : as_num(a->values[i]));
+                IS_INT(a->values[i + 3]) ? (double)as_int(a->values[i + 3]) : as_num(a->values[i + 3]),
+                IS_INT(a->values[i + 2]) ? (double)as_int(a->values[i + 2]) : as_num(a->values[i + 2]),
+                IS_INT(a->values[i + 1]) ? (double)as_int(a->values[i + 1]) : as_num(a->values[i + 1]),
+                IS_INT(a->values[i]) ? (double)as_int(a->values[i]) : as_num(a->values[i]));
             __m256d vb = _mm256_set_pd(
-                IS_INT(b->values[i+3]) ? (double)as_int(b->values[i+3]) : as_num(b->values[i+3]),
-                IS_INT(b->values[i+2]) ? (double)as_int(b->values[i+2]) : as_num(b->values[i+2]),
-                IS_INT(b->values[i+1]) ? (double)as_int(b->values[i+1]) : as_num(b->values[i+1]),
-                IS_INT(b->values[i])   ? (double)as_int(b->values[i])   : as_num(b->values[i]));
+                IS_INT(b->values[i + 3]) ? (double)as_int(b->values[i + 3]) : as_num(b->values[i + 3]),
+                IS_INT(b->values[i + 2]) ? (double)as_int(b->values[i + 2]) : as_num(b->values[i + 2]),
+                IS_INT(b->values[i + 1]) ? (double)as_int(b->values[i + 1]) : as_num(b->values[i + 1]),
+                IS_INT(b->values[i]) ? (double)as_int(b->values[i]) : as_num(b->values[i]));
             __m256d vr = _mm256_add_pd(va, vb);
             double tmp[4];
             _mm256_storeu_pd(tmp, vr);
-            result->values[i]   = val_num(tmp[0]);
-            result->values[i+1] = val_num(tmp[1]);
-            result->values[i+2] = val_num(tmp[2]);
-            result->values[i+3] = val_num(tmp[3]);
+            result->values[i] = val_num(tmp[0]);
+            result->values[i + 1] = val_num(tmp[1]);
+            result->values[i + 2] = val_num(tmp[2]);
+            result->values[i + 3] = val_num(tmp[3]);
         }
         for (uint32_t i = simd_len; i < len; i++)
         {
@@ -7551,28 +7593,28 @@ InterpretResult vm_run(VM *vm)
             result->values[i] = val_num(da + db);
         }
 #elif defined(__SSE2__) || defined(_M_X64)
-        /* SSE2 path: process 2 doubles at a time */
-        uint32_t simd_len = len & ~1u;
-        for (uint32_t i = 0; i < simd_len; i += 2)
-        {
-            __m128d va = _mm_set_pd(
-                IS_INT(a->values[i+1]) ? (double)as_int(a->values[i+1]) : as_num(a->values[i+1]),
-                IS_INT(a->values[i])   ? (double)as_int(a->values[i])   : as_num(a->values[i]));
-            __m128d vb = _mm_set_pd(
-                IS_INT(b->values[i+1]) ? (double)as_int(b->values[i+1]) : as_num(b->values[i+1]),
-                IS_INT(b->values[i])   ? (double)as_int(b->values[i])   : as_num(b->values[i]));
-            __m128d vr = _mm_add_pd(va, vb);
-            double tmp[2];
-            _mm_storeu_pd(tmp, vr);
-            result->values[i]   = val_num(tmp[0]);
-            result->values[i+1] = val_num(tmp[1]);
-        }
-        for (uint32_t i = simd_len; i < len; i++)
-        {
-            double da = IS_INT(a->values[i]) ? (double)as_int(a->values[i]) : as_num(a->values[i]);
-            double db = IS_INT(b->values[i]) ? (double)as_int(b->values[i]) : as_num(b->values[i]);
-            result->values[i] = val_num(da + db);
-        }
+                /* SSE2 path: process 2 doubles at a time */
+                uint32_t simd_len = len & ~1u;
+                for (uint32_t i = 0; i < simd_len; i += 2)
+                {
+                    __m128d va = _mm_set_pd(
+                        IS_INT(a->values[i + 1]) ? (double)as_int(a->values[i + 1]) : as_num(a->values[i + 1]),
+                        IS_INT(a->values[i]) ? (double)as_int(a->values[i]) : as_num(a->values[i]));
+                    __m128d vb = _mm_set_pd(
+                        IS_INT(b->values[i + 1]) ? (double)as_int(b->values[i + 1]) : as_num(b->values[i + 1]),
+                        IS_INT(b->values[i]) ? (double)as_int(b->values[i]) : as_num(b->values[i]));
+                    __m128d vr = _mm_add_pd(va, vb);
+                    double tmp[2];
+                    _mm_storeu_pd(tmp, vr);
+                    result->values[i] = val_num(tmp[0]);
+                    result->values[i + 1] = val_num(tmp[1]);
+                }
+                for (uint32_t i = simd_len; i < len; i++)
+                {
+                    double da = IS_INT(a->values[i]) ? (double)as_int(a->values[i]) : as_num(a->values[i]);
+                    double db = IS_INT(b->values[i]) ? (double)as_int(b->values[i]) : as_num(b->values[i]);
+                    result->values[i] = val_num(da + db);
+                }
 #else
         /* Scalar fallback */
         for (uint32_t i = 0; i < len; i++)
@@ -7686,10 +7728,10 @@ InterpretResult vm_run(VM *vm)
         for (uint32_t i = 0; i < simd_len; i += 4)
         {
             __m256d va = _mm256_set_pd(
-                IS_INT(a->values[i+3]) ? (double)as_int(a->values[i+3]) : as_num(a->values[i+3]),
-                IS_INT(a->values[i+2]) ? (double)as_int(a->values[i+2]) : as_num(a->values[i+2]),
-                IS_INT(a->values[i+1]) ? (double)as_int(a->values[i+1]) : as_num(a->values[i+1]),
-                IS_INT(a->values[i])   ? (double)as_int(a->values[i])   : as_num(a->values[i]));
+                IS_INT(a->values[i + 3]) ? (double)as_int(a->values[i + 3]) : as_num(a->values[i + 3]),
+                IS_INT(a->values[i + 2]) ? (double)as_int(a->values[i + 2]) : as_num(a->values[i + 2]),
+                IS_INT(a->values[i + 1]) ? (double)as_int(a->values[i + 1]) : as_num(a->values[i + 1]),
+                IS_INT(a->values[i]) ? (double)as_int(a->values[i]) : as_num(a->values[i]));
             acc = _mm256_add_pd(acc, va);
         }
         double tmp[4];
@@ -7700,10 +7742,10 @@ InterpretResult vm_run(VM *vm)
             sum += IS_INT(a->values[i]) ? (double)as_int(a->values[i]) : as_num(a->values[i]);
         }
 #else
-        for (uint32_t i = 0; i < a->count; i++)
-        {
-            sum += IS_INT(a->values[i]) ? (double)as_int(a->values[i]) : as_num(a->values[i]);
-        }
+                for (uint32_t i = 0; i < a->count; i++)
+                {
+                    sum += IS_INT(a->values[i]) ? (double)as_int(a->values[i]) : as_num(a->values[i]);
+                }
 #endif
         PUSH(val_num(sum));
         DISPATCH();
@@ -7730,15 +7772,15 @@ InterpretResult vm_run(VM *vm)
         for (uint32_t i = 0; i < simd_len; i += 4)
         {
             __m256d va = _mm256_set_pd(
-                IS_INT(a->values[i+3]) ? (double)as_int(a->values[i+3]) : as_num(a->values[i+3]),
-                IS_INT(a->values[i+2]) ? (double)as_int(a->values[i+2]) : as_num(a->values[i+2]),
-                IS_INT(a->values[i+1]) ? (double)as_int(a->values[i+1]) : as_num(a->values[i+1]),
-                IS_INT(a->values[i])   ? (double)as_int(a->values[i])   : as_num(a->values[i]));
+                IS_INT(a->values[i + 3]) ? (double)as_int(a->values[i + 3]) : as_num(a->values[i + 3]),
+                IS_INT(a->values[i + 2]) ? (double)as_int(a->values[i + 2]) : as_num(a->values[i + 2]),
+                IS_INT(a->values[i + 1]) ? (double)as_int(a->values[i + 1]) : as_num(a->values[i + 1]),
+                IS_INT(a->values[i]) ? (double)as_int(a->values[i]) : as_num(a->values[i]));
             __m256d vb = _mm256_set_pd(
-                IS_INT(b->values[i+3]) ? (double)as_int(b->values[i+3]) : as_num(b->values[i+3]),
-                IS_INT(b->values[i+2]) ? (double)as_int(b->values[i+2]) : as_num(b->values[i+2]),
-                IS_INT(b->values[i+1]) ? (double)as_int(b->values[i+1]) : as_num(b->values[i+1]),
-                IS_INT(b->values[i])   ? (double)as_int(b->values[i])   : as_num(b->values[i]));
+                IS_INT(b->values[i + 3]) ? (double)as_int(b->values[i + 3]) : as_num(b->values[i + 3]),
+                IS_INT(b->values[i + 2]) ? (double)as_int(b->values[i + 2]) : as_num(b->values[i + 2]),
+                IS_INT(b->values[i + 1]) ? (double)as_int(b->values[i + 1]) : as_num(b->values[i + 1]),
+                IS_INT(b->values[i]) ? (double)as_int(b->values[i]) : as_num(b->values[i]));
             acc = _mm256_add_pd(acc, _mm256_mul_pd(va, vb));
         }
         double tmp[4];
@@ -7751,12 +7793,12 @@ InterpretResult vm_run(VM *vm)
             dot += da * db;
         }
 #else
-        for (uint32_t i = 0; i < len; i++)
-        {
-            double da = IS_INT(a->values[i]) ? (double)as_int(a->values[i]) : as_num(a->values[i]);
-            double db = IS_INT(b->values[i]) ? (double)as_int(b->values[i]) : as_num(b->values[i]);
-            dot += da * db;
-        }
+                for (uint32_t i = 0; i < len; i++)
+                {
+                    double da = IS_INT(a->values[i]) ? (double)as_int(a->values[i]) : as_num(a->values[i]);
+                    double db = IS_INT(b->values[i]) ? (double)as_int(b->values[i]) : as_num(b->values[i]);
+                    dot += da * db;
+                }
 #endif
         PUSH(val_num(dot));
         DISPATCH();
@@ -7783,7 +7825,7 @@ InterpretResult vm_run(VM *vm)
             /* Push function and argument */
             PUSH(fn_val);
             PUSH(arr->values[i]);
-            
+
             /* Call function - simplified inline call */
             if (vm->frame_count == FRAMES_MAX)
             {
@@ -7796,21 +7838,21 @@ InterpretResult vm_run(VM *vm)
             new_frame->ip = vm->chunk.code + fn->function->code_start;
             new_frame->slots = sp - 2;
             new_frame->is_init = false;
-            
+
             /* Save current position and run until return */
             uint8_t *saved_ip = ip;
             ip = new_frame->ip;
             bp = new_frame->slots;
             vm->ip = ip;
             vm->sp = sp;
-            
+
             /* Execute the function synchronously */
             InterpretResult res = vm_run(vm);
             if (res != INTERPRET_OK)
             {
                 return res;
             }
-            
+
             sp = vm->sp;
             ip = saved_ip;
             result->values[i] = POP();
@@ -7842,11 +7884,15 @@ InterpretResult vm_run(VM *vm)
             /* Simplified: just keep numeric non-zero values for now */
             Value v = arr->values[i];
             bool keep = false;
-            if (IS_INT(v)) keep = as_int(v) != 0;
-            else if (IS_NUM(v)) keep = as_num(v) != 0.0;
-            else if (IS_BOOL(v)) keep = IS_TRUE(v);
-            else if (!IS_NIL(v)) keep = true;
-            
+            if (IS_INT(v))
+                keep = as_int(v) != 0;
+            else if (IS_NUM(v))
+                keep = as_num(v) != 0.0;
+            else if (IS_BOOL(v))
+                keep = IS_TRUE(v);
+            else if (!IS_NIL(v))
+                keep = true;
+
             if (keep)
             {
                 result->values[result->count++] = v;

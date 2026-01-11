@@ -145,11 +145,12 @@ typedef enum
 } ObjType;
 
 /* Escape state for escape analysis optimization */
-typedef enum {
-    ESCAPE_UNKNOWN = 0,      /* Not yet analyzed */
-    ESCAPE_NO_ESCAPE,        /* Object does not escape function */
-    ESCAPE_ARG_ESCAPE,       /* Escapes via function argument */
-    ESCAPE_GLOBAL_ESCAPE,    /* Escapes to global scope */
+typedef enum
+{
+    ESCAPE_UNKNOWN = 0,   /* Not yet analyzed */
+    ESCAPE_NO_ESCAPE,     /* Object does not escape function */
+    ESCAPE_ARG_ESCAPE,    /* Escapes via function argument */
+    ESCAPE_GLOBAL_ESCAPE, /* Escapes to global scope */
 } EscapeState;
 
 typedef struct Obj
@@ -157,7 +158,7 @@ typedef struct Obj
     ObjType type;
     struct Obj *next; /* GC linked list */
     bool marked;
-    uint8_t escape_state;    /* EscapeState for escape analysis */
+    uint8_t escape_state; /* EscapeState for escape analysis */
 } Obj;
 
 typedef struct
@@ -185,8 +186,8 @@ typedef struct
 } ObjRange;
 
 /* Inline threshold - functions smaller than this are candidates for inlining */
-#define INLINE_THRESHOLD 50       /* Max bytecode size for inlining */
-#define INLINE_MAX_DEPTH 3        /* Max inline nesting depth */
+#define INLINE_THRESHOLD 50 /* Max bytecode size for inlining */
+#define INLINE_MAX_DEPTH 3  /* Max inline nesting depth */
 
 typedef struct
 {
@@ -195,8 +196,8 @@ typedef struct
     uint16_t locals_count;
     uint16_t upvalue_count;
     uint32_t code_start;
-    uint32_t code_length;         /* Length of bytecode for inlining */
-    bool can_inline;              /* Pre-computed inlinability flag */
+    uint32_t code_length; /* Length of bytecode for inlining */
+    bool can_inline;      /* Pre-computed inlinability flag */
     ObjString *name;
 } ObjFunction;
 
@@ -519,25 +520,25 @@ typedef enum
     OP_CATCH,   /* Start of catch block */
 
     /* Classes (fixed-slot, zero-overhead) */
-    OP_CLASS,        /* Define class: const_idx (class name) */
-    OP_INHERIT,      /* Inherit from superclass */
-    OP_METHOD,       /* Add method to class: const_idx (name) */
-    OP_FIELD,        /* Add field to class: const_idx (name) */
-    OP_GET_FIELD,    /* Get instance field: const_idx (slot) */
-    OP_SET_FIELD,    /* Set instance field: const_idx (slot) */
-    OP_GET_FIELD_IC, /* Get field with inline cache: const_idx, ic_slot */
-    OP_SET_FIELD_IC, /* Set field with inline cache: const_idx, ic_slot */
-    OP_GET_FIELD_PIC,/* Get field with polymorphic IC: const_idx, pic_slot */
-    OP_SET_FIELD_PIC,/* Set field with polymorphic IC: const_idx, pic_slot */
-    OP_INVOKE,       /* Invoke method: const_idx (name), arg_count */
-    OP_INVOKE_IC,    /* Invoke with inline cache: const_idx, arg_count, ic_slot */
-    OP_INVOKE_PIC,   /* Invoke with polymorphic IC: const_idx, arg_count, pic_slot */
-    OP_SUPER_INVOKE, /* Invoke super method: const_idx (name), arg_count */
-    OP_GET_SUPER,    /* Get method from superclass for super.method() */
-    OP_STATIC,       /* Add static property/method to class */
-    OP_GET_STATIC,   /* Get static property from class */
-    OP_SET_STATIC,   /* Set static property on class */
-    OP_BIND_METHOD,  /* Bind method to receiver, create ObjBoundMethod */
+    OP_CLASS,         /* Define class: const_idx (class name) */
+    OP_INHERIT,       /* Inherit from superclass */
+    OP_METHOD,        /* Add method to class: const_idx (name) */
+    OP_FIELD,         /* Add field to class: const_idx (name) */
+    OP_GET_FIELD,     /* Get instance field: const_idx (slot) */
+    OP_SET_FIELD,     /* Set instance field: const_idx (slot) */
+    OP_GET_FIELD_IC,  /* Get field with inline cache: const_idx, ic_slot */
+    OP_SET_FIELD_IC,  /* Set field with inline cache: const_idx, ic_slot */
+    OP_GET_FIELD_PIC, /* Get field with polymorphic IC: const_idx, pic_slot */
+    OP_SET_FIELD_PIC, /* Set field with polymorphic IC: const_idx, pic_slot */
+    OP_INVOKE,        /* Invoke method: const_idx (name), arg_count */
+    OP_INVOKE_IC,     /* Invoke with inline cache: const_idx, arg_count, ic_slot */
+    OP_INVOKE_PIC,    /* Invoke with polymorphic IC: const_idx, arg_count, pic_slot */
+    OP_SUPER_INVOKE,  /* Invoke super method: const_idx (name), arg_count */
+    OP_GET_SUPER,     /* Get method from superclass for super.method() */
+    OP_STATIC,        /* Add static property/method to class */
+    OP_GET_STATIC,    /* Get static property from class */
+    OP_SET_STATIC,    /* Set static property on class */
+    OP_BIND_METHOD,   /* Bind method to receiver, create ObjBoundMethod */
 
     /* Generators (zero-overhead coroutines) */
     OP_GENERATOR,  /* Create generator from closure */
@@ -576,15 +577,15 @@ typedef enum
     OP_CONCAT, /* Array/string concat */
 
     /* SIMD Array Operations - Use SSE/AVX when available */
-    OP_ARRAY_ADD,      /* Element-wise add: arr1 + arr2 or arr + scalar */
-    OP_ARRAY_SUB,      /* Element-wise subtract */
-    OP_ARRAY_MUL,      /* Element-wise multiply */
-    OP_ARRAY_DIV,      /* Element-wise divide */
-    OP_ARRAY_SUM,      /* Sum all elements (SIMD reduction) */
-    OP_ARRAY_DOT,      /* Dot product of two arrays */
-    OP_ARRAY_MAP,      /* Map function over array */
-    OP_ARRAY_FILTER,   /* Filter array with predicate */
-    OP_ARRAY_REDUCE,   /* Reduce array with accumulator */
+    OP_ARRAY_ADD,    /* Element-wise add: arr1 + arr2 or arr + scalar */
+    OP_ARRAY_SUB,    /* Element-wise subtract */
+    OP_ARRAY_MUL,    /* Element-wise multiply */
+    OP_ARRAY_DIV,    /* Element-wise divide */
+    OP_ARRAY_SUM,    /* Sum all elements (SIMD reduction) */
+    OP_ARRAY_DOT,    /* Dot product of two arrays */
+    OP_ARRAY_MAP,    /* Map function over array */
+    OP_ARRAY_FILTER, /* Filter array with predicate */
+    OP_ARRAY_REDUCE, /* Reduce array with accumulator */
 
     /* Iterators */
     OP_RANGE,
@@ -921,7 +922,7 @@ typedef struct
 /* ============ Inline Caching ============ */
 /* Monomorphic inline cache for property access - O(1) lookup after first hit */
 #define IC_MAX_CACHES 256
-#define PIC_MAX_ENTRIES 4  /* Polymorphic IC handles up to 4 class shapes */
+#define PIC_MAX_ENTRIES 4 /* Polymorphic IC handles up to 4 class shapes */
 
 typedef struct
 {
@@ -934,13 +935,14 @@ typedef struct
 /* Polymorphic Inline Cache - handles 2-4 common class shapes */
 typedef struct
 {
-    struct {
-        ObjClass *klass;    /* Class for this entry */
-        uint16_t slot;      /* Slot index for this class */
+    struct
+    {
+        ObjClass *klass; /* Class for this entry */
+        uint16_t slot;   /* Slot index for this class */
     } entries[PIC_MAX_ENTRIES];
-    ObjString *name;        /* Property name (shared across entries) */
-    uint8_t count;          /* Number of cached entries (0-4) */
-    bool is_method;         /* True if caching methods */
+    ObjString *name; /* Property name (shared across entries) */
+    uint8_t count;   /* Number of cached entries (0-4) */
+    bool is_method;  /* True if caching methods */
 } PolyInlineCache;
 
 typedef struct

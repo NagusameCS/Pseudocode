@@ -186,22 +186,23 @@ typedef enum
 } CompileTimeType;
 
 /* Compile-time escape state for escape analysis */
-typedef enum {
-    ESCAPE_NONE = 0,          /* Does not escape */
-    ESCAPE_VIA_RETURN,        /* Escapes via return */
-    ESCAPE_VIA_UPVALUE,       /* Escapes via closure capture */
-    ESCAPE_VIA_GLOBAL,        /* Escapes to global scope */
-    ESCAPE_VIA_CALL,          /* Escapes via function argument */
+typedef enum
+{
+    ESCAPE_NONE = 0,    /* Does not escape */
+    ESCAPE_VIA_RETURN,  /* Escapes via return */
+    ESCAPE_VIA_UPVALUE, /* Escapes via closure capture */
+    ESCAPE_VIA_GLOBAL,  /* Escapes to global scope */
+    ESCAPE_VIA_CALL,    /* Escapes via function argument */
 } CompileEscapeState;
 
 typedef struct
 {
     Token name;
     int depth;
-    CompileTimeType inferred_type;  /* Inferred type for specialization */
-    bool is_captured;               /* True if captured by a closure */
-    uint8_t escape_state;           /* CompileEscapeState - how this local escapes */
-    bool is_object;                 /* True if this local holds an object reference */
+    CompileTimeType inferred_type; /* Inferred type for specialization */
+    bool is_captured;              /* True if captured by a closure */
+    uint8_t escape_state;          /* CompileEscapeState - how this local escapes */
+    bool is_object;                /* True if this local holds an object reference */
 } Local;
 
 typedef enum
@@ -577,11 +578,11 @@ static ObjFunction *end_compiler(void)
 {
     emit_return();
     ObjFunction *function = current->function;
-    
+
     /* Calculate function bytecode length for inlining analysis */
     uint32_t code_end = compiling_chunk->count;
     function->code_length = code_end - function->code_start;
-    
+
     /* Determine if function is inlinable:
      * - Small bytecode size (< INLINE_THRESHOLD)
      * - No upvalues (closures complicate inlining)
@@ -589,7 +590,7 @@ static ObjFunction *end_compiler(void)
      */
     function->can_inline = (function->code_length < INLINE_THRESHOLD &&
                             function->upvalue_count == 0);
-    
+
     current = current->enclosing;
     return function;
 }
@@ -742,7 +743,8 @@ static void declare_variable(void)
 /* Mark a local variable as escaping with the given reason */
 static void mark_local_escapes(int slot, CompileEscapeState reason)
 {
-    if (slot < 0 || slot >= current->local_count) return;
+    if (slot < 0 || slot >= current->local_count)
+        return;
     Local *local = &current->locals[slot];
     /* Keep the "worst" escape state (higher enum = worse) */
     if (reason > local->escape_state)
@@ -752,19 +754,19 @@ static void mark_local_escapes(int slot, CompileEscapeState reason)
 }
 
 /* Check if a local is a candidate for stack allocation (doesn't escape) */
-__attribute__((unused))
-static bool can_stack_allocate(int slot)
+__attribute__((unused)) static bool can_stack_allocate(int slot)
 {
-    if (slot < 0 || slot >= current->local_count) return false;
+    if (slot < 0 || slot >= current->local_count)
+        return false;
     Local *local = &current->locals[slot];
     return local->is_object && local->escape_state == ESCAPE_NONE;
 }
 
 /* Mark a local as holding an object reference */
-__attribute__((unused))
-static void mark_local_is_object(int slot)
+__attribute__((unused)) static void mark_local_is_object(int slot)
 {
-    if (slot < 0 || slot >= current->local_count) return;
+    if (slot < 0 || slot >= current->local_count)
+        return;
     current->locals[slot].is_object = true;
 }
 

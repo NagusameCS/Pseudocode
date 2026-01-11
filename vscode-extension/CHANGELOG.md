@@ -2,6 +2,24 @@
 
 All notable changes to the Pseudocode Language extension will be documented in this file.
 
+## [1.4.0] - 2025-01-11
+
+### Added
+- **VM Performance Optimizations** — Major runtime improvements:
+  - **Function Inlining** — Small functions inlined automatically for reduced call overhead
+  - **Polymorphic Inline Caching** — Up to 4x faster method dispatch with shape caching
+  - **SIMD Vectorization** — AVX/SSE accelerated array operations (add, sub, mul, div, sum, dot)
+  - **Escape Analysis** — Track object lifetimes for future stack allocation
+- **New Benchmark Suite** — Comprehensive benchmarks comparing against C and Python
+- **Performance Results** — 2-4x faster than Python on typical workloads
+
+### Changed
+- Extension now documents all VM optimization capabilities
+- Updated syntax highlighting for SIMD array operations
+
+### Fixed
+- Various VM stability improvements
+
 ## [1.3.0] - 2025-01-10
 
 ### Added
