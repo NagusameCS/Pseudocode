@@ -298,7 +298,7 @@ function runPseudocode(vmPath: string, filePath: string): void {
 
     // On Windows, need to handle paths with spaces properly
     const isWindows = process.platform === 'win32';
-    
+
     const childProcess = spawn(vmPath, args, {
         cwd: path.dirname(filePath),
         shell: isWindows,  // Use shell on Windows to handle paths properly

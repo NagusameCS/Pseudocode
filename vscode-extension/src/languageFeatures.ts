@@ -818,9 +818,16 @@ export function createDiagnostics(
         return;
     }
 
-    const diagnostics: vscode.Diagnostic[] = [];
-    const text = document.getText();
-    const lines = text.split('\n');
+    try {
+        const diagnostics: vscode.Diagnostic[] = [];
+        const text = document.getText();
+        
+        // Skip very large files to prevent performance issues
+        if (text.length > 500000) {
+            return;
+        }
+        
+        const lines = text.split('\n');
 
     // Track block depth for matching
     let blockStack: { type: string; line: number }[] = [];
@@ -930,7 +937,11 @@ export function createDiagnostics(
         ));
     }
 
-    collection.set(document.uri, diagnostics);
+        collection.set(document.uri, diagnostics);
+    } catch (error) {
+        // Silently handle any errors to prevent extension crash
+        console.error('Pseudocode diagnostics error:', error);
+    }
 }
 
 // ============ Formatter ============

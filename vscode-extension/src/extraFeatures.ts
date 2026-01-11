@@ -178,9 +178,16 @@ export class PseudocodeInlayHintsProvider implements vscode.InlayHintsProvider {
         document: vscode.TextDocument,
         range: vscode.Range
     ): vscode.ProviderResult<vscode.InlayHint[]> {
-        const hints: vscode.InlayHint[] = [];
-        const text = document.getText(range);
-        const startOffset = document.offsetAt(range.start);
+        try {
+            const hints: vscode.InlayHint[] = [];
+            const text = document.getText(range);
+            
+            // Skip very large ranges to prevent performance issues
+            if (text.length > 100000) {
+                return hints;
+            }
+            
+            const startOffset = document.offsetAt(range.start);
 
         // Update user function cache
         updateUserFunctions(document);
@@ -247,6 +254,10 @@ export class PseudocodeInlayHintsProvider implements vscode.InlayHintsProvider {
         }
 
         return hints;
+        } catch (error) {
+            console.error('Inlay hints error:', error);
+            return [];
+        }
     }
 }
 

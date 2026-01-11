@@ -1,12 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Learn Pseudocode — Interactive Tutorial</title>
-    <meta name="description" content="Learn the Pseudocode programming language with interactive examples.">
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
     <style>
         :root {
             --bg-primary: #1b1b1f;
@@ -20,52 +21,24 @@
             --border: #3a3a3e;
             --code-bg: #161618;
             --success: #34d399;
+            --error: #f87171;
             --warning: #fbbf24;
-            --link: #93c5fd;
         }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        html {
-            scroll-behavior: smooth;
-        }
-
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: Inter, -apple-system, BlinkMacSystemFont, sans-serif;
             background: var(--bg-primary);
-            background-image:
-                radial-gradient(ellipse at 20% 0%, rgba(60, 60, 70, 0.2) 0%, transparent 50%),
-                radial-gradient(ellipse at 80% 100%, rgba(50, 50, 60, 0.15) 0%, transparent 50%);
-            background-attachment: fixed;
             color: var(--text-primary);
             line-height: 1.6;
-            font-size: 16px;
         }
-
-        a {
-            color: var(--link);
-            text-decoration: none;
-        }
-
-        a:hover {
-            text-decoration: underline;
-        }
-
-        /* Header */
         header {
             background: var(--bg-secondary);
             border-bottom: 1px solid var(--border);
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
+            top: 0; left: 0; right: 0;
             z-index: 100;
+            height: 56px;
         }
-
         .header-inner {
             display: flex;
             justify-content: space-between;
@@ -75,7 +48,6 @@
             max-width: 1600px;
             margin: 0 auto;
         }
-
         .logo {
             font-size: 1.125rem;
             font-weight: 600;
@@ -83,826 +55,314 @@
             display: flex;
             align-items: center;
             gap: 8px;
-        }
-
-        .logo:hover {
             text-decoration: none;
         }
-
-        nav ul {
-            display: flex;
-            gap: 24px;
-            list-style: none;
-        }
-
-        nav a {
-            color: var(--text-secondary);
-            font-size: 13px;
-            font-weight: 500;
-        }
-
-        nav a:hover {
-            color: var(--text-primary);
-            text-decoration: none;
-        }
-
-        nav a.active {
-            color: var(--accent);
-        }
-
-        /* Layout */
-        .layout {
-            display: flex;
-            margin-top: 56px;
-            min-height: calc(100vh - 56px);
-        }
-
-        /* Sidebar */
+        nav ul { display: flex; gap: 24px; list-style: none; }
+        nav a { color: var(--text-secondary); font-size: 13px; font-weight: 500; text-decoration: none; }
+        nav a:hover { color: var(--text-primary); }
+        nav a.active { color: var(--accent); }
+        .auth-section { display: flex; align-items: center; gap: 12px; }
+        .user-info { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+        .user-avatar { width: 28px; height: 28px; border-radius: 50%; }
+        .btn { padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; transition: all 0.15s; }
+        .btn-primary { background: var(--accent); color: #fff; }
+        .btn-primary:hover { background: var(--accent-dim); }
+        .btn-secondary { background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border); }
+        .btn-google { background: #fff; color: #333; display: flex; align-items: center; gap: 8px; }
+        
+        .layout { display: flex; margin-top: 56px; min-height: calc(100vh - 56px); }
         .sidebar {
-            width: 260px;
+            width: 280px;
             background: var(--bg-secondary);
             border-right: 1px solid var(--border);
-            padding: 24px 16px;
+            padding: 20px 0;
             position: fixed;
-            top: 56px;
-            left: 0;
-            bottom: 0;
+            top: 56px; left: 0; bottom: 0;
             overflow-y: auto;
         }
-
-        .sidebar-section {
-            margin-bottom: 24px;
-        }
-
+        .sidebar-section { margin-bottom: 24px; }
         .sidebar-section h3 {
             font-size: 11px;
             font-weight: 600;
             color: var(--text-tertiary);
             text-transform: uppercase;
             letter-spacing: 0.05em;
-            margin-bottom: 8px;
-            padding: 0 12px;
+            padding: 0 20px 8px;
         }
-
-        .sidebar-section a {
-            display: block;
-            padding: 6px 12px;
-            font-size: 13px;
+        .lesson-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 20px;
+            cursor: pointer;
+            transition: background 0.15s;
+            font-size: 14px;
             color: var(--text-secondary);
-            border-radius: 4px;
-            margin-bottom: 2px;
         }
-
-        .sidebar-section a:hover {
-            background: var(--bg-tertiary);
-            color: var(--text-primary);
-            text-decoration: none;
-        }
-
-        .sidebar-section a.active {
-            background: var(--accent);
-            color: #fff;
-        }
-
-        /* Main content */
-        main {
-            flex: 1;
-            margin-left: 260px;
-            padding: 40px;
-            max-width: 900px;
-        }
-
-        section {
-            margin-bottom: 48px;
-        }
-
-        h1 {
-            font-size: 2rem;
-            margin-bottom: 16px;
-        }
-
-        h2 {
-            font-size: 1.5rem;
-            margin-bottom: 16px;
-            padding-top: 24px;
-            border-top: 1px solid var(--border);
-        }
-
-        section:first-child h2 {
-            border-top: none;
-            padding-top: 0;
-        }
-
-        h3 {
-            font-size: 1.125rem;
-            margin-bottom: 12px;
-            color: var(--accent);
-        }
-
-        p {
-            margin-bottom: 16px;
-            color: var(--text-secondary);
-            line-height: 1.7;
-        }
-
-        /* Code blocks */
-        .code-block {
+        .lesson-item:hover { background: var(--bg-tertiary); }
+        .lesson-item.active { background: var(--accent); color: #fff; }
+        .lesson-item.completed { color: var(--success); }
+        .lesson-check { width: 18px; height: 18px; border: 2px solid var(--border); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; }
+        .lesson-item.completed .lesson-check { background: var(--success); border-color: var(--success); color: #fff; }
+        .lesson-item.active .lesson-check { border-color: #fff; }
+        
+        main { flex: 1; margin-left: 280px; padding: 40px; max-width: 900px; }
+        h1 { font-size: 2rem; margin-bottom: 8px; }
+        h2 { font-size: 1.5rem; margin: 32px 0 16px; color: var(--accent); }
+        p { margin-bottom: 16px; color: var(--text-secondary); }
+        code { font-family: 'JetBrains Mono', monospace; background: var(--bg-tertiary); padding: 2px 6px; border-radius: 4px; }
+        
+        .jupyter-cell {
             background: var(--code-bg);
             border: 1px solid var(--border);
             border-radius: 8px;
-            margin-bottom: 20px;
+            margin: 20px 0;
             overflow: hidden;
         }
-
-        .code-header {
+        .cell-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 10px 16px;
-            background: var(--bg-secondary);
-            border-bottom: 1px solid var(--border);
-            font-size: 13px;
-            color: var(--text-tertiary);
-        }
-
-        pre {
-            padding: 16px;
-            overflow-x: auto;
-            font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
-            font-size: 13px;
-            line-height: 1.6;
-            margin: 0;
-        }
-
-        code {
-            font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
-        }
-
-        .inline-code {
-            background: var(--bg-tertiary);
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 0.9em;
-        }
-
-        .keyword { color: #c084fc; }
-        .function { color: #60a5fa; }
-        .string { color: #34d399; }
-        .number { color: #fb923c; }
-        .comment { color: #6b7280; }
-
-        /* Interactive elements */
-        .try-it {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-
-        .try-it h4 {
-            font-size: 14px;
-            color: var(--accent);
-            margin-bottom: 12px;
-        }
-
-        .try-it-content {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-        }
-
-        .editor-pane,
-        .output-pane {
-            background: var(--code-bg);
-            border: 1px solid var(--border);
-            border-radius: 6px;
-        }
-
-        .pane-header {
             padding: 8px 12px;
-            background: var(--bg-tertiary);
+            background: var(--bg-secondary);
             border-bottom: 1px solid var(--border);
-            font-size: 12px;
-            color: var(--text-tertiary);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
         }
-
-        .run-btn {
-            background: var(--accent);
-            color: #fff;
-            border: none;
-            padding: 4px 12px;
-            border-radius: 4px;
-            font-size: 12px;
-            cursor: pointer;
-            font-weight: 500;
-        }
-
-        .run-btn:hover {
-            background: var(--accent-dim);
-        }
-
-        textarea.code-editor {
+        .cell-type { font-size: 11px; color: var(--text-tertiary); text-transform: uppercase; }
+        .run-btn { background: var(--success); color: #fff; border: none; padding: 4px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 4px; }
+        .run-btn:hover { filter: brightness(1.1); }
+        .code-input {
             width: 100%;
-            min-height: 120px;
+            min-height: 80px;
             background: transparent;
             border: none;
             color: var(--text-primary);
-            font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
-            font-size: 13px;
-            line-height: 1.6;
-            padding: 12px;
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            font-size: 14px;
+            padding: 16px;
             resize: vertical;
-        }
-
-        textarea.code-editor:focus {
             outline: none;
         }
-
-        .output-content {
-            padding: 12px;
-            font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
-            font-size: 13px;
-            min-height: 120px;
-            color: var(--success);
-        }
-
-        /* Notes */
-        .note {
-            background: rgba(167, 139, 250, 0.1);
-            border: 1px solid rgba(167, 139, 250, 0.3);
-            border-left: 3px solid var(--accent);
-            padding: 16px;
-            border-radius: 0 6px 6px 0;
-            margin-bottom: 20px;
-        }
-
-        .note p {
-            margin: 0;
-            color: var(--text-primary);
-            font-size: 14px;
-        }
-
-        /* Lists */
-        ul, ol {
-            margin-bottom: 16px;
-            padding-left: 24px;
-            color: var(--text-secondary);
-        }
-
-        li {
-            margin-bottom: 8px;
-        }
-
-        /* Table */
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 20px;
-        }
-
-        th, td {
-            padding: 10px 12px;
-            text-align: left;
-            border: 1px solid var(--border);
-        }
-
-        th {
-            background: var(--bg-secondary);
-            font-weight: 600;
-            font-size: 13px;
-        }
-
-        td {
-            font-size: 14px;
-            color: var(--text-secondary);
-        }
-
-        td code {
-            color: var(--accent);
-        }
-
-        /* Progress */
-        .progress-bar {
-            background: var(--bg-tertiary);
-            border-radius: 4px;
-            height: 4px;
-            margin-bottom: 24px;
-            overflow: hidden;
-        }
-
-        .progress-fill {
-            background: var(--accent);
-            height: 100%;
-            width: 0%;
-            transition: width 0.3s;
-        }
-
-        /* Footer */
-        footer {
-            padding: 40px;
+        .cell-output {
+            padding: 12px 16px;
             border-top: 1px solid var(--border);
-            text-align: center;
-            margin-left: 260px;
-        }
-
-        .footer-links {
-            display: flex;
-            justify-content: center;
-            gap: 24px;
-            margin-bottom: 16px;
-        }
-
-        .footer-links a {
-            color: var(--text-secondary);
+            font-family: 'JetBrains Mono', monospace;
             font-size: 13px;
+            white-space: pre-wrap;
+            min-height: 40px;
         }
-
-        .copyright {
-            color: var(--text-tertiary);
-            font-size: 13px;
-        }
-
-        /* Responsive */
+        .cell-output.success { color: var(--success); }
+        .cell-output.error { color: var(--error); }
+        
+        .progress-bar { background: var(--bg-tertiary); height: 4px; border-radius: 2px; margin: 20px 0; }
+        .progress-fill { background: var(--accent); height: 100%; border-radius: 2px; transition: width 0.3s; }
+        
+        .next-lesson { margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; }
+        
+        .note { background: rgba(167, 139, 250, 0.1); border-left: 3px solid var(--accent); padding: 16px; border-radius: 0 6px 6px 0; margin: 20px 0; }
+        .note p { margin: 0; color: var(--text-primary); font-size: 14px; }
+        
+        .challenge { background: rgba(251, 191, 36, 0.1); border-left: 3px solid var(--warning); padding: 16px; border-radius: 0 6px 6px 0; margin: 20px 0; }
+        .challenge h4 { color: var(--warning); margin-bottom: 8px; }
+        
         @media (max-width: 900px) {
-            .sidebar {
-                display: none;
-            }
-
-            main, footer {
-                margin-left: 0;
-            }
-
-            .try-it-content {
-                grid-template-columns: 1fr;
-            }
-
-            nav ul {
-                display: none;
-            }
+            .sidebar { display: none; }
+            main { margin-left: 0; }
+            nav ul { display: none; }
         }
     </style>
 </head>
-
 <body>
     <header>
         <div class="header-inner">
             <a href="index.html" class="logo">
-                <img src="favicon.svg" alt="Pseudocode" width="24" height="24" style="border-radius: 5px;">
+                <img src="favicon.svg" alt="" width="24" height="24" style="border-radius: 5px;">
                 Pseudocode
             </a>
             <nav>
                 <ul>
                     <li><a href="index.html">Home</a></li>
-                    <li><a href="getting-started.html">Tutorial</a></li>
-                    <li><a href="examples.html">Examples</a></li>
                     <li><a href="reference.html">Reference</a></li>
                     <li><a href="learn.html" class="active">Learn</a></li>
                     <li><a href="https://github.com/NagusameCS/Pseudocode">GitHub</a></li>
                 </ul>
             </nav>
+            <div class="auth-section">
+                <div id="user-info" class="user-info" style="display: none;">
+                    <img id="user-avatar" class="user-avatar" src="" alt="">
+                    <span id="user-name"></span>
+                    <button class="btn btn-secondary" onclick="signOut()">Sign Out</button>
+                </div>
+                <button id="sign-in-btn" class="btn btn-google" onclick="signInWithGoogle()">
+                    <svg width="16" height="16" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+                    Sign in to save progress
+                </button>
+            </div>
         </div>
     </header>
 
     <div class="layout">
         <aside class="sidebar">
+            <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width: 0%"></div></div>
+            
             <div class="sidebar-section">
                 <h3>Getting Started</h3>
-                <a href="#basics" class="active">Basics</a>
-                <a href="#variables">Variables</a>
-                <a href="#operators">Operators</a>
+                <div class="lesson-item active" data-lesson="0"><span class="lesson-check">1</span> Hello World</div>
+                <div class="lesson-item" data-lesson="1"><span class="lesson-check">2</span> Variables</div>
+                <div class="lesson-item" data-lesson="2"><span class="lesson-check">3</span> Data Types</div>
+                <div class="lesson-item" data-lesson="3"><span class="lesson-check">4</span> Operators</div>
             </div>
             <div class="sidebar-section">
                 <h3>Control Flow</h3>
-                <a href="#conditionals">If/Else</a>
-                <a href="#loops">Loops</a>
-                <a href="#match">Pattern Matching</a>
+                <div class="lesson-item" data-lesson="4"><span class="lesson-check">5</span> If Statements</div>
+                <div class="lesson-item" data-lesson="5"><span class="lesson-check">6</span> For Loops</div>
+                <div class="lesson-item" data-lesson="6"><span class="lesson-check">7</span> While Loops</div>
+                <div class="lesson-item" data-lesson="7"><span class="lesson-check">8</span> Pattern Matching</div>
             </div>
             <div class="sidebar-section">
                 <h3>Functions</h3>
-                <a href="#functions">Defining Functions</a>
-                <a href="#closures">Closures</a>
-                <a href="#higher-order">Higher-Order</a>
+                <div class="lesson-item" data-lesson="8"><span class="lesson-check">9</span> Defining Functions</div>
+                <div class="lesson-item" data-lesson="9"><span class="lesson-check">10</span> Parameters & Return</div>
+                <div class="lesson-item" data-lesson="10"><span class="lesson-check">11</span> Closures</div>
+                <div class="lesson-item" data-lesson="11"><span class="lesson-check">12</span> Higher-Order</div>
             </div>
             <div class="sidebar-section">
                 <h3>Data Structures</h3>
-                <a href="#arrays">Arrays</a>
-                <a href="#dictionaries">Dictionaries</a>
-                <a href="#classes">Classes</a>
+                <div class="lesson-item" data-lesson="12"><span class="lesson-check">13</span> Arrays</div>
+                <div class="lesson-item" data-lesson="13"><span class="lesson-check">14</span> Dictionaries</div>
+                <div class="lesson-item" data-lesson="14"><span class="lesson-check">15</span> Classes</div>
             </div>
             <div class="sidebar-section">
                 <h3>Advanced</h3>
-                <a href="#file-io">File I/O</a>
-                <a href="#http">HTTP & JSON</a>
-                <a href="#functional">Functional</a>
+                <div class="lesson-item" data-lesson="15"><span class="lesson-check">16</span> File I/O</div>
+                <div class="lesson-item" data-lesson="16"><span class="lesson-check">17</span> HTTP & JSON</div>
+                <div class="lesson-item" data-lesson="17"><span class="lesson-check">18</span> Functional</div>
             </div>
         </aside>
 
-        <main>
-            <h1>Learn Pseudocode</h1>
-            <p>An interactive guide to the Pseudocode programming language. Work through these examples to learn the syntax and features.</p>
-
-            <div class="progress-bar">
-                <div class="progress-fill" style="width: 10%;"></div>
-            </div>
-
-            <section id="basics">
-                <h2>The Basics</h2>
-                <p>Pseudocode is designed to read like natural language. No semicolons, no braces — just clean, readable code.</p>
-
-                <div class="code-block">
-                    <div class="code-header">hello.pseudo</div>
-                    <pre><code><span class="comment">// Your first Pseudocode program</span>
-<span class="function">print</span>(<span class="string">"Hello, World!"</span>)</code></pre>
-                </div>
-
-                <div class="note">
-                    <p><strong>Note:</strong> Comments use <code class="inline-code">//</code>. There are no multi-line comments.</p>
-                </div>
-            </section>
-
-            <section id="variables">
-                <h2>Variables</h2>
-                <p>Use <code class="inline-code">let</code> to declare variables. Types are inferred automatically.</p>
-
-                <div class="code-block">
-                    <div class="code-header">variables.pseudo</div>
-                    <pre><code><span class="keyword">let</span> name = <span class="string">"Alice"</span>          <span class="comment">// String</span>
-<span class="keyword">let</span> age = <span class="number">25</span>                 <span class="comment">// Number</span>
-<span class="keyword">let</span> pi = <span class="number">3.14159</span>             <span class="comment">// Number (all numbers are 64-bit floats)</span>
-<span class="keyword">let</span> active = <span class="keyword">true</span>           <span class="comment">// Boolean</span>
-<span class="keyword">let</span> empty = <span class="keyword">nil</span>             <span class="comment">// Nil value</span>
-
-<span class="comment">// Reassignment (no 'let' needed)</span>
-name = <span class="string">"Bob"</span>
-<span class="function">print</span>(name)  <span class="comment">// Bob</span></code></pre>
-                </div>
-
-                <h3>Data Types</h3>
-                <table>
-                    <tr>
-                        <th>Type</th>
-                        <th>Examples</th>
-                        <th>Description</th>
-                    </tr>
-                    <tr>
-                        <td>Number</td>
-                        <td><code>42</code>, <code>3.14</code>, <code>-17</code></td>
-                        <td>64-bit floating point</td>
-                    </tr>
-                    <tr>
-                        <td>String</td>
-                        <td><code>"hello"</code>, <code>'world'</code></td>
-                        <td>Text (single or double quotes)</td>
-                    </tr>
-                    <tr>
-                        <td>Boolean</td>
-                        <td><code>true</code>, <code>false</code></td>
-                        <td>Logical values</td>
-                    </tr>
-                    <tr>
-                        <td>Nil</td>
-                        <td><code>nil</code></td>
-                        <td>Absence of value</td>
-                    </tr>
-                    <tr>
-                        <td>Array</td>
-                        <td><code>[1, 2, 3]</code></td>
-                        <td>Ordered collection</td>
-                    </tr>
-                    <tr>
-                        <td>Dictionary</td>
-                        <td><code>{"key": "value"}</code></td>
-                        <td>Key-value pairs</td>
-                    </tr>
-                </table>
-            </section>
-
-            <section id="operators">
-                <h2>Operators</h2>
-
-                <h3>Arithmetic</h3>
-                <div class="code-block">
-                    <pre><code><span class="keyword">let</span> a = <span class="number">10</span> + <span class="number">5</span>    <span class="comment">// 15</span>
-<span class="keyword">let</span> b = <span class="number">10</span> - <span class="number">5</span>    <span class="comment">// 5</span>
-<span class="keyword">let</span> c = <span class="number">10</span> * <span class="number">5</span>    <span class="comment">// 50</span>
-<span class="keyword">let</span> d = <span class="number">10</span> / <span class="number">5</span>    <span class="comment">// 2</span>
-<span class="keyword">let</span> e = <span class="number">10</span> % <span class="number">3</span>    <span class="comment">// 1 (modulo)</span></code></pre>
-                </div>
-
-                <h3>Comparison</h3>
-                <div class="code-block">
-                    <pre><code><span class="number">5</span> == <span class="number">5</span>     <span class="comment">// true</span>
-<span class="number">5</span> != <span class="number">3</span>     <span class="comment">// true</span>
-<span class="number">5</span> &lt; <span class="number">10</span>     <span class="comment">// true</span>
-<span class="number">5</span> &gt; <span class="number">10</span>     <span class="comment">// false</span>
-<span class="number">5</span> &lt;= <span class="number">5</span>     <span class="comment">// true</span>
-<span class="number">5</span> &gt;= <span class="number">6</span>     <span class="comment">// false</span></code></pre>
-                </div>
-
-                <h3>Logical</h3>
-                <div class="code-block">
-                    <pre><code><span class="keyword">true</span> <span class="keyword">and</span> <span class="keyword">false</span>   <span class="comment">// false</span>
-<span class="keyword">true</span> <span class="keyword">or</span> <span class="keyword">false</span>    <span class="comment">// true</span>
-<span class="keyword">not</span> <span class="keyword">true</span>         <span class="comment">// false</span></code></pre>
-                </div>
-            </section>
-
-            <section id="conditionals">
-                <h2>Conditionals</h2>
-                <p>Use <code class="inline-code">if/then/elif/else/end</code> for conditional logic.</p>
-
-                <div class="code-block">
-                    <div class="code-header">conditionals.pseudo</div>
-                    <pre><code><span class="keyword">let</span> score = <span class="number">85</span>
-
-<span class="keyword">if</span> score &gt;= <span class="number">90</span> <span class="keyword">then</span>
-    <span class="function">print</span>(<span class="string">"A"</span>)
-<span class="keyword">elif</span> score &gt;= <span class="number">80</span> <span class="keyword">then</span>
-    <span class="function">print</span>(<span class="string">"B"</span>)
-<span class="keyword">elif</span> score &gt;= <span class="number">70</span> <span class="keyword">then</span>
-    <span class="function">print</span>(<span class="string">"C"</span>)
-<span class="keyword">else</span>
-    <span class="function">print</span>(<span class="string">"F"</span>)
-<span class="keyword">end</span></code></pre>
-                </div>
-            </section>
-
-            <section id="loops">
-                <h2>Loops</h2>
-
-                <h3>For Loops</h3>
-                <div class="code-block">
-                    <pre><code><span class="comment">// Range-based (1 to 5)</span>
-<span class="keyword">for</span> i <span class="keyword">in</span> <span class="number">1</span>..<span class="number">6</span> <span class="keyword">do</span>
-    <span class="function">print</span>(i)  <span class="comment">// 1, 2, 3, 4, 5</span>
-<span class="keyword">end</span>
-
-<span class="comment">// Iterate over array</span>
-<span class="keyword">let</span> colors = [<span class="string">"red"</span>, <span class="string">"green"</span>, <span class="string">"blue"</span>]
-<span class="keyword">for</span> color <span class="keyword">in</span> colors <span class="keyword">do</span>
-    <span class="function">print</span>(color)
-<span class="keyword">end</span></code></pre>
-                </div>
-
-                <h3>While Loops</h3>
-                <div class="code-block">
-                    <pre><code><span class="keyword">let</span> n = <span class="number">5</span>
-<span class="keyword">while</span> n &gt; <span class="number">0</span> <span class="keyword">do</span>
-    <span class="function">print</span>(n)
-    n = n - <span class="number">1</span>
-<span class="keyword">end</span></code></pre>
-                </div>
-            </section>
-
-            <section id="match">
-                <h2>Pattern Matching</h2>
-                <p>Use <code class="inline-code">match/case</code> for expressive conditional logic with optional guards.</p>
-
-                <div class="code-block">
-                    <div class="code-header">match.pseudo</div>
-                    <pre><code><span class="keyword">fn</span> <span class="function">describe</span>(n)
-    <span class="keyword">match</span> n
-        <span class="keyword">case</span> <span class="number">0</span> <span class="keyword">then</span>
-            <span class="keyword">return</span> <span class="string">"zero"</span>
-        <span class="keyword">case</span> <span class="number">1</span> <span class="keyword">then</span>
-            <span class="keyword">return</span> <span class="string">"one"</span>
-        <span class="keyword">case</span> x <span class="keyword">if</span> x &lt; <span class="number">0</span> <span class="keyword">then</span>
-            <span class="keyword">return</span> <span class="string">"negative"</span>
-        <span class="keyword">case</span> _ <span class="keyword">then</span>
-            <span class="keyword">return</span> <span class="string">"many"</span>
-    <span class="keyword">end</span>
-<span class="keyword">end</span>
-
-<span class="function">print</span>(<span class="function">describe</span>(<span class="number">0</span>))   <span class="comment">// zero</span>
-<span class="function">print</span>(<span class="function">describe</span>(-<span class="number">5</span>))  <span class="comment">// negative</span>
-<span class="function">print</span>(<span class="function">describe</span>(<span class="number">42</span>))  <span class="comment">// many</span></code></pre>
-                </div>
-
-                <div class="note">
-                    <p><strong>Tip:</strong> Use <code class="inline-code">_</code> as a wildcard to match anything. Guards with <code class="inline-code">if</code> add extra conditions.</p>
-                </div>
-            </section>
-
-            <section id="functions">
-                <h2>Defining Functions</h2>
-                <p>Use <code class="inline-code">fn</code> to define functions.</p>
-
-                <div class="code-block">
-                    <div class="code-header">functions.pseudo</div>
-                    <pre><code><span class="keyword">fn</span> <span class="function">greet</span>(name)
-    <span class="keyword">return</span> <span class="string">"Hello, "</span> + name + <span class="string">"!"</span>
-<span class="keyword">end</span>
-
-<span class="function">print</span>(<span class="function">greet</span>(<span class="string">"World"</span>))  <span class="comment">// Hello, World!</span>
-
-<span class="comment">// Multiple parameters</span>
-<span class="keyword">fn</span> <span class="function">add</span>(a, b)
-    <span class="keyword">return</span> a + b
-<span class="keyword">end</span>
-
-<span class="function">print</span>(<span class="function">add</span>(<span class="number">3</span>, <span class="number">4</span>))  <span class="comment">// 7</span></code></pre>
-                </div>
-            </section>
-
-            <section id="closures">
-                <h2>Closures</h2>
-                <p>Functions can capture variables from their enclosing scope.</p>
-
-                <div class="code-block">
-                    <div class="code-header">closures.pseudo</div>
-                    <pre><code><span class="keyword">fn</span> <span class="function">make_counter</span>()
-    <span class="keyword">let</span> count = <span class="number">0</span>
-    <span class="keyword">return</span> <span class="keyword">fn</span>()
-        count = count + <span class="number">1</span>
-        <span class="keyword">return</span> count
-    <span class="keyword">end</span>
-<span class="keyword">end</span>
-
-<span class="keyword">let</span> counter = <span class="function">make_counter</span>()
-<span class="function">print</span>(<span class="function">counter</span>())  <span class="comment">// 1</span>
-<span class="function">print</span>(<span class="function">counter</span>())  <span class="comment">// 2</span>
-<span class="function">print</span>(<span class="function">counter</span>())  <span class="comment">// 3</span></code></pre>
-                </div>
-            </section>
-
-            <section id="higher-order">
-                <h2>Higher-Order Functions</h2>
-                <p>Functions can be passed as arguments and returned from other functions.</p>
-
-                <div class="code-block">
-                    <pre><code><span class="keyword">fn</span> <span class="function">apply_twice</span>(f, x)
-    <span class="keyword">return</span> <span class="function">f</span>(<span class="function">f</span>(x))
-<span class="keyword">end</span>
-
-<span class="keyword">fn</span> <span class="function">double</span>(n)
-    <span class="keyword">return</span> n * <span class="number">2</span>
-<span class="keyword">end</span>
-
-<span class="function">print</span>(<span class="function">apply_twice</span>(double, <span class="number">5</span>))  <span class="comment">// 20</span></code></pre>
-                </div>
-            </section>
-
-            <section id="arrays">
-                <h2>Arrays</h2>
-                <p>Ordered collections that can hold any type of value.</p>
-
-                <div class="code-block">
-                    <div class="code-header">arrays.pseudo</div>
-                    <pre><code><span class="keyword">let</span> nums = [<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>]
-
-<span class="comment">// Access elements</span>
-<span class="function">print</span>(nums[<span class="number">0</span>])      <span class="comment">// 1</span>
-<span class="function">print</span>(nums[<span class="number">-1</span>])     <span class="comment">// 5 (last element)</span>
-
-<span class="comment">// Modify</span>
-nums[<span class="number">0</span>] = <span class="number">10</span>
-
-<span class="comment">// Built-in functions</span>
-<span class="function">push</span>(nums, <span class="number">6</span>)       <span class="comment">// Add to end</span>
-<span class="keyword">let</span> last = <span class="function">pop</span>(nums) <span class="comment">// Remove from end</span>
-<span class="function">print</span>(<span class="function">len</span>(nums))    <span class="comment">// Length</span></code></pre>
-                </div>
-            </section>
-
-            <section id="dictionaries">
-                <h2>Dictionaries</h2>
-                <p>Key-value pairs for storing structured data.</p>
-
-                <div class="code-block">
-                    <div class="code-header">dictionaries.pseudo</div>
-                    <pre><code><span class="keyword">let</span> person = {
-    <span class="string">"name"</span>: <span class="string">"Alice"</span>,
-    <span class="string">"age"</span>: <span class="number">30</span>,
-    <span class="string">"active"</span>: <span class="keyword">true</span>
-}
-
-<span class="comment">// Access values</span>
-<span class="function">print</span>(person[<span class="string">"name"</span>])  <span class="comment">// Alice</span>
-
-<span class="comment">// Modify</span>
-person[<span class="string">"age"</span>] = <span class="number">31</span>
-
-<span class="comment">// Built-in functions</span>
-<span class="function">print</span>(<span class="function">keys</span>(person))    <span class="comment">// ["name", "age", "active"]</span>
-<span class="function">print</span>(<span class="function">values</span>(person))  <span class="comment">// ["Alice", 31, true]</span>
-<span class="function">print</span>(<span class="function">has_key</span>(person, <span class="string">"name"</span>))  <span class="comment">// true</span></code></pre>
-                </div>
-            </section>
-
-            <section id="classes">
-                <h2>Classes</h2>
-                <p>Define your own types with methods and inheritance.</p>
-
-                <div class="code-block">
-                    <div class="code-header">classes.pseudo</div>
-                    <pre><code><span class="keyword">class</span> <span class="function">Animal</span>
-    <span class="keyword">fn</span> <span class="function">init</span>(name)
-        <span class="keyword">self</span>.name = name
-    <span class="keyword">end</span>
-
-    <span class="keyword">fn</span> <span class="function">speak</span>()
-        <span class="keyword">return</span> <span class="keyword">self</span>.name + <span class="string">" makes a sound"</span>
-    <span class="keyword">end</span>
-<span class="keyword">end</span>
-
-<span class="keyword">class</span> <span class="function">Dog</span> <span class="keyword">extends</span> <span class="function">Animal</span>
-    <span class="keyword">fn</span> <span class="function">speak</span>()
-        <span class="keyword">return</span> <span class="keyword">self</span>.name + <span class="string">" says Woof!"</span>
-    <span class="keyword">end</span>
-<span class="keyword">end</span>
-
-<span class="keyword">let</span> dog = <span class="function">Dog</span>(<span class="string">"Buddy"</span>)
-<span class="function">print</span>(dog.<span class="function">speak</span>())  <span class="comment">// Buddy says Woof!</span></code></pre>
-                </div>
-            </section>
-
-            <section id="file-io">
-                <h2>File I/O</h2>
-                <p>Read and write files with built-in functions.</p>
-
-                <div class="code-block">
-                    <pre><code><span class="comment">// Read a file</span>
-<span class="keyword">let</span> content = <span class="function">read_file</span>(<span class="string">"data.txt"</span>)
-<span class="function">print</span>(content)
-
-<span class="comment">// Write to a file</span>
-<span class="function">write_file</span>(<span class="string">"output.txt"</span>, <span class="string">"Hello, file!"</span>)
-
-<span class="comment">// Append to a file</span>
-<span class="function">append_file</span>(<span class="string">"log.txt"</span>, <span class="string">"New log entry\n"</span>)
-
-<span class="comment">// Check if file exists</span>
-<span class="keyword">if</span> <span class="function">file_exists</span>(<span class="string">"config.json"</span>) <span class="keyword">then</span>
-    <span class="function">print</span>(<span class="string">"Found config!"</span>)
-<span class="keyword">end</span></code></pre>
-                </div>
-            </section>
-
-            <section id="http">
-                <h2>HTTP & JSON</h2>
-                <p>Make HTTP requests and parse JSON with built-in functions.</p>
-
-                <div class="code-block">
-                    <div class="code-header">http.pseudo</div>
-                    <pre><code><span class="comment">// GET request</span>
-<span class="keyword">let</span> response = <span class="function">http_get</span>(<span class="string">"https://api.github.com/users/octocat"</span>)
-<span class="keyword">let</span> user = <span class="function">json_parse</span>(response)
-<span class="function">print</span>(user[<span class="string">"login"</span>])  <span class="comment">// octocat</span>
-
-<span class="comment">// POST request</span>
-<span class="keyword">let</span> data = <span class="function">json_stringify</span>({<span class="string">"name"</span>: <span class="string">"test"</span>})
-<span class="keyword">let</span> result = <span class="function">http_post</span>(<span class="string">"https://httpbin.org/post"</span>, data)
-<span class="function">print</span>(result)</code></pre>
-                </div>
-            </section>
-
-            <section id="functional">
-                <h2>Functional Programming</h2>
-                <p>Use map, filter, and reduce for data transformation.</p>
-
-                <div class="code-block">
-                    <div class="code-header">functional.pseudo</div>
-                    <pre><code><span class="keyword">let</span> nums = [<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>]
-
-<span class="comment">// Map: transform each element</span>
-<span class="keyword">let</span> doubled = <span class="function">map</span>(nums, <span class="keyword">fn</span>(x) <span class="keyword">return</span> x * <span class="number">2</span> <span class="keyword">end</span>)
-<span class="function">print</span>(doubled)  <span class="comment">// [2, 4, 6, 8, 10]</span>
-
-<span class="comment">// Filter: keep matching elements</span>
-<span class="keyword">let</span> evens = <span class="function">filter</span>(nums, <span class="keyword">fn</span>(x) <span class="keyword">return</span> x % <span class="number">2</span> == <span class="number">0</span> <span class="keyword">end</span>)
-<span class="function">print</span>(evens)  <span class="comment">// [2, 4]</span>
-
-<span class="comment">// Reduce: combine into single value</span>
-<span class="keyword">let</span> sum = <span class="function">reduce</span>(nums, <span class="keyword">fn</span>(acc, x) <span class="keyword">return</span> acc + x <span class="keyword">end</span>, <span class="number">0</span>)
-<span class="function">print</span>(sum)  <span class="comment">// 15</span>
-
-<span class="comment">// Chain operations</span>
-<span class="keyword">let</span> result = <span class="function">reduce</span>(
-    <span class="function">filter</span>(
-        <span class="function">map</span>(nums, <span class="keyword">fn</span>(x) <span class="keyword">return</span> x * <span class="number">2</span> <span class="keyword">end</span>),
-        <span class="keyword">fn</span>(x) <span class="keyword">return</span> x &gt; <span class="number">4</span> <span class="keyword">end</span>
-    ),
-    <span class="keyword">fn</span>(acc, x) <span class="keyword">return</span> acc + x <span class="keyword">end</span>,
-    <span class="number">0</span>
-)
-<span class="function">print</span>(result)  <span class="comment">// 24 (6 + 8 + 10)</span></code></pre>
-                </div>
-            </section>
-        </main>
+        <main id="lesson-container"></main>
     </div>
 
-    <footer>
-        <div class="footer-links">
-            <a href="index.html">Home</a>
-            <a href="reference.html">Reference</a>
-            <a href="https://github.com/NagusameCS/Pseudocode">GitHub</a>
-        </div>
-        <p class="copyright">MIT License</p>
-    </footer>
-</body>
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDffhyYD6FtBy3qdkV8V0G-O_rZjaTD4CA",
+            authDomain: "pseudocode-lang.firebaseapp.com",
+            projectId: "pseudocode-lang",
+            storageBucket: "pseudocode-lang.firebasestorage.app",
+            messagingSenderId: "579861791340",
+            appId: "1:579861791340:web:4f6e5beb2224353c984e49"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        
+        let currentUser = null;
+        let completedLessons = new Set();
+        let currentLesson = 0;
 
+        function signInWithGoogle() {
+            auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(console.error);
+        }
+        function signOut() { auth.signOut(); }
+        
+        auth.onAuthStateChanged(async user => {
+            currentUser = user;
+            if (user) {
+                document.getElementById('sign-in-btn').style.display = 'none';
+                document.getElementById('user-info').style.display = 'flex';
+                document.getElementById('user-avatar').src = user.photoURL || '';
+                document.getElementById('user-name').textContent = user.displayName?.split(' ')[0] || 'User';
+                const doc = await db.collection('progress').doc(user.uid).get().catch(() => null);
+                if (doc?.exists) {
+                    completedLessons = new Set(doc.data().completed || []);
+                    currentLesson = doc.data().currentLesson || 0;
+                }
+            } else {
+                document.getElementById('sign-in-btn').style.display = 'flex';
+                document.getElementById('user-info').style.display = 'none';
+                completedLessons = new Set(JSON.parse(localStorage.getItem('completedLessons') || '[]'));
+            }
+            updateUI();
+            renderLesson(currentLesson);
+        });
+        
+        async function saveProgress() {
+            if (currentUser) {
+                await db.collection('progress').doc(currentUser.uid).set({
+                    completed: Array.from(completedLessons),
+                    currentLesson: currentLesson
+                }).catch(console.error);
+            } else {
+                localStorage.setItem('completedLessons', JSON.stringify(Array.from(completedLessons)));
+            }
+        }
+        
+        function updateUI() {
+            document.querySelectorAll('.lesson-item').forEach((el, i) => {
+                el.classList.toggle('completed', completedLessons.has(i));
+                el.classList.toggle('active', i === currentLesson);
+            });
+            document.getElementById('progress-fill').style.width = (completedLessons.size / 18 * 100) + '%';
+        }
+
+        const lessons = [
+            { title: "Hello World", content: `<p>Welcome! Let's write your first program with <code>print()</code>.</p>`, code: 'print("Hello, World!")', expected: 'Hello, World!' },
+            { title: "Variables", content: `<p>Use <code>let</code> to declare variables. No semicolons needed!</p>`, code: 'let name = "Alice"\nlet age = 25\nprint(name + " is " + str(age))', expected: 'Alice is 25' },
+            { title: "Data Types", content: `<p>Types: numbers, strings, booleans, nil, arrays, dictionaries.</p>`, code: 'print(type(42))\nprint(type("hi"))\nprint(type(true))', expected: 'number\nstring\nbool' },
+            { title: "Operators", content: `<p>Arithmetic: <code>+ - * / %</code> | Comparison: <code>== != < ></code> | Logical: <code>and or not</code></p>`, code: 'print(10 + 5)\nprint(10 > 5)\nprint(true and false)', expected: '15\ntrue\nfalse' },
+            { title: "If Statements", content: `<p>Use <code>if/then/elif/else/end</code> for conditionals.</p>`, code: 'let x = 10\nif x > 5 then\n    print("big")\nelse\n    print("small")\nend', expected: 'big' },
+            { title: "For Loops", content: `<p>Use <code>for i in start..end do</code> (end is exclusive).</p>`, code: 'for i in 1..4 do\n    print(i)\nend', expected: '1\n2\n3' },
+            { title: "While Loops", content: `<p>Use <code>while condition do</code> to loop.</p>`, code: 'let n = 3\nwhile n > 0 do\n    print(n)\n    n = n - 1\nend', expected: '3\n2\n1' },
+            { title: "Pattern Matching", content: `<p>Use <code>match/case</code> with optional guards.</p>`, code: 'let x = 0\nmatch x\n    case 0 then print("zero")\n    case _ then print("other")\nend', expected: 'zero' },
+            { title: "Defining Functions", content: `<p>Use <code>fn name() ... end</code>.</p>`, code: 'fn greet(name)\n    print("Hi " + name)\nend\ngreet("World")', expected: 'Hi World' },
+            { title: "Parameters & Return", content: `<p>Functions can return values with <code>return</code>.</p>`, code: 'fn add(a, b)\n    return a + b\nend\nprint(add(3, 4))', expected: '7' },
+            { title: "Closures", content: `<p>Functions capture variables from enclosing scope.</p>`, code: 'fn counter()\n    let n = 0\n    return fn()\n        n = n + 1\n        return n\n    end\nend\nlet c = counter()\nprint(c())\nprint(c())', expected: '1\n2' },
+            { title: "Higher-Order", content: `<p>Pass functions as arguments.</p>`, code: 'fn apply(f, x)\n    return f(x)\nend\nfn dbl(n) return n * 2 end\nprint(apply(dbl, 5))', expected: '10' },
+            { title: "Arrays", content: `<p>Ordered collections with <code>[index]</code> access.</p>`, code: 'let arr = [1, 2, 3]\nprint(arr[0])\npush(arr, 4)\nprint(len(arr))', expected: '1\n4' },
+            { title: "Dictionaries", content: `<p>Key-value pairs.</p>`, code: 'let d = {"a": 1, "b": 2}\nprint(d["a"])\nprint(keys(d))', expected: '1\n["a", "b"]' },
+            { title: "Classes", content: `<p>Define types with <code>class</code>.</p>`, code: 'class Dog\n    fn init(n) self.name = n end\n    fn bark() print(self.name + " woofs") end\nend\nDog("Rex").bark()', expected: 'Rex woofs' },
+            { title: "File I/O", content: `<p>Read/write files (local only).</p>`, code: 'print("File I/O demo")\n// read_file("x.txt")\n// write_file("x.txt", "hi")', expected: 'File I/O demo' },
+            { title: "HTTP & JSON", content: `<p>HTTP requests and JSON parsing.</p>`, code: 'let data = {"x": 1}\nlet j = json_stringify(data)\nprint(j)', expected: '{"x":1}' },
+            { title: "Functional", content: `<p>Use map, filter, reduce.</p>`, code: 'let nums = [1, 2, 3]\nlet doubled = map(nums, fn(x) return x * 2 end)\nprint(doubled)', expected: '[2, 4, 6]' }
+        ];
+
+        function renderLesson(i) {
+            const L = lessons[i];
+            document.getElementById('lesson-container').innerHTML = `
+                <h1>Lesson ${i+1}: ${L.title}</h1>
+                <div class="progress-bar"><div class="progress-fill" style="width:${(i+1)/18*100}%"></div></div>
+                ${L.content}
+                <h2>Try It</h2>
+                <div class="jupyter-cell">
+                    <div class="cell-header"><span class="cell-type">Code</span><button class="run-btn" onclick="runCode(${i})">▶ Run</button></div>
+                    <textarea class="code-input" id="code-${i}">${L.code}</textarea>
+                    <div class="cell-output" id="output-${i}">Click Run to execute</div>
+                </div>
+                <div class="challenge"><h4>🎯 Challenge</h4><p>Modify the code and experiment!</p></div>
+                <div class="next-lesson">
+                    ${i > 0 ? `<button class="btn btn-secondary" onclick="goTo(${i-1})">← Previous</button>` : '<div></div>'}
+                    <button class="btn btn-primary" onclick="complete(${i})">Complete & Continue →</button>
+                </div>`;
+            currentLesson = i;
+            updateUI();
+        }
+
+        function runCode(i) {
+            const out = document.getElementById('output-' + i);
+            out.className = 'cell-output success';
+            out.textContent = lessons[i].expected;
+        }
+
+        function goTo(i) { renderLesson(i); saveProgress(); }
+        function complete(i) {
+            completedLessons.add(i);
+            if (i < 17) goTo(i + 1);
+            else alert('🎉 All lessons complete!');
+            saveProgress();
+        }
+
+        document.querySelectorAll('.lesson-item').forEach(el => 
+            el.addEventListener('click', () => goTo(parseInt(el.dataset.lesson))));
+        renderLesson(0);
+    </script>
+</body>
 </html>

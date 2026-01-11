@@ -37,8 +37,15 @@ function parseDocument(document: vscode.TextDocument): FileSymbols {
         references: new Map()
     };
 
-    const text = document.getText();
-    const lines = text.split('\n');
+    try {
+        const text = document.getText();
+        
+        // Skip very large files to prevent performance issues
+        if (text.length > 500000) {
+            return symbols;
+        }
+        
+        const lines = text.split('\n');
 
     let currentFunction: SymbolInfo | null = null;
     let functionStartLine = 0;
@@ -124,6 +131,9 @@ function parseDocument(document: vscode.TextDocument): FileSymbols {
     }
 
     symbolCache.set(document.uri.toString(), symbols);
+    } catch (error) {
+        console.error('Parse document error:', error);
+    }
     return symbols;
 }
 
@@ -422,10 +432,16 @@ export const semanticTokensLegend = new vscode.SemanticTokensLegend(tokenTypes, 
 
 export class PseudocodeSemanticTokensProvider implements vscode.DocumentSemanticTokensProvider {
     provideDocumentSemanticTokens(document: vscode.TextDocument): vscode.ProviderResult<vscode.SemanticTokens> {
-        const builder = new vscode.SemanticTokensBuilder(semanticTokensLegend);
-        const symbols = parseDocument(document);
-        const text = document.getText();
-        const lines = text.split('\n');
+        try {
+            const text = document.getText();
+            // Skip very large files to prevent performance issues
+            if (text.length > 500000) {
+                return new vscode.SemanticTokensBuilder(semanticTokensLegend).build();
+            }
+            
+            const builder = new vscode.SemanticTokensBuilder(semanticTokensLegend);
+            const symbols = parseDocument(document);
+            const lines = text.split('\n');
 
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i];
@@ -454,7 +470,11 @@ export class PseudocodeSemanticTokensProvider implements vscode.DocumentSemantic
             }
         }
 
-        return builder.build();
+            return builder.build();
+        } catch (error) {
+            console.error('Semantic tokens error:', error);
+            return new vscode.SemanticTokensBuilder(semanticTokensLegend).build();
+        }
     }
 }
 
