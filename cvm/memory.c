@@ -109,10 +109,14 @@ ObjFunction *new_function(VM *vm)
 /* Create a new closure wrapping a function */
 ObjClosure *new_closure(VM *vm, ObjFunction *function)
 {
-    ObjUpvalue **upvalues = (ObjUpvalue **)malloc(sizeof(ObjUpvalue *) * function->upvalue_count);
-    for (int i = 0; i < function->upvalue_count; i++)
+    ObjUpvalue **upvalues = NULL;
+    if (function->upvalue_count > 0)
     {
-        upvalues[i] = NULL;
+        upvalues = (ObjUpvalue **)malloc(sizeof(ObjUpvalue *) * function->upvalue_count);
+        for (int i = 0; i < function->upvalue_count; i++)
+        {
+            upvalues[i] = NULL;
+        }
     }
 
     ObjClosure *closure = (ObjClosure *)allocate_object(vm, sizeof(ObjClosure), OBJ_CLOSURE);
@@ -237,8 +241,15 @@ void free_object(VM *vm, Obj *object)
         FREE(vm, ObjFunction, object);
         break;
     case OBJ_CLOSURE:
-        FREE(vm, Obj, object);
+    {
+        ObjClosure *closure = (ObjClosure *)object;
+        if (closure->upvalues)
+        {
+            free(closure->upvalues);
+        }
+        FREE(vm, ObjClosure, object);
         break;
+    }
     case OBJ_DICT:
     {
         ObjDict *dict = (ObjDict *)object;

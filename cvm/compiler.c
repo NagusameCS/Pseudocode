@@ -251,11 +251,16 @@ static LastEmit second_last_emit = {false, 0, 0, 0, CTYPE_UNKNOWN};
 /* Flag to prevent fusion after and/or expressions (they have internal jumps) */
 static bool inhibit_jump_fusion = false;
 
+/* Track if last emit was a function call (for tail call optimization) */
+static bool last_was_call = false;
+static uint8_t last_call_arg_count = 0;
+
 static void reset_last_emit(void)
 {
     second_last_emit = last_emit;
     last_emit.is_constant = false;
     last_emit.type = CTYPE_UNKNOWN;
+    last_was_call = false;
 }
 
 static void track_constant(Value value, uint8_t idx)
@@ -2812,6 +2817,9 @@ static void call(bool can_assign)
     (void)can_assign;
     uint8_t arg_count = argument_list();
     emit_bytes(OP_CALL, arg_count);
+    /* Track for tail call optimization */
+    last_was_call = true;
+    last_call_arg_count = arg_count;
 }
 
 static void index_(bool can_assign)
@@ -3282,8 +3290,26 @@ static void return_statement(void)
     else
     {
         expression();
+
+        /* TAIL CALL OPTIMIZATION: If the expression was just a function call,
+         * convert OP_CALL to OP_TAIL_CALL and skip the OP_RETURN.
+         * This allows recursive functions to reuse stack frames. */
+        if (last_was_call && current->type == TYPE_FUNCTION)
+        {
+            Chunk *chunk = current_chunk();
+            /* The last two bytes should be OP_CALL + arg_count */
+            if (chunk->count >= 2 && chunk->code[chunk->count - 2] == OP_CALL)
+            {
+                chunk->code[chunk->count - 2] = OP_TAIL_CALL;
+                /* No need for OP_RETURN - tail call handles it */
+                last_was_call = false;
+                return;
+            }
+        }
+
         emit_byte(OP_RETURN);
     }
+    last_was_call = false;
 }
 
 static void expression_statement(void)

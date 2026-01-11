@@ -3340,14 +3340,23 @@ InterpretResult vm_run(VM *vm)
         uint8_t arg_count = READ_BYTE();
         Value callee = PEEK(arg_count);
 
-        if (!IS_FUNCTION(callee))
+        ObjFunction *function = NULL;
+
+        if (IS_FUNCTION(callee))
+        {
+            function = AS_FUNCTION(callee);
+        }
+        else if (IS_CLOSURE(callee))
+        {
+            function = AS_CLOSURE(callee)->function;
+        }
+        else
         {
             vm->sp = sp;
             runtime_error(vm, "Can only call functions.");
             return INTERPRET_RUNTIME_ERROR;
         }
 
-        ObjFunction *function = AS_FUNCTION(callee);
         if (arg_count != function->arity)
         {
             vm->sp = sp;
