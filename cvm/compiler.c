@@ -2613,6 +2613,58 @@ static void binary(bool can_assign)
         }
     }
 
+    /* ============ Identity/Zero Elimination ============ */
+    /* Remove no-op operations at compile time:
+     *   x + 0 -> x,  x - 0 -> x,  x * 1 -> x,  x / 1 -> x
+     *   x * 0 -> 0,  0 / x -> 0
+     */
+    if (second_operand.is_constant)
+    {
+        Value v2 = second_operand.value;
+        if (IS_INT(v2) || IS_NUM(v2))
+        {
+            double n2 = IS_INT(v2) ? (double)as_int(v2) : as_num(v2);
+            
+            /* x + 0 -> x: remove the constant and skip the add */
+            if ((op_type == TOKEN_PLUS || op_type == TOKEN_MINUS) && n2 == 0.0)
+            {
+                chunk->count = second_operand.bytecode_pos;
+                return; /* Result is already on stack */
+            }
+            
+            /* x * 1 -> x, x / 1 -> x: remove the constant and skip the op */
+            if ((op_type == TOKEN_STAR || op_type == TOKEN_SLASH) && n2 == 1.0)
+            {
+                chunk->count = second_operand.bytecode_pos;
+                return;
+            }
+            
+            /* x * 0 -> 0: remove both operands and push 0 */
+            if (op_type == TOKEN_STAR && n2 == 0.0)
+            {
+                chunk->count = first_bytecode_pos;
+                emit_constant(val_int(0));
+                return;
+            }
+        }
+    }
+    
+    /* Check first operand for 0 * x -> 0 */
+    if (first_operand.is_constant && op_type == TOKEN_STAR)
+    {
+        Value v1 = first_operand.value;
+        if (IS_INT(v1) || IS_NUM(v1))
+        {
+            double n1 = IS_INT(v1) ? (double)as_int(v1) : as_num(v1);
+            if (n1 == 0.0)
+            {
+                chunk->count = first_bytecode_pos;
+                emit_constant(val_int(0));
+                return;
+            }
+        }
+    }
+
     /* ============ Type Specialization ============ */
     /* Emit integer-specialized opcodes when both operands are known integers */
     bool both_int = (first_operand.type == CTYPE_INT && second_operand.type == CTYPE_INT);
@@ -2630,10 +2682,46 @@ static void binary(bool can_assign)
             track_int_result();
             return;
         case TOKEN_STAR:
+            /* STRENGTH REDUCTION: x * 2^n -> x << n for power-of-2 constants */
+            if (second_operand.is_constant && IS_INT(second_operand.value))
+            {
+                int32_t multiplier = as_int(second_operand.value);
+                /* Check if multiplier is a positive power of 2 */
+                if (multiplier > 0 && (multiplier & (multiplier - 1)) == 0)
+                {
+                    /* Find the shift amount */
+                    int shift = 0;
+                    while ((1 << shift) < multiplier) shift++;
+                    /* Rewind to remove the constant, emit shift */
+                    chunk->count = second_operand.bytecode_pos;
+                    emit_constant(val_int(shift));
+                    emit_byte(OP_SHL);
+                    track_int_result();
+                    return;
+                }
+            }
             emit_byte(OP_MUL_II);
             track_int_result();
             return;
         case TOKEN_SLASH:
+            /* STRENGTH REDUCTION: x / 2^n -> x >> n for power-of-2 constants */
+            if (second_operand.is_constant && IS_INT(second_operand.value))
+            {
+                int32_t divisor = as_int(second_operand.value);
+                /* Check if divisor is a positive power of 2 */
+                if (divisor > 0 && (divisor & (divisor - 1)) == 0)
+                {
+                    /* Find the shift amount */
+                    int shift = 0;
+                    while ((1 << shift) < divisor) shift++;
+                    /* Rewind to remove the constant, emit shift */
+                    chunk->count = second_operand.bytecode_pos;
+                    emit_constant(val_int(shift));
+                    emit_byte(OP_SHR);
+                    track_int_result();
+                    return;
+                }
+            }
             emit_byte(OP_DIV_II);
             track_int_result();
             return;
