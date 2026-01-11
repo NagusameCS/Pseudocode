@@ -32,11 +32,11 @@
 - [DONE] Small constant opcodes (OP_CONST_0, 1, 2, -1)
 
 ### Remaining Optimizations
-- [ ] **Function Inlining** - Inline small functions at call sites
-- [ ] **Escape Analysis** - Stack-allocate non-escaping objects
-- [ ] **SIMD Vectorization** - Parallel array operations
+- [WIP] **Function Inlining** - Infrastructure in place, JIT-level implementation needed
+- [WIP] **Escape Analysis** - Compile-time tracking done, stack allocation pending
+- [DONE] **SIMD Vectorization** - AVX/SSE accelerated array operations
 - [ ] **Better Register Allocation** - Linear scan instead of simple allocation
-- [ ] **Polymorphic Inline Caching** - Handle 2-4 common class shapes
+- [DONE] **Polymorphic Inline Caching** - PIC handlers for up to 4 class shapes
 
 ---
 

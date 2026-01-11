@@ -252,17 +252,17 @@ static Chunk *current_chunk(void)
 
 typedef struct
 {
-    ObjString *name;         /* Function name */
-    ObjFunction *function;   /* Compiled function */
-    uint32_t code_start;     /* Start of bytecode */
-    uint32_t code_length;    /* Length of bytecode */
-    uint8_t arity;           /* Number of parameters */
-    bool valid;              /* Entry is valid */
+    ObjString *name;       /* Function name */
+    ObjFunction *function; /* Compiled function */
+    uint32_t code_start;   /* Start of bytecode */
+    uint32_t code_length;  /* Length of bytecode */
+    uint8_t arity;         /* Number of parameters */
+    bool valid;            /* Entry is valid */
 } InlineCacheEntry;
 
 static InlineCacheEntry inline_cache[INLINE_CACHE_SIZE];
 static int inline_cache_count = 0;
-static int current_inline_depth = 0;  /* Track nested inlining depth */
+static int current_inline_depth = 0; /* Track nested inlining depth */
 
 static void init_inline_cache(void)
 {
@@ -332,10 +332,10 @@ static uint8_t last_call_arg_count = 0;
 /* Track the last GET_GLOBAL for inlining opportunities */
 typedef struct
 {
-    bool valid;              /* True if last emit was GET_GLOBAL */
-    const char *name;        /* Name of the global */
-    int name_length;         /* Length of name */
-    size_t bytecode_pos;     /* Position of GET_GLOBAL in bytecode */
+    bool valid;          /* True if last emit was GET_GLOBAL */
+    const char *name;    /* Name of the global */
+    int name_length;     /* Length of name */
+    size_t bytecode_pos; /* Position of GET_GLOBAL in bytecode */
 } LastGlobalGet;
 
 static LastGlobalGet last_global_get = {false, NULL, 0, 0};
