@@ -53,6 +53,10 @@ void vm_init(VM *vm)
     vm->globals.count = 0;
     vm->globals.capacity = 0;
 
+    /* Initialize inline caches */
+    vm->ic_count = 0;
+    memset(vm->ic_cache, 0, sizeof(vm->ic_cache));
+
     chunk_init(&vm->chunk);
 }
 
@@ -1135,7 +1139,10 @@ InterpretResult vm_run(VM *vm)
         [OP_FIELD] = &&op_field,
         [OP_GET_FIELD] = &&op_get_field,
         [OP_SET_FIELD] = &&op_set_field,
+        [OP_GET_FIELD_IC] = &&op_get_field_ic,
+        [OP_SET_FIELD_IC] = &&op_set_field_ic,
         [OP_INVOKE] = &&op_invoke,
+        [OP_INVOKE_IC] = &&op_invoke_ic,
         [OP_SUPER_INVOKE] = &&op_super_invoke,
         /* Super keyword */
         [OP_GET_SUPER] = &&op_get_super,
@@ -6413,6 +6420,228 @@ InterpretResult vm_run(VM *vm)
         }
 
         runtime_error(vm, "Too many fields on instance.");
+        return INTERPRET_RUNTIME_ERROR;
+    }
+
+    /* ============ INLINE-CACHED PROPERTY ACCESS ============ */
+    /* These opcodes use monomorphic inline caching for O(1) property lookup */
+    /* After the first access, subsequent accesses skip the name-based search */
+
+    CASE(get_field_ic) :
+    {
+        /* OP_GET_FIELD_IC: Get field with inline cache */
+        Value instance_val = PEEK(0);
+        if (!IS_INSTANCE(instance_val))
+        {
+            runtime_error(vm, "Only instances have fields.");
+            return INTERPRET_RUNTIME_ERROR;
+        }
+        ObjInstance *instance = AS_INSTANCE(instance_val);
+        uint16_t const_idx = *ip++;
+        const_idx |= ((uint16_t)(*ip++) << 8);
+        uint16_t ic_slot = *ip++;
+        ObjString *name = AS_STRING(vm->chunk.constants[const_idx]);
+
+        InlineCache *ic = &vm->ic_cache[ic_slot];
+
+        /* Fast path: cache hit */
+        if (LIKELY(ic->cached_class == instance->klass && !ic->is_method))
+        {
+            POP();
+            PUSH(instance->fields[ic->cached_slot]);
+            DISPATCH();
+        }
+
+        /* Slow path: search and cache */
+        for (uint16_t i = 0; i < instance->klass->field_count; i++)
+        {
+            if (instance->klass->field_names[i] == name ||
+                (instance->klass->field_names[i]->length == name->length &&
+                 memcmp(instance->klass->field_names[i]->chars, name->chars, name->length) == 0))
+            {
+                /* Update cache */
+                ic->cached_class = instance->klass;
+                ic->cached_slot = i;
+                ic->cached_name = name;
+                ic->is_method = false;
+
+                POP();
+                PUSH(instance->fields[i]);
+                DISPATCH();
+            }
+        }
+
+        /* Check methods */
+        for (uint16_t i = 0; i < instance->klass->method_count; i++)
+        {
+            if (instance->klass->method_names[i] == name ||
+                (instance->klass->method_names[i]->length == name->length &&
+                 memcmp(instance->klass->method_names[i]->chars, name->chars, name->length) == 0))
+            {
+                /* Cache method lookup */
+                ic->cached_class = instance->klass;
+                ic->cached_slot = i;
+                ic->cached_name = name;
+                ic->is_method = true;
+
+                POP();
+                PUSH(instance->klass->methods[i]);
+                DISPATCH();
+            }
+        }
+
+        runtime_error(vm, "Undefined property '%s'.", name->chars);
+        return INTERPRET_RUNTIME_ERROR;
+    }
+
+    CASE(set_field_ic) :
+    {
+        /* OP_SET_FIELD_IC: Set field with inline cache */
+        Value instance_val = PEEK(1);
+        if (!IS_INSTANCE(instance_val))
+        {
+            runtime_error(vm, "Only instances have fields.");
+            return INTERPRET_RUNTIME_ERROR;
+        }
+        ObjInstance *instance = AS_INSTANCE(instance_val);
+        uint16_t const_idx = *ip++;
+        const_idx |= ((uint16_t)(*ip++) << 8);
+        uint16_t ic_slot = *ip++;
+        ObjString *name = AS_STRING(vm->chunk.constants[const_idx]);
+        Value value = POP();
+
+        InlineCache *ic = &vm->ic_cache[ic_slot];
+
+        /* Fast path: cache hit */
+        if (LIKELY(ic->cached_class == instance->klass && !ic->is_method))
+        {
+            instance->fields[ic->cached_slot] = value;
+            POP();       /* Pop instance */
+            PUSH(value); /* Result is the assigned value */
+            DISPATCH();
+        }
+
+        /* Slow path: search and cache */
+        for (uint16_t i = 0; i < instance->klass->field_count; i++)
+        {
+            if (instance->klass->field_names[i] == name ||
+                (instance->klass->field_names[i]->length == name->length &&
+                 memcmp(instance->klass->field_names[i]->chars, name->chars, name->length) == 0))
+            {
+                /* Update cache */
+                ic->cached_class = instance->klass;
+                ic->cached_slot = i;
+                ic->cached_name = name;
+                ic->is_method = false;
+
+                instance->fields[i] = value;
+                POP();       /* Pop instance */
+                PUSH(value); /* Result is the assigned value */
+                DISPATCH();
+            }
+        }
+
+        /* Field not found - add it dynamically */
+        if (instance->klass->field_count < CLASS_MAX_FIELDS)
+        {
+            uint16_t idx = instance->klass->field_count++;
+            instance->klass->field_names[idx] = name;
+            instance->fields[idx] = value;
+
+            /* Cache the new slot */
+            ic->cached_class = instance->klass;
+            ic->cached_slot = idx;
+            ic->cached_name = name;
+            ic->is_method = false;
+
+            POP();       /* Pop instance */
+            PUSH(value); /* Result is the assigned value */
+            DISPATCH();
+        }
+
+        runtime_error(vm, "Too many fields on instance.");
+        return INTERPRET_RUNTIME_ERROR;
+    }
+
+    CASE(invoke_ic) :
+    {
+        /* OP_INVOKE_IC: Invoke method with inline cache */
+        uint16_t const_idx = *ip++;
+        const_idx |= ((uint16_t)(*ip++) << 8);
+        uint8_t arg_count = *ip++;
+        uint16_t ic_slot = *ip++;
+        ObjString *method_name = AS_STRING(vm->chunk.constants[const_idx]);
+        Value instance_val = PEEK(arg_count);
+
+        if (!IS_INSTANCE(instance_val))
+        {
+            runtime_error(vm, "Only instances have methods.");
+            return INTERPRET_RUNTIME_ERROR;
+        }
+
+        ObjInstance *instance = AS_INSTANCE(instance_val);
+        InlineCache *ic = &vm->ic_cache[ic_slot];
+
+        /* Fast path: cache hit for method */
+        if (LIKELY(ic->cached_class == instance->klass && ic->is_method))
+        {
+            Value method = instance->klass->methods[ic->cached_slot];
+            if (IS_CLOSURE(method))
+            {
+                ObjClosure *closure = AS_CLOSURE(method);
+                if (vm->frame_count == FRAMES_MAX)
+                {
+                    runtime_error(vm, "Stack overflow.");
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                CallFrame *new_frame = &vm->frames[vm->frame_count++];
+                new_frame->closure = closure;
+                new_frame->function = closure->function;
+                new_frame->ip = vm->chunk.code + closure->function->code_start;
+                new_frame->slots = sp - arg_count - 1;
+                new_frame->is_init = false;
+                ip = new_frame->ip;
+                bp = new_frame->slots;
+                DISPATCH();
+            }
+        }
+
+        /* Slow path: search and cache */
+        for (uint16_t i = 0; i < instance->klass->method_count; i++)
+        {
+            if (instance->klass->method_names[i] == method_name ||
+                (instance->klass->method_names[i]->length == method_name->length &&
+                 memcmp(instance->klass->method_names[i]->chars, method_name->chars, method_name->length) == 0))
+            {
+                /* Update cache */
+                ic->cached_class = instance->klass;
+                ic->cached_slot = i;
+                ic->cached_name = method_name;
+                ic->is_method = true;
+
+                Value method = instance->klass->methods[i];
+                if (IS_CLOSURE(method))
+                {
+                    ObjClosure *closure = AS_CLOSURE(method);
+                    if (vm->frame_count == FRAMES_MAX)
+                    {
+                        runtime_error(vm, "Stack overflow.");
+                        return INTERPRET_RUNTIME_ERROR;
+                    }
+                    CallFrame *new_frame = &vm->frames[vm->frame_count++];
+                    new_frame->closure = closure;
+                    new_frame->function = closure->function;
+                    new_frame->ip = vm->chunk.code + closure->function->code_start;
+                    new_frame->slots = sp - arg_count - 1;
+                    new_frame->is_init = false;
+                    ip = new_frame->ip;
+                    bp = new_frame->slots;
+                    DISPATCH();
+                }
+            }
+        }
+
+        runtime_error(vm, "Undefined method '%s'.", method_name->chars);
         return INTERPRET_RUNTIME_ERROR;
     }
 

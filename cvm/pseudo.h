@@ -510,7 +510,10 @@ typedef enum
     OP_FIELD,        /* Add field to class: const_idx (name) */
     OP_GET_FIELD,    /* Get instance field: const_idx (slot) */
     OP_SET_FIELD,    /* Set instance field: const_idx (slot) */
+    OP_GET_FIELD_IC, /* Get field with inline cache: const_idx, ic_slot */
+    OP_SET_FIELD_IC, /* Set field with inline cache: const_idx, ic_slot */
     OP_INVOKE,       /* Invoke method: const_idx (name), arg_count */
+    OP_INVOKE_IC,    /* Invoke with inline cache: const_idx, arg_count, ic_slot */
     OP_SUPER_INVOKE, /* Invoke super method: const_idx (name), arg_count */
     OP_GET_SUPER,    /* Get method from superclass for super.method() */
     OP_STATIC,       /* Add static property/method to class */
@@ -882,6 +885,18 @@ typedef struct
     int frame_count;   /* Frame count to restore */
 } ExceptionHandler;
 
+/* ============ Inline Caching ============ */
+/* Monomorphic inline cache for property access - O(1) lookup after first hit */
+#define IC_MAX_CACHES 256
+
+typedef struct
+{
+    ObjClass *cached_class;   /* Class this cache is for */
+    uint16_t cached_slot;     /* Field/method slot index */
+    ObjString *cached_name;   /* Cached property name for validation */
+    bool is_method;           /* True if this is a method, false if field */
+} InlineCache;
+
 typedef struct
 {
     ObjFunction *function;
@@ -918,6 +933,10 @@ typedef struct
 
     /* Closures - open upvalues list */
     ObjUpvalue *open_upvalues;
+
+    /* Inline caching for fast property access */
+    InlineCache ic_cache[IC_MAX_CACHES];
+    uint16_t ic_count;
 
     /* GC */
     Obj *objects;
