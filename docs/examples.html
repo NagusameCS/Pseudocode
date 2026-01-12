@@ -62,7 +62,7 @@
             align-items: center;
             height: 56px;
             padding: 0 24px;
-            max-width: 1400px;
+            max-width: 1600px;
             margin: 0 auto;
         }
 
@@ -211,6 +211,26 @@
             max-height: 300px;
         }
 
+        /* Custom scrollbars */
+        pre::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        pre::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+            border-radius: 4px;
+        }
+
+        pre::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+
+        pre::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-dim);
+        }
+
         .keyword {
             color: #c084fc;
         }
@@ -276,6 +296,36 @@
                 display: none;
             }
         }
+
+        /* Footer */
+        footer {
+            padding: 40px 0;
+            border-top: 1px solid var(--border);
+            text-align: center;
+            margin-top: 48px;
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .footer-links a {
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+
+        .footer-links a:hover {
+            color: var(--text-primary);
+        }
+
+        .copyright {
+            color: var(--text-tertiary);
+            font-size: 13px;
+        }
     </style>
 </head>
 
@@ -292,7 +342,7 @@
                     <li><a href="course.html">Course</a></li>
                     <li><a href="examples.html" class="active">Examples</a></li>
                     <li><a href="reference.html">Reference</a></li>
-                    <li><a href="https://github.com/NagusameCS/Pseudocode" target="_blank" rel="noopener">GitHub</a></li>
+                    <li><a href="https://github.com/NagusameCS/Pseudocode">GitHub</a></li>
                 </ul>
             </nav>
         </div>
@@ -878,6 +928,17 @@ queue[<span class="string">"enqueue"</span>](<span class="string">"third"</span>
         </div>
 
     </div>
+
+    <footer>
+        <div class="footer-links">
+            <a href="https://github.com/NagusameCS/Pseudocode">GitHub</a>
+            <a href="reference.html">Reference</a>
+            <a href="course.html">Course</a>
+            <a href="https://marketplace.visualstudio.com/items?itemName=NagusameCS.pseudocode-lang">VS Code Extension</a>
+            <a href="https://opencs.dev/NagusameCS">Author</a>
+        </div>
+        <p class="copyright">MIT License</p>
+    </footer>
 
     <script>
         function showAll() {

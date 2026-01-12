@@ -136,6 +136,34 @@
             padding: 24px 0;
         }
 
+        /* Custom scrollbars */
+        .sidebar::-webkit-scrollbar,
+        pre::-webkit-scrollbar,
+        .syntax-box::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        .sidebar::-webkit-scrollbar-track,
+        pre::-webkit-scrollbar-track,
+        .syntax-box::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+            border-radius: 4px;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb,
+        pre::-webkit-scrollbar-thumb,
+        .syntax-box::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb:hover,
+        pre::-webkit-scrollbar-thumb:hover,
+        .syntax-box::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-dim);
+        }
+
         .sidebar-section {
             margin-bottom: 24px;
         }
@@ -388,6 +416,143 @@
             color: var(--text-primary);
         }
 
+        /* Glossary */
+        .glossary-list {
+            display: grid;
+            gap: 16px;
+            margin: 24px 0;
+        }
+
+        .glossary-item {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .glossary-item h4 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--accent);
+            margin: 0 0 8px 0;
+        }
+
+        .glossary-item p {
+            margin: 0;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        /* Compilation Pipeline */
+        .pipeline {
+            display: flex;
+            align-items: stretch;
+            gap: 8px;
+            margin: 24px 0;
+            flex-wrap: wrap;
+        }
+
+        .pipeline-stage {
+            flex: 1;
+            min-width: 150px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .stage-number {
+            width: 28px;
+            height: 28px;
+            background: var(--accent);
+            color: white;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        .pipeline-stage h4 {
+            font-size: 0.9375rem;
+            margin: 0 0 8px 0;
+        }
+
+        .pipeline-stage p {
+            font-size: 13px;
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        .pipeline-arrow {
+            display: flex;
+            align-items: center;
+            font-size: 1.5rem;
+            color: var(--text-tertiary);
+        }
+
+        @media (max-width: 900px) {
+            .pipeline {
+                flex-direction: column;
+            }
+
+            .pipeline-arrow {
+                transform: rotate(90deg);
+                justify-content: center;
+            }
+        }
+
+        /* Status badges */
+        .status-supported {
+            background: rgba(52, 211, 153, 0.2);
+            color: var(--success);
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .status-planned {
+            background: rgba(251, 191, 36, 0.2);
+            color: var(--warning);
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        /* Term linking */
+        .term-link {
+            color: inherit;
+            text-decoration: none;
+            position: relative;
+            cursor: pointer;
+            border-bottom: 1px dashed var(--accent-dim);
+        }
+
+        .term-link::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            bottom: -1px;
+            width: 0;
+            height: 2px;
+            background: var(--accent);
+            transition: width 0.2s ease;
+        }
+
+        .term-link:hover::after {
+            width: 100%;
+        }
+
+        .term-link:hover {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
         .toc {
             background: var(--bg-secondary);
             border: 1px solid var(--border);
@@ -435,6 +600,42 @@
 
             .toc-list {
                 grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        /* Footer */
+        footer {
+            padding: 40px 24px;
+            border-top: 1px solid var(--border);
+            text-align: center;
+            margin-left: var(--sidebar-width);
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .footer-links a {
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+
+        .footer-links a:hover {
+            color: var(--text-primary);
+        }
+
+        .copyright {
+            color: var(--text-tertiary);
+            font-size: 13px;
+        }
+
+        @media (max-width: 1024px) {
+            footer {
+                margin-left: 0;
             }
         }
     </style>
@@ -495,6 +696,12 @@
                 <a href="#crypto" class="sidebar-link">Cryptography</a>
             </div>
             <div class="sidebar-section">
+                <div class="sidebar-title">Concepts</div>
+                <a href="#glossary" class="sidebar-link">Glossary</a>
+                <a href="#compilation" class="sidebar-link">Compilation</a>
+                <a href="#architecture" class="sidebar-link">Architecture</a>
+            </div>
+            <div class="sidebar-section">
                 <div class="sidebar-title">Examples</div>
                 <a href="#examples" class="sidebar-link">Overview</a>
                 <a href="https://github.com/NagusameCS/Pseudocode/blob/main/examples/quicksort.pseudo"
@@ -533,6 +740,9 @@
                         <li><a href="#builtins">Built-in Functions</a></li>
                         <li><a href="#tensors">Tensors and Matrices</a></li>
                         <li><a href="#crypto">Cryptography</a></li>
+                        <li><a href="#glossary">Glossary</a></li>
+                        <li><a href="#compilation">Compilation</a></li>
+                        <li><a href="#architecture">Architecture</a></li>
                         <li><a href="#examples">Example Programs</a></li>
                     </ul>
                 </nav>
@@ -1849,6 +2059,169 @@ x = x + <span class="number">1</span></code></pre>
 <span class="keyword">let</span> decoded = <span class="function">decode_base64</span>(encoded)
 <span class="function">print</span>(decoded)  <span class="comment">// Hello, World!</span></code></pre>
 
+                <!-- GLOSSARY -->
+                <h2 id="glossary">Glossary</h2>
+                <p>
+                    Key terms and concepts used throughout the Pseudocode documentation.
+                </p>
+
+                <div class="glossary-list">
+                    <div class="glossary-item" id="term-bytecode">
+                        <h4>Bytecode</h4>
+                        <p>An intermediate representation of your code that runs on the Pseudocode virtual machine. Source code is compiled to bytecode, which can then be interpreted or JIT-compiled to machine code.</p>
+                    </div>
+
+                    <div class="glossary-item" id="term-jit">
+                        <h4>JIT (Just-In-Time) Compiler</h4>
+                        <p>A compiler that generates native machine code at runtime rather than ahead of time. Pseudocode uses a tracing JIT that identifies hot code paths and compiles them for faster execution.</p>
+                    </div>
+
+                    <div class="glossary-item" id="term-tracing-jit">
+                        <h4>Tracing JIT</h4>
+                        <p>A type of JIT compiler that records the actual execution path (trace) of code and compiles that specific path. More efficient than method-based JIT for loop-heavy code because it can inline across function boundaries.</p>
+                    </div>
+
+                    <div class="glossary-item" id="term-hot-path">
+                        <h4>Hot Path</h4>
+                        <p>Code that is executed frequently (e.g., loop bodies). The JIT compiler detects hot paths and prioritizes compiling them to native code for maximum performance.</p>
+                    </div>
+
+                    <div class="glossary-item" id="term-nan-boxing">
+                        <h4>NaN-Boxing</h4>
+                        <p>A technique for encoding multiple value types (numbers, booleans, nil, pointers) in a single 64-bit value by exploiting the unused bits in IEEE 754 floating-point NaN representations.</p>
+                    </div>
+
+                    <div class="glossary-item" id="term-vm">
+                        <h4>Virtual Machine (VM)</h4>
+                        <p>Software that executes bytecode instructions. The Pseudocode VM is a stack-based virtual machine that interprets bytecode and optionally JIT-compiles hot code.</p>
+                    </div>
+
+                    <div class="glossary-item" id="term-register-allocation">
+                        <h4>Register Allocation</h4>
+                        <p>The process of assigning CPU registers to variables during JIT compilation. Good register allocation minimizes memory access and improves performance.</p>
+                    </div>
+
+                    <div class="glossary-item" id="term-constant-folding">
+                        <h4>Constant Folding</h4>
+                        <p>A compiler optimization that evaluates constant expressions at compile time instead of runtime. For example, <code>let x = 2 + 3</code> becomes <code>let x = 5</code>.</p>
+                    </div>
+
+                    <div class="glossary-item" id="term-inlining">
+                        <h4>Function Inlining</h4>
+                        <p>A compiler optimization that replaces a function call with the function's body. Eliminates call overhead and enables further optimizations on the combined code.</p>
+                    </div>
+
+                    <div class="glossary-item" id="term-closure">
+                        <h4>Closure</h4>
+                        <p>A function that captures variables from its surrounding scope. The captured variables persist even after the outer function has returned.</p>
+                    </div>
+
+                    <div class="glossary-item" id="term-pattern-matching">
+                        <h4>Pattern Matching</h4>
+                        <p>A control flow mechanism that matches a value against multiple patterns and executes code based on which pattern matches. More powerful than switch/case statements.</p>
+                    </div>
+
+                    <div class="glossary-item" id="term-guard-clause">
+                        <h4>Guard Clause</h4>
+                        <p>An additional condition in a pattern match case. The pattern only matches if both the structural pattern and the guard condition are true.</p>
+                    </div>
+                </div>
+
+                <!-- COMPILATION -->
+                <h2 id="compilation">How Compilation Works</h2>
+                <p>
+                    Pseudocode uses a multi-stage compilation pipeline to transform your source code into executable instructions.
+                </p>
+
+                <h3>Compilation Pipeline</h3>
+                <div class="pipeline">
+                    <div class="pipeline-stage">
+                        <div class="stage-number">1</div>
+                        <h4>Lexer</h4>
+                        <p>Converts source code into a stream of tokens (keywords, identifiers, operators, literals).</p>
+                    </div>
+                    <div class="pipeline-arrow">→</div>
+                    <div class="pipeline-stage">
+                        <div class="stage-number">2</div>
+                        <h4>Parser</h4>
+                        <p>Validates syntax and builds an implicit AST during a single-pass compilation.</p>
+                    </div>
+                    <div class="pipeline-arrow">→</div>
+                    <div class="pipeline-stage">
+                        <div class="stage-number">3</div>
+                        <h4>Bytecode Compiler</h4>
+                        <p>Generates stack-based bytecode instructions with constant folding optimizations.</p>
+                    </div>
+                    <div class="pipeline-arrow">→</div>
+                    <div class="pipeline-stage">
+                        <div class="stage-number">4</div>
+                        <h4>VM / JIT</h4>
+                        <p>Executes bytecode via interpreter, or traces hot paths and compiles to native x86-64 code.</p>
+                    </div>
+                </div>
+
+                <h3>Execution Modes</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Mode</th>
+                            <th>Command</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Interpreter</td>
+                            <td><code>./pseudo file.pseudo</code></td>
+                            <td>Default mode. Fast startup, suitable for short scripts and development.</td>
+                        </tr>
+                        <tr>
+                            <td>JIT</td>
+                            <td><code>./pseudo -j file.pseudo</code></td>
+                            <td>Enables tracing JIT. Best for compute-intensive programs with hot loops.</td>
+                        </tr>
+                        <tr>
+                            <td>Debug</td>
+                            <td><code>./pseudo -d file.pseudo</code></td>
+                            <td>Prints bytecode disassembly and execution trace for debugging.</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- ARCHITECTURE -->
+                <h2 id="architecture">Supported Architectures</h2>
+                <p>
+                    Pseudocode runs on multiple platforms with varying levels of optimization.
+                </p>
+
+                <h3>JIT Compilation (Native Performance)</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Architecture</th>
+                            <th>OS</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>x86-64 (Intel/AMD)</td>
+                            <td>macOS, Linux, Windows</td>
+                            <td><span class="status-supported">Fully Supported</span></td>
+                        </tr>
+                        <tr>
+                            <td>ARM64 (Apple Silicon, etc.)</td>
+                            <td>macOS, Linux</td>
+                            <td><span class="status-planned">Planned</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>Interpreter (Portable)</h3>
+                <p>
+                    The bytecode interpreter runs on any platform with a C99 compiler. This includes ARM32, RISC-V, MIPS, WebAssembly, and embedded systems. Performance is lower than JIT but still competitive with Python.
+                </p>
+
                 <!-- EXAMPLES -->
                 <h2 id="examples">Example Programs</h2>
                 <p>
@@ -2003,6 +2376,66 @@ x = x + <span class="number">1</span></code></pre>
             </div>
         </main>
     </div>
+
+    <footer>
+        <div class="footer-links">
+            <a href="https://github.com/NagusameCS/Pseudocode">GitHub</a>
+            <a href="examples.html">Examples</a>
+            <a href="course.html">Course</a>
+            <a href="https://marketplace.visualstudio.com/items?itemName=NagusameCS.pseudocode-lang">VS Code Extension</a>
+            <a href="https://opencs.dev/NagusameCS">Author</a>
+        </div>
+        <p class="copyright">MIT License</p>
+    </footer>
+
+    <script>
+        // Term definitions - maps terms to their glossary IDs
+        const termDefinitions = {
+            'bytecode': 'term-bytecode',
+            'jit': 'term-jit',
+            'jit compiler': 'term-jit',
+            'just-in-time': 'term-jit',
+            'tracing jit': 'term-tracing-jit',
+            'tracing jit compiler': 'term-tracing-jit',
+            'hot path': 'term-hot-path',
+            'hot paths': 'term-hot-path',
+            'nan-boxing': 'term-nan-boxing',
+            'nan boxing': 'term-nan-boxing',
+            'virtual machine': 'term-vm',
+            'vm': 'term-vm',
+            'register allocation': 'term-register-allocation',
+            'constant folding': 'term-constant-folding',
+            'function inlining': 'term-inlining',
+            'inlining': 'term-inlining',
+            'closure': 'term-closure',
+            'closures': 'term-closure',
+            'pattern matching': 'term-pattern-matching',
+            'guard clause': 'term-guard-clause',
+            'guard clauses': 'term-guard-clause'
+        };
+
+        // Highlight active sidebar link on scroll
+        const observerOptions = {
+            rootMargin: '-100px 0px -60% 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    document.querySelectorAll('.sidebar-link').forEach(link => {
+                        link.classList.remove('active');
+                        if (link.getAttribute('href') === '#' + entry.target.id) {
+                            link.classList.add('active');
+                        }
+                    });
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('h2[id], h3[id]').forEach(section => {
+            observer.observe(section);
+        });
+    </script>
 </body>
 
 </html>

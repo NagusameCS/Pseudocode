@@ -206,7 +206,7 @@
 
         /* Sections */
         section {
-            padding: 64px 0;
+            padding: 80px 0;
         }
 
         section + section {
@@ -287,6 +287,55 @@
             margin: 0;
         }
 
+        /* Custom scrollbars */
+        pre::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        pre::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+            border-radius: 4px;
+        }
+
+        pre::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+
+        pre::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-dim);
+        }
+
+        /* Term linking */
+        .term-link {
+            color: inherit;
+            text-decoration: none;
+            position: relative;
+            cursor: pointer;
+            border-bottom: 1px dashed var(--accent-dim);
+        }
+
+        .term-link::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            bottom: -1px;
+            width: 0;
+            height: 2px;
+            background: var(--accent);
+            transition: width 0.2s ease;
+        }
+
+        .term-link:hover::after {
+            width: 100%;
+        }
+
+        .term-link:hover {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
         code {
             font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
         }
@@ -365,6 +414,32 @@
             font-size: 14px;
             margin-bottom: 12px;
             line-height: 1.6;
+        }
+
+        /* Architecture Info */
+        .arch-info {
+            margin-top: 40px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 24px;
+            text-align: center;
+        }
+
+        .arch-info h3 {
+            font-size: 1rem;
+            margin-bottom: 12px;
+            color: var(--text-primary);
+        }
+
+        .arch-info p {
+            color: var(--text-secondary);
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        .arch-info p:last-child {
+            margin-bottom: 0;
         }
 
         /* Getting Started */
@@ -498,6 +573,11 @@
             .hero h1 {
                 font-size: 2.25rem;
             }
+
+            .footer-links {
+                flex-direction: column;
+                gap: 12px;
+            }
         }
     </style>
 </head>
@@ -541,27 +621,27 @@
             <p class="section-desc">An educational language that grows with you — from first program to advanced algorithms.</p>
             <div class="features-grid">
                 <div class="feature-card">
-                    <h3>📚 Built for Learning</h3>
+                    <h3>Built for Learning</h3>
                     <p>Syntax mirrors textbook pseudocode. Perfect for teaching algorithms, data structures, and programming concepts.</p>
                 </div>
                 <div class="feature-card">
-                    <h3>🚀 Real-World Power</h3>
+                    <h3>Real-World Power</h3>
                     <p>Not just for learning — build real projects with HTTP APIs, file I/O, JSON, and 80+ built-in functions.</p>
                 </div>
                 <div class="feature-card">
-                    <h3>⚡ High Performance</h3>
-                    <p>Tracing JIT compiler generates native machine code. Match C performance in tight loops.</p>
+                    <h3>High Performance</h3>
+                    <p><a href="reference.html#term-tracing-jit" class="term-link">Tracing JIT compiler</a> generates native machine code. Match C performance in tight loops.</p>
                 </div>
                 <div class="feature-card">
-                    <h3>🎯 Readable by Design</h3>
+                    <h3>Readable by Design</h3>
                     <p>No semicolons, no braces. Code flows naturally with if/then/end and for/in/do blocks.</p>
                 </div>
                 <div class="feature-card">
-                    <h3>📈 High Skill Ceiling</h3>
-                    <p>Closures, pattern matching, classes, and functional programming. Grow from beginner to expert.</p>
+                    <h3>High Skill Ceiling</h3>
+                    <p><a href="reference.html#term-closure" class="term-link">Closures</a>, <a href="reference.html#term-pattern-matching" class="term-link">pattern matching</a>, classes, and functional programming. Grow from beginner to expert.</p>
                 </div>
                 <div class="feature-card">
-                    <h3>🛠️ VS Code Integration</h3>
+                    <h3>VS Code Integration</h3>
                     <p>Full IDE support with IntelliSense, diagnostics, debugging, and 50+ code snippets.</p>
                 </div>
             </div>
@@ -643,21 +723,26 @@
             <p class="section-desc">Built from scratch with a focus on simplicity and performance.</p>
             <div class="tech-grid">
                 <div class="tech-card">
-                    <h3>Tracing JIT Architecture</h3>
-                    <p>Records execution traces at runtime and compiles hot paths to native machine code with register allocation.</p>
+                    <h3><a href="reference.html#term-tracing-jit" class="term-link">Tracing JIT</a> Architecture</h3>
+                    <p>Records execution traces at runtime and compiles <a href="reference.html#term-hot-path" class="term-link">hot paths</a> to native machine code with <a href="reference.html#term-register-allocation" class="term-link">register allocation</a>.</p>
                 </div>
                 <div class="tech-card">
-                    <h3>NaN-Boxing Value Representation</h3>
+                    <h3><a href="reference.html#term-nan-boxing" class="term-link">NaN-Boxing</a> Value Representation</h3>
                     <p>Efficient 64-bit tagged values that pack type information and data into a single word.</p>
                 </div>
                 <div class="tech-card">
-                    <h3>Function Inlining</h3>
+                    <h3><a href="reference.html#term-inlining" class="term-link">Function Inlining</a></h3>
                     <p>Small functions are automatically inlined during JIT compilation for reduced call overhead.</p>
                 </div>
                 <div class="tech-card">
-                    <h3>One-pass Bytecode Compiler</h3>
-                    <p>Single-pass compilation from source to bytecode with constant folding and peephole optimizations.</p>
+                    <h3>One-pass <a href="reference.html#term-bytecode" class="term-link">Bytecode</a> Compiler</h3>
+                    <p>Single-pass compilation from source to bytecode with <a href="reference.html#term-constant-folding" class="term-link">constant folding</a> and peephole optimizations.</p>
                 </div>
+            </div>
+            <div class="arch-info">
+                <h3>Supported Platforms</h3>
+                <p><strong>JIT Compilation:</strong> x86-64 (Intel/AMD 64-bit) — macOS, Linux, Windows</p>
+                <p><strong>Interpreter:</strong> All platforms with a C99 compiler — ARM64, ARM32, RISC-V, WebAssembly</p>
             </div>
         </section>
 

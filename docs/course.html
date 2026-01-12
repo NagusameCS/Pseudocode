@@ -55,7 +55,7 @@
             align-items: center;
             height: 56px;
             padding: 0 24px;
-            max-width: 1800px;
+            max-width: 1600px;
             margin: 0 auto;
         }
         
@@ -105,6 +105,34 @@
             top: 56px; left: 0; bottom: 0;
             overflow-y: auto;
             padding: 20px 0;
+        }
+
+        /* Custom scrollbars */
+        .sidebar::-webkit-scrollbar,
+        .cell-input::-webkit-scrollbar,
+        .cell-output::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        .sidebar::-webkit-scrollbar-track,
+        .cell-input::-webkit-scrollbar-track,
+        .cell-output::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+            border-radius: 4px;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb,
+        .cell-input::-webkit-scrollbar-thumb,
+        .cell-output::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb:hover,
+        .cell-input::-webkit-scrollbar-thumb:hover,
+        .cell-output::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-dim);
         }
         
         .progress-container { padding: 0 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
@@ -347,7 +375,7 @@
     <header>
         <div class="header-inner">
             <a href="index.html" class="logo">
-                <img src="favicon.svg" alt="" width="24" height="24" class="logo-img">
+                <img src="favicon.svg" alt="Pseudocode" width="24" height="24" class="logo-img">
                 Pseudocode
             </a>
             <nav>
