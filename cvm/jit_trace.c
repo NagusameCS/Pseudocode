@@ -185,7 +185,7 @@ void jit_cleanup(void)
     {
         if (jit_state.traces[i].native_code)
         {
-            munmap(jit_state.traces[i].native_code, JIT_CODE_SIZE);
+            munmap_executable(jit_state.traces[i].native_code, JIT_CODE_SIZE);
         }
     }
     jit_state.enabled = false;

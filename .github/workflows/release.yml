@@ -88,45 +88,12 @@ jobs:
           path: cvm/pseudo-darwin-arm64
 
   # ============================================
-  # macOS x64 Build (Intel via cross-compile on ARM64)
+  # macOS x64 Build (Intel)
+  # NOTE: Skipped - macos-13 is retired, macos-15-large requires billing
+  # Users on Intel Macs can build from source
   # ============================================
-  build-macos-x64:
-    runs-on: macos-14  # Use ARM64 runner and cross-compile to x64
-    
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Install dependencies
-        run: |
-          # Install x86_64 version of pcre2 via Rosetta
-          arch -x86_64 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" || true
-          arch -x86_64 /usr/local/bin/brew install pcre2 || brew install pcre2
-      
-      - name: Build VM
-        run: |
-          cd cvm
-          # x64 cross-compile build
-          clang -O3 -flto -fomit-frame-pointer -DNDEBUG -Wall -Wextra -std=gnu11 \
-            -target x86_64-apple-macos10.15 \
-            -I/usr/local/include \
-            -o pseudo-darwin-x64 \
-            main.c lexer.c compiler.c vm.c memory.c import.c \
-            jit_trace.c trace_recorder.c trace_regalloc.c trace_codegen.c tensor.c \
-            -lm -L/usr/local/lib -lpcre2-8
-      
-      - name: Test binary
-        run: |
-          cd cvm
-          ./pseudo-darwin-x64 ../examples/hello.pseudo
-          ./pseudo-darwin-x64 ../examples/fibonacci.pseudo
-          # Test JIT on x64
-          ./pseudo-darwin-x64 -j ../examples/arrays.pseudo
-      
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: pseudo-darwin-x64
-          path: cvm/pseudo-darwin-x64
+  # build-macos-x64:
+  #   runs-on: macos-13  # Retired
 
   # ============================================
   # Windows x64 Build
@@ -175,7 +142,7 @@ jobs:
   # Create Release (only on tags or manual trigger)
   # ============================================
   create-release:
-    needs: [build-linux-x64, build-macos-arm64, build-macos-x64, build-windows-x64]
+    needs: [build-linux-x64, build-macos-arm64, build-windows-x64]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && github.event.inputs.create_release == 'true')
     
@@ -192,7 +159,6 @@ jobs:
           mkdir release
           cp artifacts/pseudo-linux-x64/pseudo-linux-x64 release/
           cp artifacts/pseudo-darwin-arm64/pseudo-darwin-arm64 release/
-          cp artifacts/pseudo-darwin-x64/pseudo-darwin-x64 release/
           cp artifacts/pseudo-win32-x64/pseudo-win32-x64.exe release/
           chmod +x release/pseudo-*
           ls -la release/
@@ -228,8 +194,9 @@ jobs:
             |----------|--------------|--------|
             | Linux    | x64          | `pseudo-linux-x64` |
             | macOS    | ARM64 (Apple Silicon) | `pseudo-darwin-arm64` |
-            | macOS    | x64 (Intel)  | `pseudo-darwin-x64` |
             | Windows  | x64          | `pseudo-win32-x64.exe` |
+            
+            > **Note:** macOS x64 (Intel) builds are not included. Intel Mac users can build from source.
             
             ### Installation
             
