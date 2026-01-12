@@ -97,15 +97,15 @@ jobs:
         shell: msys2 {0}
         run: |
           cd cvm
-          # Windows build - link pcre2 statically for portability
+          # Windows build - link pcre2 and GCC runtime statically for portability
           # -DPCRE2_STATIC tells pcre2 headers we're linking statically
-          # Link directly to .a file to avoid DLL dependency
+          # -static-libgcc eliminates libgcc DLL dependency
           gcc -O3 -flto -fomit-frame-pointer -DNDEBUG -DPCRE2_STATIC -Wall -Wextra -std=gnu11 \
             -I/mingw64/include \
             -o pseudo.exe \
             main.c lexer.c compiler.c vm.c memory.c import.c \
             jit_trace.c trace_recorder.c trace_regalloc.c trace_codegen.c tensor.c \
-            /mingw64/lib/libpcre2-8.a -lm
+            /mingw64/lib/libpcre2-8.a -lm -static-libgcc
       
       - name: Verify no DLL dependencies
         shell: msys2 {0}
