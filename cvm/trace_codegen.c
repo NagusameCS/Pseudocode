@@ -1,7 +1,8 @@
 /*
- * Pseudocode Tracing JIT - Phase 4: x86-64 Code Generator
+ * Pseudocode Tracing JIT - Phase 4: Native Code Generator
  *
- * Lowers SSA IR to native x86-64 machine code.
+ * Lowers SSA IR to native machine code.
+ * Supports x86-64 and ARM64 architectures.
  * Uses linear register allocation results.
  * Emits guards with side exit stubs.
  *
@@ -14,6 +15,19 @@
 #include <string.h>
 #include <stdio.h>
 
+/* Architecture detection */
+#if defined(__aarch64__) || defined(_M_ARM64)
+#define JIT_ARM64 1
+#define JIT_X64 0
+#elif defined(__x86_64__) || defined(_M_X64)
+#define JIT_ARM64 0
+#define JIT_X64 1
+#else
+#define JIT_ARM64 0
+#define JIT_X64 0
+#define JIT_UNSUPPORTED 1
+#endif
+
 /* Platform-specific memory mapping */
 #ifdef _WIN32
 #include <windows.h>
@@ -25,8 +39,18 @@
 #define munmap_executable(ptr, size) munmap(ptr, size)
 #endif
 
+/* Apple Silicon requires MAP_JIT for executable memory */
+#if defined(__APPLE__) && JIT_ARM64
+#include <pthread.h>
+#include <libkern/OSCacheControl.h>
+#undef mmap_executable
+#define mmap_executable(size) mmap(NULL, size, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS | MAP_JIT, -1, 0)
+#endif
+
 #include "pseudo.h"
 #include "trace_ir.h"
+
+/* ARM64 header is included later, after MCode is defined */
 
 /* RegAlloc structure (defined here to avoid circular deps) */
 typedef struct
@@ -350,10 +374,20 @@ static void *mcode_finalize(MCode *mc)
 {
     if (!mc->code)
         return NULL;
+#if JIT_ARM64 && defined(__APPLE__)
+    /* Flush instruction cache on ARM64 */
+    sys_icache_invalidate(mc->code, mc->length);
+#endif
     mprotect(mc->code, mc->capacity, PROT_READ | PROT_EXEC);
     return mc->code;
 }
 
+/* Include ARM64-specific code after MCode is defined */
+#if JIT_ARM64
+#include "trace_codegen_arm64.h"
+#endif
+
+#if JIT_X64
 /* ============================================================
  * x86-64 Register Encoding
  * ============================================================ */
@@ -2204,6 +2238,7 @@ static void compile_ir_op(MCode *mc, TraceIR *ir, IRIns *ins,
         break;
     }
 }
+#endif /* JIT_X64 - end of x86-64 specific code */
 
 /* ============================================================
  * Main Trace Compiler
@@ -2212,6 +2247,11 @@ static void compile_ir_op(MCode *mc, TraceIR *ir, IRIns *ins,
 bool trace_compile(TraceIR *ir, void **code_out, size_t *size_out,
                    uint8_t **exit_stubs, uint32_t *num_exits_out)
 {
+#if JIT_ARM64
+    /* Use ARM64 code generator */
+    return trace_compile_arm64(ir, code_out, size_out, exit_stubs, num_exits_out);
+#elif JIT_X64
+    /* x86-64 code generator follows */
     MCode mc;
     mcode_init(&mc, 16384);
     if (!mc.code)
@@ -2318,8 +2358,18 @@ bool trace_compile(TraceIR *ir, void **code_out, size_t *size_out,
     *num_exits_out = num_exits;
 
     return (*code_out != NULL);
+#else
+    /* Unsupported architecture */
+    (void)ir;
+    (void)exit_stubs;
+    *code_out = NULL;
+    *size_out = 0;
+    *num_exits_out = 0;
+    return false;
+#endif /* JIT_X64 */
 }
 
+#if JIT_X64
 /* ============================================================
  * DIRECT LOOP CODEGEN - Bypasses IR for C-level performance
  * ============================================================
@@ -2931,3 +2981,30 @@ void *codegen_direct_loop(
 
     return code;
 }
+
+#else /* !JIT_X64 (ARM64 or unsupported) */
+
+/* ARM64/fallback stub for codegen_direct_loop */
+void *codegen_direct_loop(
+    uint8_t *body, size_t body_len,
+    uint8_t counter_slot, uint8_t end_slot, uint8_t var_slot,
+    void *globals_keys, Value *globals_values, uint32_t globals_capacity,
+    Value *constants,
+    size_t *size_out)
+{
+    /* Direct loop codegen not yet implemented for ARM64 */
+    /* Fall back to trace-based JIT or interpreter */
+    (void)body;
+    (void)body_len;
+    (void)counter_slot;
+    (void)end_slot;
+    (void)var_slot;
+    (void)globals_keys;
+    (void)globals_values;
+    (void)globals_capacity;
+    (void)constants;
+    *size_out = 0;
+    return NULL;
+}
+
+#endif /* JIT_X64 */
