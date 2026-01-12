@@ -24,11 +24,17 @@
 #ifdef _WIN32
 #include <windows.h>
 #define mmap_executable(size) VirtualAlloc(NULL, size, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE)
+#define mmap_rw(size) VirtualAlloc(NULL, size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE)
+#define mprotect_rx(ptr, size) do { DWORD old; VirtualProtect(ptr, size, PAGE_EXECUTE_READ, &old); } while(0)
 #define munmap_executable(ptr, size) VirtualFree(ptr, 0, MEM_RELEASE)
+#define MMAP_FAILED NULL
 #else
 #include <sys/mman.h>
 #define mmap_executable(size) mmap(NULL, size, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0)
+#define mmap_rw(size) mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0)
+#define mprotect_rx(ptr, size) mprotect(ptr, size, PROT_READ | PROT_EXEC)
 #define munmap_executable(ptr, size) munmap(ptr, size)
+#define MMAP_FAILED MAP_FAILED
 #endif
 
 #include "pseudo.h"
@@ -1628,10 +1634,10 @@ static void *jit_arith_code = NULL;
 
 static void compile_legacy_loops(void)
 {
+#if defined(__x86_64__) || defined(_M_X64)
     /* Simple inc loop: return x + n */
-    uint8_t *code = mmap(NULL, 4096, PROT_READ | PROT_WRITE,
-                         MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-    if (code && code != MAP_FAILED)
+    uint8_t *code = mmap_rw(4096);
+    if (code && code != MMAP_FAILED)
     {
         int i = 0;
         /* mov rax, rdi */
@@ -1644,14 +1650,13 @@ static void compile_legacy_loops(void)
         code[i++] = 0xf0;
         /* ret */
         code[i++] = 0xc3;
-        mprotect(code, 4096, PROT_READ | PROT_EXEC);
+        mprotect_rx(code, 4096);
         jit_inc_code = code;
     }
 
     /* Arith loop: x = x*3+7, n times */
-    code = mmap(NULL, 4096, PROT_READ | PROT_WRITE,
-                MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-    if (code && code != MAP_FAILED)
+    code = mmap_rw(4096);
+    if (code && code != MMAP_FAILED)
     {
         int i = 0;
         /* mov rax, rdi (x) */
@@ -1690,13 +1695,15 @@ static void compile_legacy_loops(void)
         code[i++] = (uint8_t)(loop_start - (i + 1));
         /* done: ret */
         code[i++] = 0xc3;
-        mprotect(code, 4096, PROT_READ | PROT_EXEC);
+        mprotect_rx(code, 4096);
         jit_arith_code = code;
     }
+#endif /* x86_64 */
 }
 
 int64_t jit_run_inc_loop(int64_t x, int64_t n)
 {
+#if defined(__x86_64__) || defined(_M_X64)
     if (!jit_inc_code)
         compile_legacy_loops();
     if (jit_inc_code)
@@ -1704,6 +1711,7 @@ int64_t jit_run_inc_loop(int64_t x, int64_t n)
         typedef int64_t (*F)(int64_t, int64_t);
         return ((F)jit_inc_code)(x, n);
     }
+#endif
     return x + n;
 }
 
@@ -1715,6 +1723,7 @@ int64_t jit_run_empty_loop(int64_t start, int64_t end)
 
 int64_t jit_run_arith_loop(int64_t x, int64_t n)
 {
+#if defined(__x86_64__) || defined(_M_X64)
     if (!jit_arith_code)
         compile_legacy_loops();
     if (jit_arith_code)
@@ -1722,6 +1731,7 @@ int64_t jit_run_arith_loop(int64_t x, int64_t n)
         typedef int64_t (*F)(int64_t, int64_t);
         return ((F)jit_arith_code)(x, n);
     }
+#endif
     for (int64_t i = 0; i < n; i++)
     {
         x = x * 3 + 7;

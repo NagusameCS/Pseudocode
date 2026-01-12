@@ -19,9 +19,6 @@ jobs:
           - os: macos-14
             name: macOS ARM64
             artifact: pseudo-darwin-arm64
-          - os: macos-15-large
-            name: macOS x64
-            artifact: pseudo-darwin-x64
     
     runs-on: ${{ matrix.os }}
     name: Build (${{ matrix.name }})
@@ -40,6 +37,8 @@ jobs:
       - name: Build
         run: |
           cd cvm
+          export CFLAGS="$(pkg-config --cflags libpcre2-8 2>/dev/null)"
+          export LDFLAGS="$(pkg-config --libs libpcre2-8 2>/dev/null || echo '-lpcre2-8')"
           make release
       
       - name: Run tests

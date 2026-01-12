@@ -9,7 +9,7 @@ on:
       create_release:
         description: 'Create a release with artifacts'
         required: false
-        default: 'false'
+        default: false
         type: boolean
 
 permissions:
@@ -65,12 +65,13 @@ jobs:
       - name: Build VM
         run: |
           cd cvm
-          # ARM64 optimized build
+          # ARM64 optimized build with pkg-config for pcre2
           clang -O3 -flto -fomit-frame-pointer -DNDEBUG -Wall -Wextra -std=gnu11 \
+            $(pkg-config --cflags libpcre2-8) \
             -o pseudo-darwin-arm64 \
             main.c lexer.c compiler.c vm.c memory.c import.c \
             jit_trace.c trace_recorder.c trace_regalloc.c trace_codegen.c tensor.c \
-            -lm -lpcre2-8
+            -lm $(pkg-config --libs libpcre2-8)
       
       - name: Test binary
         run: |
@@ -87,26 +88,31 @@ jobs:
           path: cvm/pseudo-darwin-arm64
 
   # ============================================
-  # macOS x64 Build (Intel)
+  # macOS x64 Build (Intel via cross-compile on ARM64)
   # ============================================
   build-macos-x64:
-    runs-on: macos-15-large  # Intel runner
+    runs-on: macos-14  # Use ARM64 runner and cross-compile to x64
     
     steps:
       - uses: actions/checkout@v4
       
       - name: Install dependencies
-        run: brew install pcre2
+        run: |
+          # Install x86_64 version of pcre2 via Rosetta
+          arch -x86_64 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" || true
+          arch -x86_64 /usr/local/bin/brew install pcre2 || brew install pcre2
       
       - name: Build VM
         run: |
           cd cvm
-          # x64 optimized build
+          # x64 cross-compile build
           clang -O3 -flto -fomit-frame-pointer -DNDEBUG -Wall -Wextra -std=gnu11 \
+            -target x86_64-apple-macos10.15 \
+            -I/usr/local/include \
             -o pseudo-darwin-x64 \
             main.c lexer.c compiler.c vm.c memory.c import.c \
             jit_trace.c trace_recorder.c trace_regalloc.c trace_codegen.c tensor.c \
-            -lm -lpcre2-8
+            -lm -L/usr/local/lib -lpcre2-8
       
       - name: Test binary
         run: |

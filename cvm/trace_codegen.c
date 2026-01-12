@@ -32,11 +32,17 @@
 #ifdef _WIN32
 #include <windows.h>
 #define mmap_executable(size) VirtualAlloc(NULL, size, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE)
+#define mmap_rw(size) VirtualAlloc(NULL, size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE)
+#define mprotect_rx(ptr, size) do { DWORD old; VirtualProtect(ptr, size, PAGE_EXECUTE_READ, &old); } while(0)
 #define munmap_executable(ptr, size) VirtualFree(ptr, 0, MEM_RELEASE)
+#define MMAP_FAILED NULL
 #else
 #include <sys/mman.h>
 #define mmap_executable(size) mmap(NULL, size, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0)
+#define mmap_rw(size) mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0)
+#define mprotect_rx(ptr, size) mprotect(ptr, size, PROT_READ | PROT_EXEC)
 #define munmap_executable(ptr, size) munmap(ptr, size)
+#define MMAP_FAILED MAP_FAILED
 #endif
 
 /* Apple Silicon requires MAP_JIT for executable memory */
@@ -336,9 +342,8 @@ typedef struct
 
 static void mcode_init(MCode *mc, size_t size)
 {
-    mc->code = mmap(NULL, size, PROT_READ | PROT_WRITE,
-                    MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-    mc->capacity = (mc->code != MAP_FAILED) ? size : 0;
+    mc->code = mmap_rw(size);
+    mc->capacity = (mc->code != MMAP_FAILED) ? size : 0;
     mc->length = 0;
 }
 
@@ -378,7 +383,7 @@ static void *mcode_finalize(MCode *mc)
     /* Flush instruction cache on ARM64 */
     sys_icache_invalidate(mc->code, mc->length);
 #endif
-    mprotect(mc->code, mc->capacity, PROT_READ | PROT_EXEC);
+    mprotect_rx(mc->code, mc->capacity);
     return mc->code;
 }
 
