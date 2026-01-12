@@ -69,8 +69,28 @@ jobs:
           update: true
           install: >-
             mingw-w64-x86_64-gcc
-            mingw-w64-x86_64-pcre2
+            mingw-w64-x86_64-cmake
             make
+      
+      - name: Build pcre2 from source (static)
+        shell: msys2 {0}
+        run: |
+          # Download and build pcre2 statically
+          curl -L https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.44/pcre2-10.44.tar.gz | tar xz
+          cd pcre2-10.44
+          cmake -G "MinGW Makefiles" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DPCRE2_BUILD_PCRE2_8=ON \
+            -DPCRE2_BUILD_PCRE2_16=OFF \
+            -DPCRE2_BUILD_PCRE2_32=OFF \
+            -DPCRE2_SUPPORT_JIT=ON \
+            -DPCRE2_BUILD_PCRE2GREP=OFF \
+            -DPCRE2_BUILD_TESTS=OFF \
+            -DCMAKE_INSTALL_PREFIX=/mingw64 \
+            .
+          mingw32-make -j$(nproc)
+          mingw32-make install
       
       - name: Build
         shell: msys2 {0}
@@ -78,11 +98,11 @@ jobs:
           cd cvm
           # Windows build - fully static for portability (no DLLs needed)
           gcc -O3 -flto -fomit-frame-pointer -DNDEBUG -Wall -Wextra -std=gnu11 \
-            -static \
+            -I/mingw64/include \
             -o pseudo \
             main.c lexer.c compiler.c vm.c memory.c import.c \
             jit_trace.c trace_recorder.c trace_regalloc.c trace_codegen.c tensor.c \
-            -lpcre2-8 -lm
+            /mingw64/lib/libpcre2-8.a -lm -static
       
       - name: Verify no DLL dependencies
         shell: msys2 {0}
