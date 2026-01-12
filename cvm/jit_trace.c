@@ -168,6 +168,11 @@ void jit_init(void)
     }
 }
 
+void jit_disable(void)
+{
+    jit_state.enabled = false;
+}
+
 void jit_cleanup(void)
 {
     for (uint32_t i = 0; i < jit_state.num_traces; i++)

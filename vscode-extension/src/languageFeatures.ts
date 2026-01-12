@@ -8,6 +8,11 @@
 
 import * as vscode from 'vscode';
 
+// Helper to escape special regex characters
+function escapeRegex(str: string): string {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 // ============ Built-in Functions Documentation ============
 
 interface BuiltinInfo {
@@ -555,14 +560,12 @@ const KEYWORDS = [
 interface CompletionCache {
     version: number;
     uri: string;
-    items: vscode.CompletionItem[];
-    timestamp: number;
+    allItems: vscode.CompletionItem[];  // Combined static + document items
 }
 
 let completionCache: CompletionCache | null = null;
-const CACHE_EXPIRY_MS = 2000; // Cache for 2 seconds
 
-// Pre-built static items for keywords and builtins
+// Pre-built static items for keywords and builtins (built once, reused forever)
 let staticCompletionItems: vscode.CompletionItem[] | null = null;
 
 function getStaticCompletionItems(): vscode.CompletionItem[] {
@@ -592,6 +595,21 @@ function getStaticCompletionItems(): vscode.CompletionItem[] {
     return staticCompletionItems;
 }
 
+// Pre-warm all caches on extension activation to avoid first-use lag
+export function prewarmCaches(): void {
+    // Build static completion items
+    getStaticCompletionItems();
+    
+    // Pre-compile common regexes by running them once
+    const testText = 'fn test(x)\nlet y = 1\nend';
+    testText.match(/(?:let|const)\s+([a-zA-Z_][a-zA-Z0-9_]*)/g);
+    testText.match(/fn\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(([^)]*)\)/g);
+    testText.match(/([a-zA-Z_][a-zA-Z0-9_]*)\s*\([^)]*$/);
+    
+    // Touch BUILTINS object to ensure it's fully loaded
+    Object.keys(BUILTINS).length;
+}
+
 // ============ Completion Provider ============
 
 export class PseudocodeCompletionProvider implements vscode.CompletionItemProvider {
@@ -599,217 +617,283 @@ export class PseudocodeCompletionProvider implements vscode.CompletionItemProvid
         document: vscode.TextDocument,
         position: vscode.Position
     ): vscode.CompletionItem[] {
-        const items: vscode.CompletionItem[] = [...getStaticCompletionItems()];
-        
-        // Check cache for document-specific items
-        const now = Date.now();
-        if (completionCache && 
-            completionCache.uri === document.uri.toString() &&
-            completionCache.version === document.version &&
-            now - completionCache.timestamp < CACHE_EXPIRY_MS) {
-            return [...items, ...completionCache.items];
-        }
-        
-        const documentItems: vscode.CompletionItem[] = [];
-        const text = document.getText();
-        
-        // Skip very large files
-        if (text.length > 200000) {
-            return items;
-        }
-
-        // Find variable declarations: let x = ... or const x = ...
-        const varRegex = /(?:let|const)\s+([a-zA-Z_][a-zA-Z0-9_]*)/g;
-        let match;
-        const seenVars = new Set<string>();
-        while ((match = varRegex.exec(text)) !== null) {
-            const varName = match[1];
-            if (!seenVars.has(varName)) {
-                seenVars.add(varName);
-                const item = new vscode.CompletionItem(varName, vscode.CompletionItemKind.Variable);
-                item.detail = 'local variable';
-                documentItems.push(item);
+        try {
+            // Fast path: return cached items if document hasn't changed
+            const uri = document.uri.toString();
+            if (completionCache && 
+                completionCache.uri === uri &&
+                completionCache.version === document.version) {
+                return completionCache.allItems;
             }
-        }
+            
+            // Build static items (only once per extension lifetime)
+            const staticItems = getStaticCompletionItems();
+            
+            // Build document-specific items
+            const documentItems: vscode.CompletionItem[] = [];
+            const text = document.getText();
 
-        // Find function declarations: fn name(...)
-        const fnRegex = /fn\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(([^)]*)\)/g;
-        const seenFns = new Set<string>();
-        while ((match = fnRegex.exec(text)) !== null) {
-            const fnName = match[1];
-            const params = match[2];
-            if (!seenFns.has(fnName)) {
-                seenFns.add(fnName);
-                const item = new vscode.CompletionItem(fnName, vscode.CompletionItemKind.Function);
-                item.detail = `fn ${fnName}(${params})`;
-                item.insertText = new vscode.SnippetString(`${fnName}($1)`);
-                documentItems.push(item);
+            // Find variable declarations: let x = ... or const x = ...
+            const varRegex = /(?:let|const)\s+([a-zA-Z_][a-zA-Z0-9_]*)/g;
+            let match;
+            const seenVars = new Set<string>();
+            while ((match = varRegex.exec(text)) !== null) {
+                const varName = match[1];
+                if (!seenVars.has(varName)) {
+                    seenVars.add(varName);
+                    const item = new vscode.CompletionItem(varName, vscode.CompletionItemKind.Variable);
+                    item.detail = 'local variable';
+                    documentItems.push(item);
+                }
             }
-        }
-        
-        // Update cache
-        completionCache = {
-            version: document.version,
-            uri: document.uri.toString(),
-            items: documentItems,
-            timestamp: now
-        };
 
-        return [...items, ...documentItems];
+            // Find function declarations: fn name(...)
+            const fnRegex = /fn\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(([^)]*)\)/g;
+            const seenFns = new Set<string>();
+            while ((match = fnRegex.exec(text)) !== null) {
+                const fnName = match[1];
+                const params = match[2];
+                if (!seenFns.has(fnName)) {
+                    seenFns.add(fnName);
+                    const item = new vscode.CompletionItem(fnName, vscode.CompletionItemKind.Function);
+                    item.detail = `fn ${fnName}(${params})`;
+                    item.insertText = new vscode.SnippetString(`${fnName}($1)`);
+                    documentItems.push(item);
+                }
+            }
+            
+            // Combine and cache - no copying, just concat once
+            const allItems = staticItems.concat(documentItems);
+            completionCache = {
+                version: document.version,
+                uri: uri,
+                allItems: allItems
+            };
+
+            return allItems;
+        } catch (error) {
+            console.error('Completion provider error:', error);
+            return getStaticCompletionItems();
+        }
     }
 }
 
 // ============ Hover Provider ============
+
+// Cache for local function lookups in hover provider
+interface HoverFunctionCache {
+    version: number;
+    functions: Map<string, string>; // name -> params
+}
+const hoverFunctionCache = new Map<string, HoverFunctionCache>();
+
+function getLocalFunctions(document: vscode.TextDocument): Map<string, string> {
+    const uri = document.uri.toString();
+    const cached = hoverFunctionCache.get(uri);
+    
+    if (cached && cached.version === document.version) {
+        return cached.functions;
+    }
+    
+    const functions = new Map<string, string>();
+    const text = document.getText();
+    
+    const fnRegex = /fn\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(([^)]*)\)/g;
+    let match;
+    while ((match = fnRegex.exec(text)) !== null) {
+        functions.set(match[1], match[2]);
+    }
+    
+    hoverFunctionCache.set(uri, { version: document.version, functions });
+    return functions;
+}
 
 export class PseudocodeHoverProvider implements vscode.HoverProvider {
     provideHover(
         document: vscode.TextDocument,
         position: vscode.Position
     ): vscode.Hover | undefined {
-        const range = document.getWordRangeAtPosition(position);
-        if (!range) return undefined;
+        try {
+            const range = document.getWordRangeAtPosition(position);
+            if (!range) return undefined;
 
-        const word = document.getText(range);
+            const word = document.getText(range);
 
-        // Check if it's a builtin function
-        if (BUILTINS[word]) {
-            const info = BUILTINS[word];
-            const md = new vscode.MarkdownString();
-            md.appendCodeblock(info.signature, 'pseudocode');
-            md.appendMarkdown('\n\n' + info.description);
+            // Check if it's a builtin function
+            if (BUILTINS[word]) {
+                const info = BUILTINS[word];
+                const md = new vscode.MarkdownString();
+                md.appendCodeblock(info.signature, 'pseudocode');
+                md.appendMarkdown('\n\n' + info.description);
 
-            if (info.params && info.params.length > 0) {
-                md.appendMarkdown('\n\n**Parameters:**\n');
-                for (const p of info.params) {
-                    md.appendMarkdown(`- \`${p.name}\`: ${p.description}\n`);
+                if (info.params && info.params.length > 0) {
+                    md.appendMarkdown('\n\n**Parameters:**\n');
+                    for (const p of info.params) {
+                        md.appendMarkdown(`- \`${p.name}\`: ${p.description}\n`);
+                    }
                 }
+
+                if (info.returns) {
+                    md.appendMarkdown(`\n**Returns:** ${info.returns}`);
+                }
+
+                if (info.example) {
+                    md.appendMarkdown('\n\n**Example:**');
+                    md.appendCodeblock(info.example, 'pseudocode');
+                }
+
+                return new vscode.Hover(md, range);
             }
 
-            if (info.returns) {
-                md.appendMarkdown(`\n**Returns:** ${info.returns}`);
+            // Check if it's a keyword
+            if (KEYWORDS.includes(word)) {
+                const descriptions: Record<string, string> = {
+                    'let': 'Declares a mutable variable.',
+                    'const': 'Declares an immutable constant.',
+                    'fn': 'Declares a function.',
+                    'return': 'Returns a value from a function.',
+                    'if': 'Conditional statement.',
+                    'then': 'Begins the body of an if statement.',
+                    'elif': 'Else-if branch of a conditional.',
+                    'else': 'Else branch of a conditional.',
+                    'end': 'Ends a block (function, if, while, for, match).',
+                    'while': 'While loop - repeats while condition is true.',
+                    'for': 'For loop - iterates over a range or array.',
+                    'in': 'Used in for loops to specify the iterable.',
+                    'do': 'Begins the body of a loop.',
+                    'and': 'Logical AND operator.',
+                    'or': 'Logical OR operator.',
+                    'not': 'Logical NOT operator.',
+                    'true': 'Boolean true value.',
+                    'false': 'Boolean false value.',
+                    'nil': 'Null/nil value.',
+                    'match': 'Pattern matching expression.',
+                    'case': 'Case branch in a match expression.'
+                };
+
+                const md = new vscode.MarkdownString();
+                md.appendMarkdown(`**${word}** _(keyword)_\n\n`);
+                md.appendMarkdown(descriptions[word] || '');
+                return new vscode.Hover(md, range);
             }
 
-            if (info.example) {
-                md.appendMarkdown('\n\n**Example:**');
-                md.appendCodeblock(info.example, 'pseudocode');
+            // Check if it's a local function definition (using cached lookup)
+            const localFunctions = getLocalFunctions(document);
+            const params = localFunctions.get(word);
+            if (params !== undefined) {
+                const md = new vscode.MarkdownString();
+                md.appendCodeblock(`fn ${word}(${params})`, 'pseudocode');
+                md.appendMarkdown('\n\n_User-defined function_');
+                return new vscode.Hover(md, range);
             }
 
-            return new vscode.Hover(md, range);
+            return undefined;
+        } catch (error) {
+            console.error('Hover error:', error);
+            return undefined;
         }
-
-        // Check if it's a keyword
-        if (KEYWORDS.includes(word)) {
-            const descriptions: Record<string, string> = {
-                'let': 'Declares a mutable variable.',
-                'const': 'Declares an immutable constant.',
-                'fn': 'Declares a function.',
-                'return': 'Returns a value from a function.',
-                'if': 'Conditional statement.',
-                'then': 'Begins the body of an if statement.',
-                'elif': 'Else-if branch of a conditional.',
-                'else': 'Else branch of a conditional.',
-                'end': 'Ends a block (function, if, while, for, match).',
-                'while': 'While loop - repeats while condition is true.',
-                'for': 'For loop - iterates over a range or array.',
-                'in': 'Used in for loops to specify the iterable.',
-                'do': 'Begins the body of a loop.',
-                'and': 'Logical AND operator.',
-                'or': 'Logical OR operator.',
-                'not': 'Logical NOT operator.',
-                'true': 'Boolean true value.',
-                'false': 'Boolean false value.',
-                'nil': 'Null/nil value.',
-                'match': 'Pattern matching expression.',
-                'case': 'Case branch in a match expression.'
-            };
-
-            const md = new vscode.MarkdownString();
-            md.appendMarkdown(`**${word}** _(keyword)_\n\n`);
-            md.appendMarkdown(descriptions[word] || '');
-            return new vscode.Hover(md, range);
-        }
-
-        // Check if it's a local function definition
-        const text = document.getText();
-        const fnRegex = new RegExp(`fn\\s+${word}\\s*\\(([^)]*)\\)`, 'g');
-        const fnMatch = fnRegex.exec(text);
-        if (fnMatch) {
-            const params = fnMatch[1];
-            const md = new vscode.MarkdownString();
-            md.appendCodeblock(`fn ${word}(${params})`, 'pseudocode');
-            md.appendMarkdown('\n\n_User-defined function_');
-            return new vscode.Hover(md, range);
-        }
-
-        return undefined;
     }
 }
 
 // ============ Document Symbol Provider ============
 
+// Cache for document symbols
+interface SymbolCache {
+    version: number;
+    symbols: vscode.DocumentSymbol[];
+}
+const documentSymbolCache = new Map<string, SymbolCache>();
+
 export class PseudocodeDocumentSymbolProvider implements vscode.DocumentSymbolProvider {
     provideDocumentSymbols(document: vscode.TextDocument): vscode.DocumentSymbol[] {
-        const symbols: vscode.DocumentSymbol[] = [];
-        const text = document.getText();
+        try {
+            const uri = document.uri.toString();
+            const cached = documentSymbolCache.get(uri);
+            
+            // Return cached if version matches
+            if (cached && cached.version === document.version) {
+                return cached.symbols;
+            }
+            
+            const symbols: vscode.DocumentSymbol[] = [];
+            const text = document.getText();
+            const lines = text.split('\n');
 
-        // Find functions
-        const fnRegex = /fn\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(([^)]*)\)/g;
-        let match;
-        while ((match = fnRegex.exec(text)) !== null) {
-            const name = match[1];
-            const params = match[2];
-            const startPos = document.positionAt(match.index);
-
-            // Find matching 'end'
-            let depth = 1;
-            let endPos = startPos;
-            for (let i = match.index + match[0].length; i < text.length; i++) {
-                const slice = text.slice(i);
-                if (slice.match(/^fn\s/) || slice.match(/^if\s/) ||
-                    slice.match(/^while\s/) || slice.match(/^for\s/) ||
-                    slice.match(/^match\s/)) {
-                    depth++;
-                } else if (slice.match(/^end\b/)) {
-                    depth--;
-                    if (depth === 0) {
-                        endPos = document.positionAt(i + 3);
-                        break;
-                    }
+            // First pass: find all block boundaries more efficiently
+            const blockEnds: number[] = []; // line numbers where 'end' appears
+            for (let i = 0; i < lines.length; i++) {
+                if (lines[i].trim() === 'end') {
+                    blockEnds.push(i);
                 }
             }
 
-            const range = new vscode.Range(startPos, endPos);
-            const symbol = new vscode.DocumentSymbol(
-                name,
-                `(${params})`,
-                vscode.SymbolKind.Function,
-                range,
-                new vscode.Range(startPos, document.positionAt(match.index + match[0].length))
-            );
-            symbols.push(symbol);
+            // Find functions using line-based approach (more efficient)
+            let blockEndIndex = 0;
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                const fnMatch = line.match(/^fn\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(([^)]*)\)/);
+                if (fnMatch) {
+                    const name = fnMatch[1];
+                    const params = fnMatch[2];
+                    const startPos = new vscode.Position(i, 0);
+                    
+                    // Find the matching 'end' by counting depth
+                    let depth = 1;
+                    let endLine = i;
+                    for (let j = i + 1; j < lines.length && depth > 0; j++) {
+                        const trimmed = lines[j].trim();
+                        if (trimmed.match(/^(fn|if|while|for|match)\s/)) {
+                            depth++;
+                        } else if (trimmed === 'end') {
+                            depth--;
+                            if (depth === 0) {
+                                endLine = j;
+                            }
+                        }
+                    }
+                    
+                    const endPos = new vscode.Position(endLine, lines[endLine]?.length || 0);
+                    const range = new vscode.Range(startPos, endPos);
+                    const selectionRange = new vscode.Range(startPos, new vscode.Position(i, line.length));
+                    
+                    const symbol = new vscode.DocumentSymbol(
+                        name,
+                        `(${params})`,
+                        vscode.SymbolKind.Function,
+                        range,
+                        selectionRange
+                    );
+                    symbols.push(symbol);
+                }
+                
+                // Find top-level variables
+                const varMatch = line.match(/^(let|const)\s+([a-zA-Z_][a-zA-Z0-9_]*)/);
+                if (varMatch) {
+                    const kind = varMatch[1] === 'const'
+                        ? vscode.SymbolKind.Constant
+                        : vscode.SymbolKind.Variable;
+                    const name = varMatch[2];
+                    const pos = new vscode.Position(i, 0);
+                    const endPos = new vscode.Position(i, line.length);
+                    
+                    const symbol = new vscode.DocumentSymbol(
+                        name,
+                        varMatch[1] === 'const' ? 'constant' : 'variable',
+                        kind,
+                        new vscode.Range(pos, endPos),
+                        new vscode.Range(pos, endPos)
+                    );
+                    symbols.push(symbol);
+                }
+            }
+
+            // Cache the result
+            documentSymbolCache.set(uri, { version: document.version, symbols });
+            return symbols;
+        } catch (error) {
+            console.error('Document symbol error:', error);
+            return [];
         }
-
-        // Find top-level variables
-        const varRegex = /^(?:let|const)\s+([a-zA-Z_][a-zA-Z0-9_]*)/gm;
-        while ((match = varRegex.exec(text)) !== null) {
-            const name = match[1];
-            const pos = document.positionAt(match.index);
-            const endPos = document.positionAt(match.index + match[0].length);
-            const kind = match[0].startsWith('const')
-                ? vscode.SymbolKind.Constant
-                : vscode.SymbolKind.Variable;
-
-            const symbol = new vscode.DocumentSymbol(
-                name,
-                match[0].startsWith('const') ? 'constant' : 'variable',
-                kind,
-                new vscode.Range(pos, endPos),
-                new vscode.Range(pos, endPos)
-            );
-            symbols.push(symbol);
-        }
-
-        return symbols;
     }
 }
 
@@ -820,35 +904,46 @@ export class PseudocodeSignatureHelpProvider implements vscode.SignatureHelpProv
         document: vscode.TextDocument,
         position: vscode.Position
     ): vscode.SignatureHelp | undefined {
-        const lineText = document.lineAt(position).text;
-        const textBefore = lineText.substring(0, position.character);
-
-        // Find the function name before the opening paren
-        const match = textBefore.match(/([a-zA-Z_][a-zA-Z0-9_]*)\s*\([^)]*$/);
-        if (!match) return undefined;
-
-        const fnName = match[1];
-        const info = BUILTINS[fnName];
-        if (!info) return undefined;
-
-        const sig = new vscode.SignatureInformation(info.signature, info.description);
-
-        if (info.params) {
-            for (const p of info.params) {
-                sig.parameters.push(new vscode.ParameterInformation(p.name, p.description));
+        try {
+            // Check if signature help is enabled in settings (disabled by default)
+            const config = vscode.workspace.getConfiguration('pseudocode');
+            if (!config.get<boolean>('signatureHelp.enabled', false)) {
+                return undefined;
             }
+            
+            const lineText = document.lineAt(position).text;
+            const textBefore = lineText.substring(0, position.character);
+
+            // Find the function name before the opening paren
+            const match = textBefore.match(/([a-zA-Z_][a-zA-Z0-9_]*)\s*\([^)]*$/);
+            if (!match) return undefined;
+
+            const fnName = match[1];
+            const info = BUILTINS[fnName];
+            if (!info) return undefined;
+
+            const sig = new vscode.SignatureInformation(info.signature, info.description);
+
+            if (info.params) {
+                for (const p of info.params) {
+                    sig.parameters.push(new vscode.ParameterInformation(p.name, p.description));
+                }
+            }
+
+            // Count commas to determine active parameter
+            const argsText = textBefore.substring(textBefore.lastIndexOf('(') + 1);
+            const commaCount = (argsText.match(/,/g) || []).length;
+
+            const help = new vscode.SignatureHelp();
+            help.signatures = [sig];
+            help.activeSignature = 0;
+            help.activeParameter = Math.min(commaCount, (info.params?.length || 1) - 1);
+
+            return help;
+        } catch (error) {
+            console.error('Signature help error:', error);
+            return undefined;
         }
-
-        // Count commas to determine active parameter
-        const argsText = textBefore.substring(textBefore.lastIndexOf('(') + 1);
-        const commaCount = (argsText.match(/,/g) || []).length;
-
-        const help = new vscode.SignatureHelp();
-        help.signatures = [sig];
-        help.activeSignature = 0;
-        help.activeParameter = Math.min(commaCount, (info.params?.length || 1) - 1);
-
-        return help;
     }
 }
 
@@ -865,12 +960,6 @@ export function createDiagnostics(
     try {
         const diagnostics: vscode.Diagnostic[] = [];
         const text = document.getText();
-        
-        // Skip very large files to prevent performance issues
-        if (text.length > 500000) {
-            return;
-        }
-        
         const lines = text.split('\n');
 
     // Track block depth for matching
@@ -948,7 +1037,8 @@ export function createDiagnostics(
                 // Check if it's a known builtin or keyword
                 if (!BUILTINS[fnName] && !['fn', 'if', 'while', 'for'].includes(fnName)) {
                     // Check if it's defined in the document
-                    const fnDefRegex = new RegExp(`fn\\s+${fnName}\\s*\\(`);
+                    const escapedFnName = escapeRegex(fnName);
+                    const fnDefRegex = new RegExp(`fn\\s+${escapedFnName}\\s*\\(`);
                     if (!fnDefRegex.test(text)) {
                         // Could be a warning, but might be a global or imported function
                         // Only warn for very common typos
@@ -992,66 +1082,67 @@ export function createDiagnostics(
 
 export class PseudocodeDocumentFormatter implements vscode.DocumentFormattingEditProvider {
     provideDocumentFormattingEdits(document: vscode.TextDocument, options: vscode.FormattingOptions): vscode.TextEdit[] {
-        const edits: vscode.TextEdit[] = [];
-        const text = document.getText();
-        const lines = text.split('\n');
+        try {
+            const edits: vscode.TextEdit[] = [];
+            const text = document.getText();
+            const lines = text.split('\n');
 
-        const indentSize = options.tabSize || 4;
-        const insertSpaces = options.insertSpaces !== false;
-        const indentChar = insertSpaces ? ' '.repeat(indentSize) : '\t';
+            const indentSize = options.tabSize || 4;
+            const insertSpaces = options.insertSpaces !== false;
+            const indentChar = insertSpaces ? ' '.repeat(indentSize) : '\t';
 
-        let indentLevel = 0;
+            let indentLevel = 0;
 
-        for (let i = 0; i < lines.length; i++) {
-            const originalLine = lines[i];
-            let line = originalLine;
+            for (let i = 0; i < lines.length; i++) {
+                const originalLine = lines[i];
+                let line = originalLine;
 
-            // Remove trailing whitespace
-            const trimmedRight = line.trimEnd();
-            if (trimmedRight !== line) {
-                edits.push(vscode.TextEdit.replace(
-                    new vscode.Range(i, trimmedRight.length, i, line.length),
-                    ''
-                ));
-                line = trimmedRight;
-            }
+                // Remove trailing whitespace
+                const trimmedRight = line.trimEnd();
+                if (trimmedRight !== line) {
+                    edits.push(vscode.TextEdit.replace(
+                        new vscode.Range(i, trimmedRight.length, i, line.length),
+                        ''
+                    ));
+                    line = trimmedRight;
+                }
 
-            const trimmed = line.trim();
+                const trimmed = line.trim();
 
-            // Skip empty lines and comments
-            if (trimmed === '' || trimmed.startsWith('//')) {
-                continue;
-            }
+                // Skip empty lines and comments
+                if (trimmed === '' || trimmed.startsWith('//')) {
+                    continue;
+                }
 
-            // Decrease indent for closing/continuation keywords
-            if (trimmed.match(/^(end|else|elif|case|catch|finally)\b/)) {
-                indentLevel = Math.max(0, indentLevel - 1);
-            }
+                // Decrease indent for closing/continuation keywords
+                if (trimmed.match(/^(end|else|elif|case|catch|finally)\b/)) {
+                    indentLevel = Math.max(0, indentLevel - 1);
+                }
 
-            const expectedIndent = indentChar.repeat(indentLevel);
-            const currentIndent = line.match(/^\s*/)?.[0] || '';
+                const expectedIndent = indentChar.repeat(indentLevel);
+                const currentIndent = line.match(/^\s*/)?.[0] || '';
 
-            if (currentIndent !== expectedIndent) {
-                edits.push(vscode.TextEdit.replace(
-                    new vscode.Range(i, 0, i, currentIndent.length),
-                    expectedIndent
-                ));
-            }
+                if (currentIndent !== expectedIndent) {
+                    edits.push(vscode.TextEdit.replace(
+                        new vscode.Range(i, 0, i, currentIndent.length),
+                        expectedIndent
+                    ));
+                }
 
-            // Format operators with proper spacing
-            let formattedContent = trimmed;
+                // Format operators with proper spacing
+                let formattedContent = trimmed;
 
-            // Normalize comparison operators (ensure single space around them)
-            formattedContent = formattedContent.replace(/\s*(==|!=|<=|>=|<|>)\s*/g, ' $1 ');
+                // Normalize comparison operators (ensure single space around them)
+                formattedContent = formattedContent.replace(/\s*(==|!=|<=|>=|<|>)\s*/g, ' $1 ');
 
-            // Normalize assignment (but not ==)
-            formattedContent = formattedContent.replace(/([^=!<>])\s*=\s*([^=])/g, '$1 = $2');
+                // Normalize assignment (but not ==)
+                formattedContent = formattedContent.replace(/([^=!<>])\s*=\s*([^=])/g, '$1 = $2');
 
-            // Normalize arithmetic operators
-            formattedContent = formattedContent.replace(/\s*(\+|-|\*|\/|%)\s*/g, ' $1 ');
+                // Normalize arithmetic operators
+                formattedContent = formattedContent.replace(/\s*(\+|-|\*|\/|%)\s*/g, ' $1 ');
 
-            // Fix double spaces
-            formattedContent = formattedContent.replace(/  +/g, ' ');
+                // Fix double spaces
+                formattedContent = formattedContent.replace(/  +/g, ' ');
 
             // Remove space after ( and before )
             formattedContent = formattedContent.replace(/\(\s+/g, '(');
@@ -1098,6 +1189,10 @@ export class PseudocodeDocumentFormatter implements vscode.DocumentFormattingEdi
             }
         }
 
-        return edits;
+            return edits;
+        } catch (error) {
+            console.error('Formatter error:', error);
+            return [];
+        }
     }
 }

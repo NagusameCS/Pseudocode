@@ -25,6 +25,7 @@ extern bool has_imports(const char *source);
 /* Global VM for signal handling */
 static VM *global_vm = NULL;
 static bool debug_mode = false;
+static bool jit_enabled = true;
 
 static void signal_handler(int sig)
 {
@@ -326,11 +327,13 @@ static void print_usage(void)
     printf("  -h, --help     Show this help message\n");
     printf("  -v, --version  Show version information\n");
     printf("  -j, --jit      Enable JIT compilation (default)\n");
+    printf("  -i, --interp   Disable JIT, use interpreter only (more stable)\n");
     printf("  -d, --debug    Enable debug mode\n");
     printf("  -e <code>      Execute code from command line\n");
     printf("\nExamples:\n");
     printf("  pseudo                    Start interactive REPL\n");
     printf("  pseudo script.pseudo      Run a script file\n");
+    printf("  pseudo -i script.pseudo   Run without JIT (for debugging)\n");
     printf("  pseudo -e 'print(42)'     Execute inline code\n");
     printf("\n");
 }
@@ -384,6 +387,14 @@ int main(int argc, char *argv[])
             if (strcmp(argv[i], "-j") == 0 || strcmp(argv[i], "--jit") == 0)
             {
                 /* JIT is default, but accept the flag */
+                jit_enabled = true;
+                file_arg = i + 1;
+            }
+            else if (strcmp(argv[i], "-i") == 0 || strcmp(argv[i], "--interp") == 0)
+            {
+                /* Disable JIT for stability */
+                jit_enabled = false;
+                jit_disable();
                 file_arg = i + 1;
             }
             else if (strcmp(argv[i], "-d") == 0 || strcmp(argv[i], "--debug") == 0)

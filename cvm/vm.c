@@ -29,7 +29,60 @@
 #define mkdir(path, mode) _mkdir(path)
 #define realpath(path, resolved) _fullpath(resolved, path, PATH_MAX)
 #define setenv(name, value, overwrite) _putenv_s(name, value)
+#undef PATH_MAX
 #define PATH_MAX MAX_PATH
+#define usleep(us) Sleep((us) / 1000)
+#define unlink(path) _unlink(path)
+
+/* Windows directory iteration */
+typedef struct WIN_DIR_s {
+    HANDLE handle;
+    WIN32_FIND_DATAA find_data;
+    int first;
+} WIN_DIR;
+
+struct dirent {
+    char d_name[MAX_PATH];
+};
+
+static WIN_DIR *win_opendir(const char *path) {
+    WIN_DIR *dir = malloc(sizeof(WIN_DIR));
+    if (!dir) return NULL;
+    char pattern[MAX_PATH];
+    snprintf(pattern, MAX_PATH, "%s\\*", path);
+    dir->handle = FindFirstFileA(pattern, &dir->find_data);
+    if (dir->handle == INVALID_HANDLE_VALUE) {
+        free(dir);
+        return NULL;
+    }
+    dir->first = 1;
+    return dir;
+}
+
+static struct dirent *win_readdir(WIN_DIR *dir) {
+    static struct dirent entry;
+    if (dir->first) {
+        dir->first = 0;
+        strcpy(entry.d_name, dir->find_data.cFileName);
+        return &entry;
+    }
+    if (FindNextFileA(dir->handle, &dir->find_data)) {
+        strcpy(entry.d_name, dir->find_data.cFileName);
+        return &entry;
+    }
+    return NULL;
+}
+
+static void win_closedir(WIN_DIR *dir) {
+    FindClose(dir->handle);
+    free(dir);
+}
+
+#define DIR WIN_DIR
+#define opendir win_opendir
+#define readdir win_readdir
+#define closedir win_closedir
+
 #else
 #include <unistd.h>
 #include <dirent.h>

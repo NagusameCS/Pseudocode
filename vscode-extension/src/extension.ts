@@ -15,7 +15,8 @@ import {
     PseudocodeDocumentSymbolProvider,
     PseudocodeSignatureHelpProvider,
     PseudocodeDocumentFormatter,
-    createDiagnostics
+    createDiagnostics,
+    prewarmCaches
 } from './languageFeatures';
 import { registerDebugger } from './debugAdapter';
 import { registerRepl } from './repl';
@@ -28,6 +29,9 @@ let diagnosticsTimeout: NodeJS.Timeout | undefined;
 let activeChildProcesses: Set<import('child_process').ChildProcess> = new Set();
 
 export function activate(context: vscode.ExtensionContext) {
+    // Pre-warm all caches immediately to avoid first-use lag
+    prewarmCaches();
+    
     outputChannel = vscode.window.createOutputChannel('Pseudocode');
     diagnosticCollection = vscode.languages.createDiagnosticCollection('pseudocode');
 
@@ -73,6 +77,12 @@ export function activate(context: vscode.ExtensionContext) {
     const updateDiagnosticsDebounced = (document: vscode.TextDocument) => {
         if (document.languageId !== 'pseudocode') return;
         
+        // Check if diagnostics are enabled (disabled by default)
+        const config = vscode.workspace.getConfiguration('pseudocode');
+        if (!config.get<boolean>('diagnostics.enabled', false)) {
+            return;
+        }
+        
         // Clear previous timeout
         if (diagnosticsTimeout) {
             clearTimeout(diagnosticsTimeout);
@@ -84,10 +94,16 @@ export function activate(context: vscode.ExtensionContext) {
         }, DIAGNOSTICS_DELAY);
     };
     
-    // Immediate diagnostics for document open
+    // Debounced diagnostics for document open (same delay as typing)
     const updateDiagnosticsImmediate = (document: vscode.TextDocument) => {
         if (document.languageId === 'pseudocode') {
-            createDiagnostics(document, diagnosticCollection);
+            // Check if diagnostics are enabled (disabled by default)
+            const config = vscode.workspace.getConfiguration('pseudocode');
+            if (!config.get<boolean>('diagnostics.enabled', false)) {
+                return;
+            }
+            // Use debounced update to avoid lag on file open
+            updateDiagnosticsDebounced(document);
         }
     };
 
@@ -172,7 +188,28 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.window.showErrorMessage('Could not find cvm/Makefile in workspace');
     });
 
-    context.subscriptions.push(runCommand, buildCommand, outputChannel);
+    // Register stop command
+    const stopCommand = vscode.commands.registerCommand('pseudocode.stop', () => {
+        if (activeChildProcesses.size === 0) {
+            vscode.window.showInformationMessage('No Pseudocode program is running');
+            return;
+        }
+
+        for (const proc of activeChildProcesses) {
+            try {
+                proc.kill('SIGTERM');
+            } catch (e) {
+                // Process may have already exited
+            }
+        }
+        activeChildProcesses.clear();
+        outputChannel.appendLine('');
+        outputChannel.appendLine('─'.repeat(50));
+        outputChannel.appendLine('⏹ Program stopped by user');
+        vscode.window.showInformationMessage('Pseudocode program stopped');
+    });
+
+    context.subscriptions.push(runCommand, buildCommand, stopCommand, outputChannel);
 
     // Register task provider
     const taskProvider = vscode.tasks.registerTaskProvider('pseudocode', {
@@ -370,7 +407,9 @@ function runPseudocode(vmPath: string, filePath: string): void {
     const args: string[] = [];
 
     if (enableJIT) {
-        args.push('-j');  // Enable JIT
+        args.push('-j');  // Enable JIT (default, but explicit)
+    } else {
+        args.push('-i');  // Interpreter only mode (more stable)
     }
 
     if (debugMode) {

@@ -2,7 +2,7 @@
     "name": "pseudocode-lang",
     "displayName": "Pseudocode Language",
     "description": "Full language support for Pseudocode - IntelliSense, autocomplete, diagnostics, formatting, and a blazingly fast runtime",
-    "version": "1.5.1",
+    "version": "1.5.15",
     "publisher": "NagusameCS",
     "author": {
         "name": "NagusameCS"
@@ -143,6 +143,12 @@
                 "icon": "$(play)"
             },
             {
+                "command": "pseudocode.stop",
+                "title": "Stop Running Program",
+                "category": "Pseudocode",
+                "icon": "$(debug-stop)"
+            },
+            {
                 "command": "pseudocode.build",
                 "title": "Build Pseudocode VM",
                 "category": "Pseudocode"
@@ -159,13 +165,21 @@
                 {
                     "command": "pseudocode.run",
                     "when": "resourceLangId == pseudocode",
-                    "group": "navigation"
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "pseudocode.stop",
+                    "when": "resourceLangId == pseudocode",
+                    "group": "navigation@2"
                 }
             ],
             "commandPalette": [
                 {
                     "command": "pseudocode.run",
                     "when": "resourceLangId == pseudocode"
+                },
+                {
+                    "command": "pseudocode.stop"
                 },
                 {
                     "command": "pseudocode.build"
@@ -230,6 +244,11 @@
                 "key": "ctrl+shift+r",
                 "mac": "cmd+shift+r",
                 "when": "resourceLangId == pseudocode"
+            },
+            {
+                "command": "pseudocode.stop",
+                "key": "shift+escape",
+                "when": "resourceLangId == pseudocode"
             }
         ],
         "configuration": {
@@ -270,25 +289,60 @@
                     "default": true,
                     "description": "Automatically detect and use the Pseudocode VM from the workspace or PATH."
                 },
-                "pseudocode.inlayHints.parameterNames": {
+                "pseudocode.diagnostics.enabled": {
                     "type": "boolean",
-                    "default": true,
-                    "description": "Show parameter name hints in function calls."
+                    "default": false,
+                    "markdownDescription": "⚠️ **Experimental** - Enable syntax error checking. May cause lag on large files."
+                },
+                "pseudocode.signatureHelp.enabled": {
+                    "type": "boolean",
+                    "default": false,
+                    "markdownDescription": "⚠️ **Experimental** - Show function signature popup when typing '(' or ','. May cause lag."
+                },
+                "pseudocode.inlayHints.enabled": {
+                    "type": "boolean",
+                    "default": false,
+                    "markdownDescription": "⚠️ **Experimental** - Show parameter name hints in function calls. May cause lag."
+                },
+                "pseudocode.semanticHighlighting.enabled": {
+                    "type": "boolean",
+                    "default": false,
+                    "markdownDescription": "⚠️ **Experimental** - Enable semantic syntax highlighting (colorizes functions, variables). May cause lag."
                 },
                 "pseudocode.codeLens.enabled": {
                     "type": "boolean",
-                    "default": true,
-                    "description": "Show code lens above functions (run button, references)."
+                    "default": false,
+                    "markdownDescription": "⚠️ **Experimental** - Show run button and reference count above functions. May cause lag."
                 },
-                "pseudocode.codeLens.showReferences": {
+                "pseudocode.documentHighlight.enabled": {
                     "type": "boolean",
-                    "default": true,
-                    "description": "Show reference count in code lens."
+                    "default": false,
+                    "markdownDescription": "⚠️ **Experimental** - Highlight all occurrences of symbol under cursor. May cause lag."
+                },
+                "pseudocode.goToDefinition.enabled": {
+                    "type": "boolean",
+                    "default": false,
+                    "markdownDescription": "⚠️ **Experimental** - Enable Go to Definition (Cmd/Ctrl+Click). May cause lag."
+                },
+                "pseudocode.findReferences.enabled": {
+                    "type": "boolean",
+                    "default": false,
+                    "markdownDescription": "⚠️ **Experimental** - Enable Find All References. May cause lag."
+                },
+                "pseudocode.rename.enabled": {
+                    "type": "boolean",
+                    "default": false,
+                    "markdownDescription": "⚠️ **Experimental** - Enable Rename Symbol (F2). May cause lag."
+                },
+                "pseudocode.callHierarchy.enabled": {
+                    "type": "boolean",
+                    "default": false,
+                    "markdownDescription": "⚠️ **Experimental** - Enable Call Hierarchy view. May cause lag."
                 },
                 "pseudocode.statusBar.enabled": {
                     "type": "boolean",
-                    "default": true,
-                    "description": "Show Pseudocode info in status bar."
+                    "default": false,
+                    "markdownDescription": "⚠️ **Experimental** - Show Pseudocode info in status bar. May cause lag."
                 }
             }
         },

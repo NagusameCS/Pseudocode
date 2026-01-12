@@ -19,6 +19,47 @@
 /* Forward declarations */
 typedef uint64_t Value;
 
+#ifdef NO_JIT
+/* ============================================================
+ * NO_JIT Mode - Stub implementations
+ * ============================================================ */
+
+static inline void jit_init(void) {}
+static inline void jit_cleanup(void) {}
+static inline void jit_disable(void) {}
+static inline void jit_set_vm(void *vm) { (void)vm; }
+static inline int jit_available(void) { return 0; }
+static inline int jit_check_hotloop(uint8_t *loop_header) { (void)loop_header; return -1; }
+static inline bool jit_count_loop(uint8_t *loop_header) { (void)loop_header; return false; }
+static inline int jit_compile_loop(uint8_t *loop_start, uint8_t *loop_end,
+                     Value *bp, Value *constants, uint32_t num_constants,
+                     void *globals_keys, Value *globals_values, uint32_t globals_capacity) {
+    (void)loop_start; (void)loop_end; (void)bp; (void)constants;
+    (void)num_constants; (void)globals_keys; (void)globals_values; (void)globals_capacity;
+    return -1;
+}
+static inline int64_t jit_execute_loop(int trace_idx, Value *bp, int64_t iterations) {
+    (void)trace_idx; (void)bp; (void)iterations; return 0;
+}
+static inline void jit_set_globals(Value *globals_values, Value *constants) {
+    (void)globals_values; (void)constants;
+}
+static inline int64_t jit_run_inc_loop(int64_t x, int64_t iterations) {
+    return x + iterations;
+}
+static inline int64_t jit_run_empty_loop(int64_t start, int64_t end) {
+    (void)start; return end;
+}
+static inline int64_t jit_run_arith_loop(int64_t x, int64_t iterations) {
+    return x + iterations;
+}
+static inline int64_t jit_run_branch_loop(int64_t x, int64_t iterations) {
+    return x + iterations;
+}
+static inline void jit_print_stats(void) {}
+
+#else /* !NO_JIT */
+
 /* ============================================================
  * Tracing JIT Configuration - Compact sizes to avoid large globals
  * ============================================================ */
@@ -140,6 +181,9 @@ void jit_init(void);
 /* Cleanup JIT compiler */
 void jit_cleanup(void);
 
+/* Disable JIT (use interpreter only) */
+void jit_disable(void);
+
 /* Set VM for JIT runtime helpers (needed for inline function calls) */
 void jit_set_vm(void *vm);
 
@@ -208,5 +252,7 @@ int64_t jit_run_branch_loop(int64_t x, int64_t iterations);
  * ============================================================ */
 
 void jit_print_stats(void);
+
+#endif /* !NO_JIT */
 
 #endif /* PSEUDO_JIT_H */

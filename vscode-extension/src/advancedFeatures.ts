@@ -10,6 +10,11 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 
+// Helper to escape special regex characters
+function escapeRegex(str: string): string {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 // ============ Symbol Index ============
 
 interface SymbolInfo {
@@ -50,12 +55,6 @@ function parseDocument(document: vscode.TextDocument): FileSymbols {
 
     try {
         const text = document.getText();
-        
-        // Skip very large files to prevent performance issues
-        if (text.length > 200000) {
-            return symbols;
-        }
-        
         const lines = text.split('\n');
 
     let currentFunction: SymbolInfo | null = null;
@@ -159,38 +158,43 @@ export class PseudocodeCodeLensProvider implements vscode.CodeLensProvider {
     public readonly onDidChangeCodeLenses = this._onDidChangeCodeLenses.event;
 
     provideCodeLenses(document: vscode.TextDocument): vscode.CodeLens[] {
-        const lenses: vscode.CodeLens[] = [];
-        const symbols = parseDocument(document);
+        try {
+            const lenses: vscode.CodeLens[] = [];
+            const symbols = parseDocument(document);
 
-        for (const [name, info] of symbols.functions) {
-            const range = new vscode.Range(info.line, 0, info.line, 0);
+            for (const [name, info] of symbols.functions) {
+                const range = new vscode.Range(info.line, 0, info.line, 0);
 
-            // Run button
-            lenses.push(new vscode.CodeLens(range, {
-                title: '▶ Run',
-                command: 'pseudocode.runFunction',
-                arguments: [document.uri, name]
-            }));
-
-            // Reference count
-            const refs = symbols.references.get(name) || [];
-            const refCount = refs.length;
-            lenses.push(new vscode.CodeLens(range, {
-                title: `${refCount} reference${refCount !== 1 ? 's' : ''}`,
-                command: 'pseudocode.showReferences',
-                arguments: [document.uri, new vscode.Position(info.line, info.column), refs]
-            }));
-
-            // Show params
-            if (info.params && info.params.length > 0) {
+                // Run button
                 lenses.push(new vscode.CodeLens(range, {
-                    title: `⚙ ${info.params.join(', ')}`,
-                    command: ''
+                    title: '▶ Run',
+                    command: 'pseudocode.runFunction',
+                    arguments: [document.uri, name]
                 }));
-            }
-        }
 
-        return lenses;
+                // Reference count
+                const refs = symbols.references.get(name) || [];
+                const refCount = refs.length;
+                lenses.push(new vscode.CodeLens(range, {
+                    title: `${refCount} reference${refCount !== 1 ? 's' : ''}`,
+                    command: 'pseudocode.showReferences',
+                    arguments: [document.uri, new vscode.Position(info.line, info.column), refs]
+                }));
+
+                // Show params
+                if (info.params && info.params.length > 0) {
+                    lenses.push(new vscode.CodeLens(range, {
+                        title: `⚙ ${info.params.join(', ')}`,
+                        command: ''
+                    }));
+                }
+            }
+
+            return lenses;
+        } catch (error) {
+            console.error('Code lens error:', error);
+            return [];
+        }
     }
 }
 
@@ -201,33 +205,38 @@ export class PseudocodeDefinitionProvider implements vscode.DefinitionProvider {
         document: vscode.TextDocument,
         position: vscode.Position
     ): vscode.ProviderResult<vscode.Definition> {
-        const wordRange = document.getWordRangeAtPosition(position);
-        if (!wordRange) return undefined;
+        try {
+            const wordRange = document.getWordRangeAtPosition(position);
+            if (!wordRange) return undefined;
 
-        const word = document.getText(wordRange);
-        const symbols = getSymbols(document);
+            const word = document.getText(wordRange);
+            const symbols = getSymbols(document);
 
-        // Check functions
-        const fn = symbols.functions.get(word);
-        if (fn) {
-            return new vscode.Location(
-                document.uri,
-                new vscode.Position(fn.line, fn.column)
-            );
+            // Check functions
+            const fn = symbols.functions.get(word);
+            if (fn) {
+                return new vscode.Location(
+                    document.uri,
+                    new vscode.Position(fn.line, fn.column)
+                );
+            }
+
+            // Check variables
+            const vars = symbols.variables.get(word);
+            if (vars && vars.length > 0) {
+                // Return the first definition
+                const v = vars[0];
+                return new vscode.Location(
+                    document.uri,
+                    new vscode.Position(v.line, v.column)
+                );
+            }
+
+            return undefined;
+        } catch (error) {
+            console.error('Definition provider error:', error);
+            return undefined;
         }
-
-        // Check variables
-        const vars = symbols.variables.get(word);
-        if (vars && vars.length > 0) {
-            // Return the first definition
-            const v = vars[0];
-            return new vscode.Location(
-                document.uri,
-                new vscode.Position(v.line, v.column)
-            );
-        }
-
-        return undefined;
     }
 }
 
@@ -239,54 +248,62 @@ export class PseudocodeReferenceProvider implements vscode.ReferenceProvider {
         position: vscode.Position,
         _context: vscode.ReferenceContext
     ): vscode.ProviderResult<vscode.Location[]> {
-        const wordRange = document.getWordRangeAtPosition(position);
-        if (!wordRange) return [];
+        try {
+            const wordRange = document.getWordRangeAtPosition(position);
+            if (!wordRange) return [];
 
-        const word = document.getText(wordRange);
-        const symbols = getSymbols(document);
+            const word = document.getText(wordRange);
+            
+            // Escape special regex characters to prevent crashes
+            const escapedWord = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            
+            const symbols = getSymbols(document);
+            const locations: vscode.Location[] = [];
 
-        const locations: vscode.Location[] = [];
-
-        // Add definition
-        const fn = symbols.functions.get(word);
-        if (fn) {
-            locations.push(new vscode.Location(
-                document.uri,
-                new vscode.Position(fn.line, fn.column)
-            ));
-        }
-
-        const vars = symbols.variables.get(word);
-        if (vars) {
-            vars.forEach(v => {
+            // Add definition
+            const fn = symbols.functions.get(word);
+            if (fn) {
                 locations.push(new vscode.Location(
                     document.uri,
-                    new vscode.Position(v.line, v.column)
+                    new vscode.Position(fn.line, fn.column)
                 ));
-            });
-        }
-
-        // Add references
-        const refs = symbols.references.get(word);
-        if (refs) {
-            locations.push(...refs);
-        }
-
-        // Scan for variable usages
-        const text = document.getText();
-        const regex = new RegExp(`\\b${word}\\b`, 'g');
-        let match;
-        while ((match = regex.exec(text)) !== null) {
-            const pos = document.positionAt(match.index);
-            const existing = locations.find(l =>
-                l.range.start.line === pos.line && l.range.start.character === pos.character
-            );
-            if (!existing) {
-                locations.push(new vscode.Location(document.uri, pos));
             }
-        }
 
-        return locations;
+            const vars = symbols.variables.get(word);
+            if (vars) {
+                vars.forEach(v => {
+                    locations.push(new vscode.Location(
+                        document.uri,
+                        new vscode.Position(v.line, v.column)
+                    ));
+                });
+            }
+
+            // Add references
+            const refs = symbols.references.get(word);
+            if (refs) {
+                locations.push(...refs);
+            }
+
+            // Scan for variable usages
+            const text = document.getText();
+            const regex = new RegExp(`\\b${escapedWord}\\b`, 'g');
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                const pos = document.positionAt(match.index);
+                const existing = locations.find(l =>
+                    l.range.start.line === pos.line && l.range.start.character === pos.character
+                );
+                if (!existing) {
+                    locations.push(new vscode.Location(document.uri, pos));
+                }
+            }
+
+            return locations;
+        } catch (error) {
+            console.error('Reference provider error:', error);
+            return [];
+        }
     }
 }
 
@@ -298,137 +315,198 @@ export class PseudocodeRenameProvider implements vscode.RenameProvider {
         position: vscode.Position,
         newName: string
     ): vscode.ProviderResult<vscode.WorkspaceEdit> {
-        const wordRange = document.getWordRangeAtPosition(position);
-        if (!wordRange) return undefined;
+        try {
+            const wordRange = document.getWordRangeAtPosition(position);
+            if (!wordRange) return undefined;
 
-        const oldName = document.getText(wordRange);
+            const oldName = document.getText(wordRange);
 
-        // Validate new name
-        if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(newName)) {
-            throw new Error('Invalid identifier name');
+            // Validate new name
+            if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(newName)) {
+                throw new Error('Invalid identifier name');
+            }
+
+            const edit = new vscode.WorkspaceEdit();
+            const text = document.getText();
+
+            // Escape special regex characters and find all occurrences
+            const escapedOldName = oldName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const regex = new RegExp(`\\b${escapedOldName}\\b`, 'g');
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                const startPos = document.positionAt(match.index);
+                const endPos = document.positionAt(match.index + oldName.length);
+                edit.replace(document.uri, new vscode.Range(startPos, endPos), newName);
+            }
+
+            return edit;
+        } catch (error) {
+            console.error('Rename provider error:', error);
+            return undefined;
         }
-
-        const edit = new vscode.WorkspaceEdit();
-        const text = document.getText();
-
-        // Find all occurrences
-        const regex = new RegExp(`\\b${oldName}\\b`, 'g');
-        let match;
-        while ((match = regex.exec(text)) !== null) {
-            const startPos = document.positionAt(match.index);
-            const endPos = document.positionAt(match.index + oldName.length);
-            edit.replace(document.uri, new vscode.Range(startPos, endPos), newName);
-        }
-
-        return edit;
     }
 
     prepareRename(
         document: vscode.TextDocument,
         position: vscode.Position
     ): vscode.ProviderResult<vscode.Range> {
-        const wordRange = document.getWordRangeAtPosition(position);
-        if (!wordRange) {
-            throw new Error('Cannot rename at this position');
+        try {
+            const wordRange = document.getWordRangeAtPosition(position);
+            if (!wordRange) {
+                throw new Error('Cannot rename at this position');
+            }
+
+            const word = document.getText(wordRange);
+            const symbols = getSymbols(document);
+
+            // Only allow renaming user-defined symbols
+            if (symbols.functions.has(word) || symbols.variables.has(word)) {
+                return wordRange;
+            }
+
+            // Check if it's a local reference
+            const refs = symbols.references.get(word);
+            if (refs && refs.length > 0) {
+                return wordRange;
+            }
+
+            throw new Error('Cannot rename built-in or undefined symbol');
+        } catch (error) {
+            // Let the error propagate for prepareRename so VS Code shows the message
+            throw error;
         }
-
-        const word = document.getText(wordRange);
-        const symbols = getSymbols(document);
-
-        // Only allow renaming user-defined symbols
-        if (symbols.functions.has(word) || symbols.variables.has(word)) {
-            return wordRange;
-        }
-
-        // Check if it's a local reference
-        const refs = symbols.references.get(word);
-        if (refs && refs.length > 0) {
-            return wordRange;
-        }
-
-        throw new Error('Cannot rename built-in or undefined symbol');
     }
 }
 
 // ============ Document Highlight ============
+
+// Cache for document highlights to prevent lag on every cursor movement
+interface HighlightCache {
+    version: number;
+    word: string;
+    highlights: vscode.DocumentHighlight[];
+}
+const highlightCache = new Map<string, HighlightCache>();
 
 export class PseudocodeDocumentHighlightProvider implements vscode.DocumentHighlightProvider {
     provideDocumentHighlights(
         document: vscode.TextDocument,
         position: vscode.Position
     ): vscode.ProviderResult<vscode.DocumentHighlight[]> {
-        const wordRange = document.getWordRangeAtPosition(position);
-        if (!wordRange) return [];
+        try {
+            const wordRange = document.getWordRangeAtPosition(position);
+            if (!wordRange) return [];
 
-        const word = document.getText(wordRange);
-        const highlights: vscode.DocumentHighlight[] = [];
-        const text = document.getText();
+            const word = document.getText(wordRange);
+            
+            // Skip very short words or keywords to reduce noise
+            if (word.length < 2) return [];
+            
+            const uri = document.uri.toString();
+            const cached = highlightCache.get(uri);
+            
+            // Return cached if version and word match
+            if (cached && cached.version === document.version && cached.word === word) {
+                return cached.highlights;
+            }
+            
+            const text = document.getText();
+            const highlights: vscode.DocumentHighlight[] = [];
+            const escapedWord = escapeRegex(word);
+            const regex = new RegExp(`\\b${escapedWord}\\b`, 'g');
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                const startPos = document.positionAt(match.index);
+                const endPos = document.positionAt(match.index + word.length);
+                const range = new vscode.Range(startPos, endPos);
 
-        const regex = new RegExp(`\\b${word}\\b`, 'g');
-        let match;
-        while ((match = regex.exec(text)) !== null) {
-            const startPos = document.positionAt(match.index);
-            const endPos = document.positionAt(match.index + word.length);
-            const range = new vscode.Range(startPos, endPos);
+                // Check if it's a definition
+                const line = document.lineAt(startPos.line).text;
+                const isDefinition = line.match(new RegExp(`(fn|let)\\s+${escapedWord}\\b`));
 
-            // Check if it's a definition
-            const line = document.lineAt(startPos.line).text;
-            const isDefinition = line.match(new RegExp(`(fn|let)\\s+${word}\\b`));
+                highlights.push(new vscode.DocumentHighlight(
+                    range,
+                    isDefinition
+                        ? vscode.DocumentHighlightKind.Write
+                        : vscode.DocumentHighlightKind.Read
+                ));
+            }
 
-            highlights.push(new vscode.DocumentHighlight(
-                range,
-                isDefinition
-                    ? vscode.DocumentHighlightKind.Write
-                    : vscode.DocumentHighlightKind.Read
-            ));
+            // Cache the result
+            highlightCache.set(uri, { version: document.version, word, highlights });
+            return highlights;
+        } catch (error) {
+            console.error('Document highlight error:', error);
+            return [];
         }
-
-        return highlights;
     }
 }
 
 // ============ Folding Range Provider ============
 
+// Cache for folding ranges
+interface FoldingRangeCache {
+    version: number;
+    ranges: vscode.FoldingRange[];
+}
+const foldingRangeCache = new Map<string, FoldingRangeCache>();
+
 export class PseudocodeFoldingRangeProvider implements vscode.FoldingRangeProvider {
     provideFoldingRanges(document: vscode.TextDocument): vscode.ProviderResult<vscode.FoldingRange[]> {
-        const ranges: vscode.FoldingRange[] = [];
-        const lines = document.getText().split('\n');
-        const stack: { kind: string; line: number }[] = [];
-
-        for (let i = 0; i < lines.length; i++) {
-            const line = lines[i].trim();
-
-            // Block starters
-            if (line.match(/^fn\s+/) ||
-                (line.match(/^if\s+/) && line.includes('then')) ||
-                line.match(/^while\s+.*\s+do/) ||
-                line.match(/^for\s+.*\s+do/) ||
-                line.match(/^match\s+/)) {
-                stack.push({ kind: 'block', line: i });
+        try {
+            const uri = document.uri.toString();
+            const cached = foldingRangeCache.get(uri);
+            
+            // Return cached if version matches
+            if (cached && cached.version === document.version) {
+                return cached.ranges;
             }
+            
+            const text = document.getText();
+            const ranges: vscode.FoldingRange[] = [];
+            const lines = text.split('\n');
+            const stack: { kind: string; line: number }[] = [];
 
-            // End
-            if (line === 'end' && stack.length > 0) {
-                const start = stack.pop()!;
-                ranges.push(new vscode.FoldingRange(start.line, i, vscode.FoldingRangeKind.Region));
-            }
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
 
-            // Comment blocks
-            if (line.startsWith('//') && i > 0 && lines[i - 1].trim().startsWith('//')) {
-                // Already part of block
-            } else if (line.startsWith('//')) {
-                // Start of potential comment block
-                let end = i;
-                while (end + 1 < lines.length && lines[end + 1].trim().startsWith('//')) {
-                    end++;
+                // Block starters
+                if (line.match(/^fn\s+/) ||
+                    (line.match(/^if\s+/) && line.includes('then')) ||
+                    line.match(/^while\s+.*\s+do/) ||
+                    line.match(/^for\s+.*\s+do/) ||
+                    line.match(/^match\s+/)) {
+                    stack.push({ kind: 'block', line: i });
                 }
-                if (end > i) {
-                    ranges.push(new vscode.FoldingRange(i, end, vscode.FoldingRangeKind.Comment));
+
+                // End
+                if (line === 'end' && stack.length > 0) {
+                    const start = stack.pop()!;
+                    ranges.push(new vscode.FoldingRange(start.line, i, vscode.FoldingRangeKind.Region));
+                }
+
+                // Comment blocks
+                if (line.startsWith('//') && i > 0 && lines[i - 1].trim().startsWith('//')) {
+                    // Already part of block
+                } else if (line.startsWith('//')) {
+                    // Start of potential comment block
+                    let end = i;
+                    while (end + 1 < lines.length && lines[end + 1].trim().startsWith('//')) {
+                        end++;
+                    }
+                    if (end > i) {
+                        ranges.push(new vscode.FoldingRange(i, end, vscode.FoldingRangeKind.Comment));
+                    }
                 }
             }
+
+            // Cache the result
+            foldingRangeCache.set(uri, { version: document.version, ranges });
+            return ranges;
+        } catch (error) {
+            console.error('Folding range error:', error);
+            return [];
         }
-
-        return ranges;
     }
 }
 
@@ -458,10 +536,6 @@ export class PseudocodeSemanticTokensProvider implements vscode.DocumentSemantic
             }
             
             const text = document.getText();
-            // Skip large files to prevent performance issues (reduced threshold)
-            if (text.length > 50000) {
-                return new vscode.SemanticTokensBuilder(semanticTokensLegend).build();
-            }
             
             const builder = new vscode.SemanticTokensBuilder(semanticTokensLegend);
             const lines = text.split('\n');
@@ -510,34 +584,39 @@ export class PseudocodeSemanticTokensProvider implements vscode.DocumentSemantic
 
 export class PseudocodeWorkspaceSymbolProvider implements vscode.WorkspaceSymbolProvider {
     async provideWorkspaceSymbols(query: string): Promise<vscode.SymbolInformation[]> {
-        const symbols: vscode.SymbolInformation[] = [];
-        const files = await vscode.workspace.findFiles('**/*.{pseudo,psc,pseudocode}', '**/node_modules/**', 100);
+        try {
+            const symbols: vscode.SymbolInformation[] = [];
+            const files = await vscode.workspace.findFiles('**/*.{pseudo,psc,pseudocode}', '**/node_modules/**', 100);
 
-        for (const file of files) {
-            try {
-                const content = await fs.promises.readFile(file.fsPath, 'utf8');
-                const lines = content.split('\n');
+            for (const file of files) {
+                try {
+                    const content = await fs.promises.readFile(file.fsPath, 'utf8');
+                    const lines = content.split('\n');
 
-                for (let i = 0; i < lines.length; i++) {
-                    const fnMatch = lines[i].match(/^fn\s+([a-zA-Z_][a-zA-Z0-9_]*)/);
-                    if (fnMatch) {
-                        const name = fnMatch[1];
-                        if (name.toLowerCase().includes(query.toLowerCase())) {
-                            symbols.push(new vscode.SymbolInformation(
-                                name,
-                                vscode.SymbolKind.Function,
-                                path.basename(file.fsPath),
-                                new vscode.Location(file, new vscode.Position(i, 0))
-                            ));
+                    for (let i = 0; i < lines.length; i++) {
+                        const fnMatch = lines[i].match(/^fn\s+([a-zA-Z_][a-zA-Z0-9_]*)/);
+                        if (fnMatch) {
+                            const name = fnMatch[1];
+                            if (name.toLowerCase().includes(query.toLowerCase())) {
+                                symbols.push(new vscode.SymbolInformation(
+                                    name,
+                                    vscode.SymbolKind.Function,
+                                    path.basename(file.fsPath),
+                                    new vscode.Location(file, new vscode.Position(i, 0))
+                                ));
+                            }
                         }
                     }
+                } catch {
+                    // Ignore read errors
                 }
-            } catch {
-                // Ignore read errors
             }
-        }
 
-        return symbols;
+            return symbols;
+        } catch (error) {
+            console.error('Workspace symbol error:', error);
+            return [];
+        }
     }
 }
 
@@ -586,20 +665,21 @@ export class PseudocodeCodeActionProvider implements vscode.CodeActionProvider {
         range: vscode.Range,
         context: vscode.CodeActionContext
     ): vscode.ProviderResult<vscode.CodeAction[]> {
-        const actions: vscode.CodeAction[] = [];
+        try {
+            const actions: vscode.CodeAction[] = [];
 
-        // Quick fixes for diagnostics
-        for (const diagnostic of context.diagnostics) {
-            if (diagnostic.message.includes("Did you mean")) {
-                const match = diagnostic.message.match(/Did you mean '(\w+)'/);
-                if (match) {
-                    const fix = new vscode.CodeAction(
-                        `Replace with '${match[1]}'`,
-                        vscode.CodeActionKind.QuickFix
-                    );
-                    fix.edit = new vscode.WorkspaceEdit();
-                    fix.edit.replace(document.uri, diagnostic.range, match[1]);
-                    fix.diagnostics = [diagnostic];
+            // Quick fixes for diagnostics
+            for (const diagnostic of context.diagnostics) {
+                if (diagnostic.message.includes("Did you mean")) {
+                    const match = diagnostic.message.match(/Did you mean '(\w+)'/);
+                    if (match) {
+                        const fix = new vscode.CodeAction(
+                            `Replace with '${match[1]}'`,
+                            vscode.CodeActionKind.QuickFix
+                        );
+                        fix.edit = new vscode.WorkspaceEdit();
+                        fix.edit.replace(document.uri, diagnostic.range, match[1]);
+                        fix.diagnostics = [diagnostic];
                     fix.isPreferred = true;
                     actions.push(fix);
                 }
@@ -657,60 +737,79 @@ export class PseudocodeCodeActionProvider implements vscode.CodeActionProvider {
             }
         }
 
-        return actions;
+            return actions;
+        } catch (error) {
+            console.error('Code action error:', error);
+            return [];
+        }
     }
 }
 
 // ============ Register All ============
 
 export function registerAdvancedFeatures(context: vscode.ExtensionContext): void {
+    const config = vscode.workspace.getConfiguration('pseudocode');
     const selector: vscode.DocumentSelector = { language: 'pseudocode', scheme: 'file' };
 
+    // Each feature has its own setting, all disabled by default
+
     // Code Lens
-    context.subscriptions.push(
-        vscode.languages.registerCodeLensProvider(selector, new PseudocodeCodeLensProvider())
-    );
+    if (config.get<boolean>('codeLens.enabled', false)) {
+        context.subscriptions.push(
+            vscode.languages.registerCodeLensProvider(selector, new PseudocodeCodeLensProvider())
+        );
+    }
 
     // Go to Definition
-    context.subscriptions.push(
-        vscode.languages.registerDefinitionProvider(selector, new PseudocodeDefinitionProvider())
-    );
+    if (config.get<boolean>('goToDefinition.enabled', false)) {
+        context.subscriptions.push(
+            vscode.languages.registerDefinitionProvider(selector, new PseudocodeDefinitionProvider())
+        );
+    }
 
     // Find References
-    context.subscriptions.push(
-        vscode.languages.registerReferenceProvider(selector, new PseudocodeReferenceProvider())
-    );
+    if (config.get<boolean>('findReferences.enabled', false)) {
+        context.subscriptions.push(
+            vscode.languages.registerReferenceProvider(selector, new PseudocodeReferenceProvider())
+        );
+    }
 
     // Rename
-    context.subscriptions.push(
-        vscode.languages.registerRenameProvider(selector, new PseudocodeRenameProvider())
-    );
+    if (config.get<boolean>('rename.enabled', false)) {
+        context.subscriptions.push(
+            vscode.languages.registerRenameProvider(selector, new PseudocodeRenameProvider())
+        );
+    }
 
     // Document Highlight
-    context.subscriptions.push(
-        vscode.languages.registerDocumentHighlightProvider(selector, new PseudocodeDocumentHighlightProvider())
-    );
+    if (config.get<boolean>('documentHighlight.enabled', false)) {
+        context.subscriptions.push(
+            vscode.languages.registerDocumentHighlightProvider(selector, new PseudocodeDocumentHighlightProvider())
+        );
+    }
 
-    // Folding
+    // Folding - always enabled, it's lightweight
     context.subscriptions.push(
         vscode.languages.registerFoldingRangeProvider(selector, new PseudocodeFoldingRangeProvider())
     );
 
-    // Semantic Tokens
-    context.subscriptions.push(
-        vscode.languages.registerDocumentSemanticTokensProvider(
-            selector,
-            new PseudocodeSemanticTokensProvider(),
-            semanticTokensLegend
-        )
-    );
+    // Semantic Highlighting
+    if (config.get<boolean>('semanticHighlighting.enabled', false)) {
+        context.subscriptions.push(
+            vscode.languages.registerDocumentSemanticTokensProvider(
+                selector,
+                new PseudocodeSemanticTokensProvider(),
+                semanticTokensLegend
+            )
+        );
+    }
 
-    // Workspace Symbols (Ctrl+T)
+    // Workspace Symbols (Ctrl+T) - always enabled, only runs on explicit search
     context.subscriptions.push(
         vscode.languages.registerWorkspaceSymbolProvider(new PseudocodeWorkspaceSymbolProvider())
     );
 
-    // Code Actions
+    // Code Actions - always enabled, lightweight
     context.subscriptions.push(
         vscode.languages.registerCodeActionsProvider(
             selector,
@@ -720,8 +819,10 @@ export function registerAdvancedFeatures(context: vscode.ExtensionContext): void
     );
 
     // Status Bar
-    const statusBar = createStatusBar();
-    context.subscriptions.push(statusBar);
+    if (config.get<boolean>('statusBar.enabled', false)) {
+        const statusBar = createStatusBar();
+        context.subscriptions.push(statusBar);
+    }
 
     // Debounced status bar updates to prevent lag
     let statusBarTimeout: NodeJS.Timeout | undefined;

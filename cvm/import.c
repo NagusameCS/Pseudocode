@@ -16,6 +16,7 @@
 #ifdef _WIN32
 #include <windows.h>
 #include <direct.h>
+#undef PATH_MAX
 #define PATH_MAX MAX_PATH
 #define realpath(path, resolved) _fullpath(resolved, path, PATH_MAX)
 static char *dirname(char *path) {

@@ -11,22 +11,23 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
     <style>
         :root {
-            --bg-primary: #0d1117;
-            --bg-secondary: #161b22;
-            --bg-tertiary: #21262d;
-            --bg-cell: #0d1117;
-            --text-primary: #e6edf3;
-            --text-secondary: #8b949e;
-            --text-tertiary: #6e7681;
+            --bg-primary: #1b1b1f;
+            --bg-secondary: #232327;
+            --bg-tertiary: #2a2a2e;
+            --bg-cell: #161618;
+            --text-primary: #f5f5f7;
+            --text-secondary: #b3b3b6;
+            --text-tertiary: #8e8e93;
             --accent: #a78bfa;
             --accent-dim: #7c5cbf;
-            --border: #30363d;
-            --success: #3fb950;
+            --border: #3a3a3e;
+            --success: #34d399;
             --error: #f85149;
-            --warning: #d29922;
-            --link: #58a6ff;
-            --cell-border: #30363d;
-            --cell-active: #388bfd26;
+            --warning: #fbbf24;
+            --link: #93c5fd;
+            --cell-border: #3a3a3e;
+            --cell-active: #a78bfa26;
+            --code-bg: #161618;
         }
         
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -66,6 +67,10 @@
             align-items: center;
             gap: 8px;
             text-decoration: none;
+        }
+
+        .logo-img {
+            border-radius: 5px;
         }
         
         .logo:hover { text-decoration: none; }
@@ -342,7 +347,7 @@
     <header>
         <div class="header-inner">
             <a href="index.html" class="logo">
-                <img src="favicon.svg" alt="" width="24" height="24" style="border-radius: 5px;">
+                <img src="favicon.svg" alt="" width="24" height="24" class="logo-img">
                 Pseudocode
             </a>
             <nav>
@@ -381,7 +386,7 @@
             </div>
             
             <div class="sidebar-section">
-                <h3>🚀 Getting Started</h3>
+                <h3>Getting Started</h3>
                 <div class="lesson-item active" data-lesson="0"><span class="lesson-check">1</span> Hello World</div>
                 <div class="lesson-item" data-lesson="1"><span class="lesson-check">2</span> Variables</div>
                 <div class="lesson-item" data-lesson="2"><span class="lesson-check">3</span> Data Types</div>
@@ -389,7 +394,7 @@
             </div>
             
             <div class="sidebar-section">
-                <h3>🔀 Control Flow</h3>
+                <h3>Control Flow</h3>
                 <div class="lesson-item" data-lesson="4"><span class="lesson-check">5</span> If Statements</div>
                 <div class="lesson-item" data-lesson="5"><span class="lesson-check">6</span> For Loops</div>
                 <div class="lesson-item" data-lesson="6"><span class="lesson-check">7</span> While Loops</div>
@@ -397,7 +402,7 @@
             </div>
             
             <div class="sidebar-section">
-                <h3>⚡ Functions</h3>
+                <h3>Functions</h3>
                 <div class="lesson-item" data-lesson="8"><span class="lesson-check">9</span> Defining Functions</div>
                 <div class="lesson-item" data-lesson="9"><span class="lesson-check">10</span> Parameters & Return</div>
                 <div class="lesson-item" data-lesson="10"><span class="lesson-check">11</span> Closures</div>
@@ -405,14 +410,14 @@
             </div>
             
             <div class="sidebar-section">
-                <h3>📦 Data Structures</h3>
+                <h3>Data Structures</h3>
                 <div class="lesson-item" data-lesson="12"><span class="lesson-check">13</span> Arrays</div>
                 <div class="lesson-item" data-lesson="13"><span class="lesson-check">14</span> Dictionaries</div>
                 <div class="lesson-item" data-lesson="14"><span class="lesson-check">15</span> Classes & OOP</div>
             </div>
             
             <div class="sidebar-section">
-                <h3>🎓 Advanced</h3>
+                <h3>Advanced</h3>
                 <div class="lesson-item" data-lesson="15"><span class="lesson-check">16</span> File I/O</div>
                 <div class="lesson-item" data-lesson="16"><span class="lesson-check">17</span> HTTP & JSON</div>
                 <div class="lesson-item" data-lesson="17"><span class="lesson-check">18</span> Functional Style</div>
@@ -763,7 +768,7 @@
                 content: `
                     <p>Pseudocode supports functional programming with <code>map</code>, <code>filter</code>, <code>reduce</code>, and lambda functions.</p>
                     <div class="info-box tip">
-                        <div class="info-box-title">🎉 Congratulations!</div>
+                        <div class="info-box-title">Congratulations!</div>
                         <p>This is the final lesson. After this, you'll have a solid foundation in Pseudocode!</p>
                     </div>
                 `,
@@ -803,8 +808,8 @@
                 <div class="lesson-header">
                     <h1>Lesson ${i + 1}: ${L.title}</h1>
                     <div class="lesson-meta">
-                        <span>📚 ${L.description}</span>
-                        <span>⏱️ ${L.duration}</span>
+                        <span>${L.description}</span>
+                        <span>${L.duration}</span>
                     </div>
                 </div>
                 
@@ -820,14 +825,14 @@
                 </div>
                 
                 <div class="challenge">
-                    <h4>🎯 Challenge</h4>
+                    <h4>Challenge</h4>
                     <p>${L.challenge}</p>
                 </div>
                 
                 <div class="lesson-nav">
                     ${i > 0 ? `<div class="nav-btn" onclick="goTo(${i - 1})"><span class="nav-btn-label">← Previous</span><span class="nav-btn-title">${lessons[i-1].title}</span></div>` : '<div></div>'}
                     <button class="btn btn-primary" onclick="complete(${i})" style="padding: 12px 24px; font-size: 14px;">
-                        ${i < 17 ? 'Complete & Continue →' : '🎉 Complete Course'}
+                        ${i < 17 ? 'Complete & Continue' : 'Complete Course'}
                     </button>
                     ${i < 17 ? `<div class="nav-btn" onclick="goTo(${i + 1})"><span class="nav-btn-label">Next →</span><span class="nav-btn-title">${lessons[i+1].title}</span></div>` : '<div></div>'}
                 </div>
@@ -872,7 +877,7 @@
             if (i < 17) {
                 goTo(i + 1);
             } else {
-                alert('🎉 Congratulations! You\'ve completed the entire Pseudocode course!\n\nYou now have a solid foundation in Pseudocode. Check out the Examples and Reference pages to continue learning!');
+                alert('Congratulations! You\'ve completed the entire Pseudocode course!\n\nYou now have a solid foundation in Pseudocode. Check out the Examples and Reference pages to continue learning!');
             }
         }
 

@@ -175,11 +175,6 @@ function updateUserFunctions(document: vscode.TextDocument): Map<string, string[
     const signatures = new Map<string, string[]>();
     const text = document.getText();
     
-    // Skip large files
-    if (text.length > 100000) {
-        return signatures;
-    }
-    
     const fnRegex = /^fn\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(([^)]*)\)/gm;
     let match;
 
@@ -202,22 +197,17 @@ export class PseudocodeInlayHintsProvider implements vscode.InlayHintsProvider {
     ): vscode.ProviderResult<vscode.InlayHint[]> {
         try {
             const hints: vscode.InlayHint[] = [];
-            
-            // Only provide hints for small visible ranges to reduce lag
-            const lineCount = range.end.line - range.start.line;
-            if (lineCount > 100) {
-                return hints;
-            }
-            
             const text = document.getText(range);
-            
-            // Skip very large ranges to prevent performance issues
-            if (text.length > 10000) {
-                return hints;
-            }
             
             // Skip if range is too small (likely inside a function call being typed)
             if (text.length < 3) {
+                return hints;
+            }
+            
+            // Skip if text has unclosed parens (user is still typing)
+            const openParens = (text.match(/\(/g) || []).length;
+            const closeParens = (text.match(/\)/g) || []).length;
+            if (openParens !== closeParens) {
                 return hints;
             }
             
@@ -334,51 +324,62 @@ function parseArguments(argsStr: string): string[] {
 
 // ============ Call Hierarchy Provider ============
 
+// Helper to escape regex special characters
+function escapeRegex(str: string): string {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 export class PseudocodeCallHierarchyProvider implements vscode.CallHierarchyProvider {
     prepareCallHierarchy(
         document: vscode.TextDocument,
         position: vscode.Position
     ): vscode.ProviderResult<vscode.CallHierarchyItem | vscode.CallHierarchyItem[]> {
-        const wordRange = document.getWordRangeAtPosition(position);
-        if (!wordRange) return undefined;
+        try {
+            const wordRange = document.getWordRangeAtPosition(position);
+            if (!wordRange) return undefined;
 
-        const word = document.getText(wordRange);
-        const line = document.lineAt(position.line);
+            const word = document.getText(wordRange);
+            const escapedWord = escapeRegex(word);
+            const line = document.lineAt(position.line);
 
-        // Check if it's a function definition
-        const fnMatch = line.text.match(/^fn\s+([a-zA-Z_][a-zA-Z0-9_]*)/);
-        if (fnMatch && fnMatch[1] === word) {
-            return new vscode.CallHierarchyItem(
-                vscode.SymbolKind.Function,
-                word,
-                '',
-                document.uri,
-                line.range,
-                wordRange
-            );
-        }
-
-        // Check if it's a function call
-        const callMatch = line.text.match(new RegExp(`\\b${word}\\s*\\(`));
-        if (callMatch) {
-            // Find the function definition
-            const text = document.getText();
-            const defMatch = text.match(new RegExp(`^fn\\s+${word}\\s*\\(`, 'm'));
-            if (defMatch) {
-                const defPos = document.positionAt(defMatch.index!);
-                const defLine = document.lineAt(defPos.line);
+            // Check if it's a function definition
+            const fnMatch = line.text.match(/^fn\s+([a-zA-Z_][a-zA-Z0-9_]*)/);
+            if (fnMatch && fnMatch[1] === word) {
                 return new vscode.CallHierarchyItem(
                     vscode.SymbolKind.Function,
                     word,
                     '',
                     document.uri,
-                    defLine.range,
-                    new vscode.Range(defPos, defPos.translate(0, word.length))
+                    line.range,
+                    wordRange
                 );
             }
-        }
 
-        return undefined;
+            // Check if it's a function call
+            const callMatch = line.text.match(new RegExp(`\\b${escapedWord}\\s*\\(`));
+            if (callMatch) {
+                // Find the function definition
+                const text = document.getText();
+                const defMatch = text.match(new RegExp(`^fn\\s+${escapedWord}\\s*\\(`, 'm'));
+                if (defMatch) {
+                    const defPos = document.positionAt(defMatch.index!);
+                    const defLine = document.lineAt(defPos.line);
+                    return new vscode.CallHierarchyItem(
+                        vscode.SymbolKind.Function,
+                        word,
+                        '',
+                        document.uri,
+                        defLine.range,
+                        new vscode.Range(defPos, defPos.translate(0, word.length))
+                    );
+                }
+            }
+
+            return undefined;
+        } catch (error) {
+            console.error('Call hierarchy prepare error:', error);
+            return undefined;
+        }
     }
 
     provideCallHierarchyIncomingCalls(
@@ -397,98 +398,104 @@ export class PseudocodeCallHierarchyProvider implements vscode.CallHierarchyProv
         item: vscode.CallHierarchyItem,
         direction: 'incoming' | 'outgoing'
     ): Promise<any[]> {
-        const document = await vscode.workspace.openTextDocument(item.uri);
-        const text = document.getText();
-        const calls: any[] = [];
+        try {
+            const document = await vscode.workspace.openTextDocument(item.uri);
+            const text = document.getText();
+            const calls: any[] = [];
+            const escapedName = escapeRegex(item.name);
 
-        if (direction === 'incoming') {
-            // Find all places where this function is called
-            const callRegex = new RegExp(`\\b${item.name}\\s*\\(`, 'g');
-            let match;
+            if (direction === 'incoming') {
+                // Find all places where this function is called
+                const callRegex = new RegExp(`\\b${escapedName}\\s*\\(`, 'g');
+                let match;
 
-            while ((match = callRegex.exec(text)) !== null) {
-                const pos = document.positionAt(match.index);
-                const line = document.lineAt(pos.line);
+                while ((match = callRegex.exec(text)) !== null) {
+                    const pos = document.positionAt(match.index);
+                    const line = document.lineAt(pos.line);
 
-                // Find the enclosing function
-                let enclosingFn = 'global';
-                for (let i = pos.line; i >= 0; i--) {
-                    const fnMatch = document.lineAt(i).text.match(/^fn\s+([a-zA-Z_][a-zA-Z0-9_]*)/);
-                    if (fnMatch) {
-                        enclosingFn = fnMatch[1];
-                        break;
+                    // Find the enclosing function
+                    let enclosingFn = 'global';
+                    for (let i = pos.line; i >= 0; i--) {
+                        const fnMatch = document.lineAt(i).text.match(/^fn\s+([a-zA-Z_][a-zA-Z0-9_]*)/);
+                        if (fnMatch) {
+                            enclosingFn = fnMatch[1];
+                            break;
+                        }
+                    }
+
+                    if (enclosingFn !== item.name) {
+                        const callerItem = new vscode.CallHierarchyItem(
+                            vscode.SymbolKind.Function,
+                            enclosingFn,
+                            '',
+                            document.uri,
+                            line.range,
+                            new vscode.Range(pos, pos.translate(0, item.name.length))
+                        );
+
+                        calls.push({
+                            from: callerItem,
+                            fromRanges: [new vscode.Range(pos, pos.translate(0, item.name.length))]
+                        });
+                    }
+                }
+            } else {
+                // Find all function calls within this function
+                const fnRegex = new RegExp(`^fn\\s+${escapedName}\\s*\\([^)]*\\)`, 'm');
+                const fnMatch = text.match(fnRegex);
+                if (!fnMatch) return [];
+
+                const fnStart = fnMatch.index!;
+                const fnStartPos = document.positionAt(fnStart);
+
+                // Find the end of this function
+                let depth = 1;
+                let fnEnd = fnStart + fnMatch[0].length;
+                const lines = text.substring(fnEnd).split('\n');
+
+                for (const line of lines) {
+                    fnEnd += line.length + 1;
+                    if (line.trim().match(/^(fn|if|while|for|match)\b.*\b(then|do)?\s*$/)) {
+                        depth++;
+                    } else if (line.trim() === 'end') {
+                        depth--;
+                        if (depth === 0) break;
                     }
                 }
 
-                if (enclosingFn !== item.name) {
-                    const callerItem = new vscode.CallHierarchyItem(
+                const fnBody = text.substring(fnStart, fnEnd);
+                const callRegex = /([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/g;
+                let match;
+
+                while ((match = callRegex.exec(fnBody)) !== null) {
+                    const calledFn = match[1];
+                    if (['if', 'while', 'for', 'fn', 'match'].includes(calledFn)) continue;
+                    if (calledFn === item.name) continue; // Skip self
+
+                    const callPos = document.positionAt(fnStart + match.index);
+                    const callLine = document.lineAt(callPos.line);
+
+                    const calleeItem = new vscode.CallHierarchyItem(
                         vscode.SymbolKind.Function,
-                        enclosingFn,
-                        '',
+                        calledFn,
+                        BUILTIN_SIGNATURES[calledFn] ? '(builtin)' : '',
                         document.uri,
-                        line.range,
-                        new vscode.Range(pos, pos.translate(0, item.name.length))
+                        callLine.range,
+                        new vscode.Range(callPos, callPos.translate(0, calledFn.length))
                     );
 
                     calls.push({
-                        from: callerItem,
-                        fromRanges: [new vscode.Range(pos, pos.translate(0, item.name.length))]
+                        to: calleeItem,
+                        fromRanges: [new vscode.Range(callPos, callPos.translate(0, calledFn.length))]
                     });
                 }
             }
-        } else {
-            // Find all function calls within this function
-            const fnRegex = new RegExp(`^fn\\s+${item.name}\\s*\\([^)]*\\)`, 'm');
-            const fnMatch = text.match(fnRegex);
-            if (!fnMatch) return [];
 
-            const fnStart = fnMatch.index!;
-            const fnStartPos = document.positionAt(fnStart);
-
-            // Find the end of this function
-            let depth = 1;
-            let fnEnd = fnStart + fnMatch[0].length;
-            const lines = text.substring(fnEnd).split('\n');
-
-            for (const line of lines) {
-                fnEnd += line.length + 1;
-                if (line.trim().match(/^(fn|if|while|for|match)\b.*\b(then|do)?\s*$/)) {
-                    depth++;
-                } else if (line.trim() === 'end') {
-                    depth--;
-                    if (depth === 0) break;
-                }
-            }
-
-            const fnBody = text.substring(fnStart, fnEnd);
-            const callRegex = /([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/g;
-            let match;
-
-            while ((match = callRegex.exec(fnBody)) !== null) {
-                const calledFn = match[1];
-                if (['if', 'while', 'for', 'fn', 'match'].includes(calledFn)) continue;
-                if (calledFn === item.name) continue; // Skip self
-
-                const callPos = document.positionAt(fnStart + match.index);
-                const callLine = document.lineAt(callPos.line);
-
-                const calleeItem = new vscode.CallHierarchyItem(
-                    vscode.SymbolKind.Function,
-                    calledFn,
-                    BUILTIN_SIGNATURES[calledFn] ? '(builtin)' : '',
-                    document.uri,
-                    callLine.range,
-                    new vscode.Range(callPos, callPos.translate(0, calledFn.length))
-                );
-
-                calls.push({
-                    to: calleeItem,
-                    fromRanges: [new vscode.Range(callPos, callPos.translate(0, calledFn.length))]
-                });
-            }
+            return calls;
+        } catch (error) {
+            console.error('Call hierarchy findCalls error:', error);
+            return [];
         }
-
-        return calls;
     }
 }
 
@@ -519,65 +526,75 @@ export class PseudocodeLinkedEditingRangeProvider implements vscode.LinkedEditin
 
 export class PseudocodeColorProvider implements vscode.DocumentColorProvider {
     provideDocumentColors(document: vscode.TextDocument): vscode.ProviderResult<vscode.ColorInformation[]> {
-        const colors: vscode.ColorInformation[] = [];
-        const text = document.getText();
+        try {
+            const colors: vscode.ColorInformation[] = [];
+            const text = document.getText();
 
-        // Match hex colors like "#ff0000" or "#f00"
-        const hexRegex = /"#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})"/g;
-        let match;
+            // Match hex colors like "#ff0000" or "#f00"
+            const hexRegex = /"#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})"/g;
+            let match;
 
-        while ((match = hexRegex.exec(text)) !== null) {
-            const hex = match[1];
-            const pos = document.positionAt(match.index);
-            const endPos = document.positionAt(match.index + match[0].length);
-            const range = new vscode.Range(pos, endPos);
+            while ((match = hexRegex.exec(text)) !== null) {
+                const hex = match[1];
+                const pos = document.positionAt(match.index);
+                const endPos = document.positionAt(match.index + match[0].length);
+                const range = new vscode.Range(pos, endPos);
 
-            let r, g, b;
-            if (hex.length === 3) {
-                r = parseInt(hex[0] + hex[0], 16) / 255;
-                g = parseInt(hex[1] + hex[1], 16) / 255;
-                b = parseInt(hex[2] + hex[2], 16) / 255;
-            } else {
-                r = parseInt(hex.substring(0, 2), 16) / 255;
-                g = parseInt(hex.substring(2, 4), 16) / 255;
-                b = parseInt(hex.substring(4, 6), 16) / 255;
+                let r, g, b;
+                if (hex.length === 3) {
+                    r = parseInt(hex[0] + hex[0], 16) / 255;
+                    g = parseInt(hex[1] + hex[1], 16) / 255;
+                    b = parseInt(hex[2] + hex[2], 16) / 255;
+                } else {
+                    r = parseInt(hex.substring(0, 2), 16) / 255;
+                    g = parseInt(hex.substring(2, 4), 16) / 255;
+                    b = parseInt(hex.substring(4, 6), 16) / 255;
+                }
+
+                colors.push(new vscode.ColorInformation(range, new vscode.Color(r, g, b, 1)));
             }
 
-            colors.push(new vscode.ColorInformation(range, new vscode.Color(r, g, b, 1)));
+            // Match rgb(r, g, b) patterns
+            const rgbRegex = /rgb\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/g;
+            while ((match = rgbRegex.exec(text)) !== null) {
+                const r = parseInt(match[1]) / 255;
+                const g = parseInt(match[2]) / 255;
+                const b = parseInt(match[3]) / 255;
+
+                const pos = document.positionAt(match.index);
+                const endPos = document.positionAt(match.index + match[0].length);
+                const range = new vscode.Range(pos, endPos);
+
+                colors.push(new vscode.ColorInformation(range, new vscode.Color(r, g, b, 1)));
+            }
+
+            return colors;
+        } catch (error) {
+            console.error('Color provider error:', error);
+            return [];
         }
-
-        // Match rgb(r, g, b) patterns
-        const rgbRegex = /rgb\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/g;
-        while ((match = rgbRegex.exec(text)) !== null) {
-            const r = parseInt(match[1]) / 255;
-            const g = parseInt(match[2]) / 255;
-            const b = parseInt(match[3]) / 255;
-
-            const pos = document.positionAt(match.index);
-            const endPos = document.positionAt(match.index + match[0].length);
-            const range = new vscode.Range(pos, endPos);
-
-            colors.push(new vscode.ColorInformation(range, new vscode.Color(r, g, b, 1)));
-        }
-
-        return colors;
     }
 
     provideColorPresentations(
         color: vscode.Color,
         context: { document: vscode.TextDocument; range: vscode.Range }
     ): vscode.ProviderResult<vscode.ColorPresentation[]> {
-        const r = Math.round(color.red * 255);
-        const g = Math.round(color.green * 255);
-        const b = Math.round(color.blue * 255);
+        try {
+            const r = Math.round(color.red * 255);
+            const g = Math.round(color.green * 255);
+            const b = Math.round(color.blue * 255);
 
-        const hex = `"#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}"`;
-        const rgb = `rgb(${r}, ${g}, ${b})`;
+            const hex = `"#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}"`;
+            const rgb = `rgb(${r}, ${g}, ${b})`;
 
-        return [
-            new vscode.ColorPresentation(hex),
-            new vscode.ColorPresentation(rgb)
-        ];
+            return [
+                new vscode.ColorPresentation(hex),
+                new vscode.ColorPresentation(rgb)
+            ];
+        } catch (error) {
+            console.error('Color presentation error:', error);
+            return [];
+        }
     }
 }
 
@@ -588,7 +605,12 @@ export class PseudocodeSelectionRangeProvider implements vscode.SelectionRangePr
         document: vscode.TextDocument,
         positions: vscode.Position[]
     ): vscode.ProviderResult<vscode.SelectionRange[]> {
-        return positions.map(position => this.getSelectionRange(document, position));
+        try {
+            return positions.map(position => this.getSelectionRange(document, position));
+        } catch (error) {
+            console.error('Selection range error:', error);
+            return [];
+        }
     }
 
     private getSelectionRange(document: vscode.TextDocument, position: vscode.Position): vscode.SelectionRange {
@@ -670,57 +692,68 @@ export class PseudocodeTypeDefinitionProvider implements vscode.TypeDefinitionPr
         document: vscode.TextDocument,
         position: vscode.Position
     ): vscode.ProviderResult<vscode.Definition> {
-        // In Pseudocode, types are inferred, so we redirect to definition
-        const wordRange = document.getWordRangeAtPosition(position);
-        if (!wordRange) return undefined;
+        try {
+            // In Pseudocode, types are inferred, so we redirect to definition
+            const wordRange = document.getWordRangeAtPosition(position);
+            if (!wordRange) return undefined;
 
-        const word = document.getText(wordRange);
-        const text = document.getText();
+            const word = document.getText(wordRange);
+            const escapedWord = escapeRegex(word);
+            const text = document.getText();
 
-        // Look for function definition
-        const fnMatch = text.match(new RegExp(`^fn\\s+${word}\\s*\\(`, 'm'));
-        if (fnMatch) {
-            const pos = document.positionAt(fnMatch.index! + 3); // Skip "fn "
-            return new vscode.Location(document.uri, pos);
+            // Look for function definition
+            const fnMatch = text.match(new RegExp(`^fn\\s+${escapedWord}\\s*\\(`, 'm'));
+            if (fnMatch) {
+                const pos = document.positionAt(fnMatch.index! + 3); // Skip "fn "
+                return new vscode.Location(document.uri, pos);
+            }
+
+            // Look for variable declaration
+            const letMatch = text.match(new RegExp(`let\\s+${escapedWord}\\s*=`, 'm'));
+            if (letMatch) {
+                const pos = document.positionAt(letMatch.index! + 4); // Skip "let "
+                return new vscode.Location(document.uri, pos);
+            }
+
+            return undefined;
+        } catch (error) {
+            console.error('Type definition error:', error);
+            return undefined;
         }
-
-        // Look for variable declaration
-        const letMatch = text.match(new RegExp(`let\\s+${word}\\s*=`, 'm'));
-        if (letMatch) {
-            const pos = document.positionAt(letMatch.index! + 4); // Skip "let "
-            return new vscode.Location(document.uri, pos);
-        }
-
-        return undefined;
     }
 }
 
 // ============ Register Extra Features ============
 
 export function registerExtraFeatures(context: vscode.ExtensionContext): void {
+    const config = vscode.workspace.getConfiguration('pseudocode');
     const selector: vscode.DocumentSelector = { language: 'pseudocode', scheme: 'file' };
 
     // Inlay Hints
-    context.subscriptions.push(
-        vscode.languages.registerInlayHintsProvider(selector, new PseudocodeInlayHintsProvider())
-    );
+    if (config.get<boolean>('inlayHints.enabled', false)) {
+        context.subscriptions.push(
+            vscode.languages.registerInlayHintsProvider(selector, new PseudocodeInlayHintsProvider())
+        );
+    }
 
     // Call Hierarchy
-    context.subscriptions.push(
-        vscode.languages.registerCallHierarchyProvider(selector, new PseudocodeCallHierarchyProvider())
-    );
+    if (config.get<boolean>('callHierarchy.enabled', false)) {
+        context.subscriptions.push(
+            vscode.languages.registerCallHierarchyProvider(selector, new PseudocodeCallHierarchyProvider())
+        );
+    }
 
-    // Color Provider
+    // Color Provider - always enabled, lightweight
     context.subscriptions.push(
         vscode.languages.registerColorProvider(selector, new PseudocodeColorProvider())
     );
 
-    // Selection Ranges (smart selection with Shift+Alt+Right)
+    // Selection Ranges - always enabled, only runs on explicit action
     context.subscriptions.push(
         vscode.languages.registerSelectionRangeProvider(selector, new PseudocodeSelectionRangeProvider())
     );
 
-    // Type Definition
+    // Type Definition - always enabled, only runs on explicit action
     context.subscriptions.push(
         vscode.languages.registerTypeDefinitionProvider(selector, new PseudocodeTypeDefinitionProvider())
     );
