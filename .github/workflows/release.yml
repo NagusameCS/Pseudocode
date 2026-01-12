@@ -118,13 +118,21 @@ jobs:
         shell: msys2 {0}
         run: |
           cd cvm
-          # Windows x64 build with FULL static linking for portability
-          # Link pcre2 statically so no DLLs are needed
+          # Windows x64 build - fully static for portability (no DLLs needed)
+          # -static links everything statically including libc, pcre2, etc.
           gcc -O3 -flto -fomit-frame-pointer -DNDEBUG -Wall -Wextra -std=gnu11 \
+            -static \
             -o pseudo-win32-x64.exe \
             main.c lexer.c compiler.c vm.c memory.c import.c \
             jit_trace.c trace_recorder.c trace_regalloc.c trace_codegen.c tensor.c \
-            -lm -Wl,-Bstatic -lpcre2-8 -Wl,-Bdynamic -static-libgcc
+            -lpcre2-8 -lm
+      
+      - name: Verify no DLL dependencies
+        shell: msys2 {0}
+        run: |
+          cd cvm
+          echo "Checking DLL dependencies..."
+          objdump -p pseudo-win32-x64.exe | grep "DLL Name" || echo "No DLL dependencies (good!)"
       
       - name: Test binary
         shell: msys2 {0}
