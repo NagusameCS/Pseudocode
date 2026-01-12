@@ -140,7 +140,8 @@ jobs:
         run: |
           cd cvm
           # Windows x64 build - fully static for portability (no DLLs needed)
-          gcc -O3 -flto -fomit-frame-pointer -DNDEBUG -Wall -Wextra -std=gnu11 \
+          # -DPCRE2_STATIC tells pcre2 headers we're linking statically
+          gcc -O3 -flto -fomit-frame-pointer -DNDEBUG -DPCRE2_STATIC -Wall -Wextra -std=gnu11 \
             -I/mingw64/include \
             -o pseudo-win32-x64.exe \
             main.c lexer.c compiler.c vm.c memory.c import.c \
