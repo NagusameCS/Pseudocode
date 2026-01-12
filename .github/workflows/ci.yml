@@ -97,14 +97,15 @@ jobs:
         shell: msys2 {0}
         run: |
           cd cvm
-          # Windows build - fully static for portability (no DLLs needed)
+          # Windows build - link pcre2 statically for portability
           # -DPCRE2_STATIC tells pcre2 headers we're linking statically
+          # Link directly to .a file to avoid DLL dependency
           gcc -O3 -flto -fomit-frame-pointer -DNDEBUG -DPCRE2_STATIC -Wall -Wextra -std=gnu11 \
             -I/mingw64/include \
-            -o pseudo \
+            -o pseudo.exe \
             main.c lexer.c compiler.c vm.c memory.c import.c \
             jit_trace.c trace_recorder.c trace_regalloc.c trace_codegen.c tensor.c \
-            /mingw64/lib/libpcre2-8.a -lm -static
+            /mingw64/lib/libpcre2-8.a -lm
       
       - name: Verify no DLL dependencies
         shell: msys2 {0}
@@ -118,7 +119,7 @@ jobs:
         run: |
           cd cvm
           echo "=== Testing basic examples ==="
-          ./pseudo ../examples/hello.pseudo
-          ./pseudo ../examples/fibonacci.pseudo
-          ./pseudo ../examples/factorial.pseudo
+          ./pseudo.exe ../examples/hello.pseudo
+          ./pseudo.exe ../examples/fibonacci.pseudo
+          ./pseudo.exe ../examples/factorial.pseudo
           echo "=== All tests passed ==="
