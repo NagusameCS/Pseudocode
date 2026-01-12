@@ -10,6 +10,26 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
+
+/* Case-insensitive string comparison for built-in function matching */
+static int strncasecmp_builtin(const char *s1, const char *s2, size_t n)
+{
+    for (size_t i = 0; i < n; i++)
+    {
+        unsigned char c1 = (unsigned char)tolower((unsigned char)s1[i]);
+        unsigned char c2 = (unsigned char)tolower((unsigned char)s2[i]);
+        if (c1 != c2)
+            return c1 - c2;
+        if (c1 == '\0')
+            return 0;
+    }
+    return 0;
+}
+
+/* Macro for case-insensitive built-in matching */
+#define MATCH_BUILTIN(tok, str) \
+    ((tok).length == (int)sizeof(str) - 1 && strncasecmp_builtin((tok).start, str, sizeof(str) - 1) == 0)
 
 /* Forward declarations from lexer.c */
 typedef enum
@@ -1256,7 +1276,7 @@ static void variable(bool can_assign)
     if (check(TOKEN_LPAREN))
     {
         /* Check if it's a built-in */
-        if (name.length == 5 && memcmp(name.start, "print", 5) == 0)
+        if (MATCH_BUILTIN(name, "print"))
         {
             advance(); /* consume ( */
             expression();
@@ -1265,7 +1285,7 @@ static void variable(bool can_assign)
             emit_byte(OP_NIL); /* print returns nil */
             return;
         }
-        if (name.length == 3 && memcmp(name.start, "len", 3) == 0)
+        if (MATCH_BUILTIN(name, "len"))
         {
             advance();
             expression();
@@ -1273,7 +1293,7 @@ static void variable(bool can_assign)
             emit_byte(OP_LEN); /* len returns the length value */
             return;
         }
-        if (name.length == 4 && memcmp(name.start, "push", 4) == 0)
+        if (MATCH_BUILTIN(name, "push"))
         {
             advance();
             expression(); /* array */
@@ -1283,7 +1303,7 @@ static void variable(bool can_assign)
             emit_byte(OP_PUSH); /* push returns the array */
             return;
         }
-        if (name.length == 3 && memcmp(name.start, "pop", 3) == 0)
+        if (MATCH_BUILTIN(name, "pop"))
         {
             advance();
             expression();
@@ -1291,7 +1311,7 @@ static void variable(bool can_assign)
             emit_byte(OP_POP_ARRAY); /* pop returns the popped value */
             return;
         }
-        if (name.length == 4 && memcmp(name.start, "time", 4) == 0)
+        if (MATCH_BUILTIN(name, "time"))
         {
             advance();
             consume(TOKEN_RPAREN, "Expect ')' after time.");
@@ -1299,7 +1319,7 @@ static void variable(bool can_assign)
             return;
         }
         /* JIT-compiled intrinsics - native speed loops! */
-        if (name.length == 14 && memcmp(name.start, "__jit_inc_loop", 14) == 0)
+        if (MATCH_BUILTIN(name, "__jit_inc_loop"))
         {
             advance();
             expression(); /* x */
@@ -1309,7 +1329,7 @@ static void variable(bool can_assign)
             emit_byte(OP_JIT_INC_LOOP);
             return;
         }
-        if (name.length == 16 && memcmp(name.start, "__jit_arith_loop", 16) == 0)
+        if (MATCH_BUILTIN(name, "__jit_arith_loop"))
         {
             advance();
             expression(); /* x */
@@ -1319,7 +1339,7 @@ static void variable(bool can_assign)
             emit_byte(OP_JIT_ARITH_LOOP);
             return;
         }
-        if (name.length == 17 && memcmp(name.start, "__jit_branch_loop", 17) == 0)
+        if (MATCH_BUILTIN(name, "__jit_branch_loop"))
         {
             advance();
             expression(); /* x */
@@ -1329,7 +1349,7 @@ static void variable(bool can_assign)
             emit_byte(OP_JIT_BRANCH_LOOP);
             return;
         }
-        if (name.length == 5 && memcmp(name.start, "input", 5) == 0)
+        if (MATCH_BUILTIN(name, "input"))
         {
             advance();
             consume(TOKEN_RPAREN, "Expect ')' after input.");
@@ -1337,7 +1357,7 @@ static void variable(bool can_assign)
             return;
         }
         /* Type conversion functions */
-        if (name.length == 3 && memcmp(name.start, "int", 3) == 0)
+        if (MATCH_BUILTIN(name, "int"))
         {
             advance();
             expression();
@@ -1345,7 +1365,7 @@ static void variable(bool can_assign)
             emit_byte(OP_INT);
             return;
         }
-        if (name.length == 5 && memcmp(name.start, "float", 5) == 0)
+        if (MATCH_BUILTIN(name, "float"))
         {
             advance();
             expression();
@@ -1353,7 +1373,7 @@ static void variable(bool can_assign)
             emit_byte(OP_FLOAT);
             return;
         }
-        if (name.length == 3 && memcmp(name.start, "str", 3) == 0)
+        if (MATCH_BUILTIN(name, "str"))
         {
             advance();
             expression();
@@ -1361,7 +1381,7 @@ static void variable(bool can_assign)
             emit_byte(OP_STR);
             return;
         }
-        if (name.length == 4 && memcmp(name.start, "type", 4) == 0)
+        if (MATCH_BUILTIN(name, "type"))
         {
             advance();
             expression();
@@ -1370,7 +1390,7 @@ static void variable(bool can_assign)
             return;
         }
         /* Math functions */
-        if (name.length == 3 && memcmp(name.start, "abs", 3) == 0)
+        if (MATCH_BUILTIN(name, "abs"))
         {
             advance();
             expression();
@@ -1378,7 +1398,7 @@ static void variable(bool can_assign)
             emit_byte(OP_ABS);
             return;
         }
-        if (name.length == 3 && memcmp(name.start, "min", 3) == 0)
+        if (MATCH_BUILTIN(name, "min"))
         {
             advance();
             expression();
@@ -1388,7 +1408,7 @@ static void variable(bool can_assign)
             emit_byte(OP_MIN);
             return;
         }
-        if (name.length == 3 && memcmp(name.start, "max", 3) == 0)
+        if (MATCH_BUILTIN(name, "max"))
         {
             advance();
             expression();
@@ -1398,7 +1418,7 @@ static void variable(bool can_assign)
             emit_byte(OP_MAX);
             return;
         }
-        if (name.length == 4 && memcmp(name.start, "sqrt", 4) == 0)
+        if (MATCH_BUILTIN(name, "sqrt"))
         {
             advance();
             expression();
@@ -1406,7 +1426,7 @@ static void variable(bool can_assign)
             emit_byte(OP_SQRT);
             return;
         }
-        if (name.length == 5 && memcmp(name.start, "floor", 5) == 0)
+        if (MATCH_BUILTIN(name, "floor"))
         {
             advance();
             expression();
@@ -1414,7 +1434,7 @@ static void variable(bool can_assign)
             emit_byte(OP_FLOOR);
             return;
         }
-        if (name.length == 4 && memcmp(name.start, "ceil", 4) == 0)
+        if (MATCH_BUILTIN(name, "ceil"))
         {
             advance();
             expression();
@@ -1422,7 +1442,7 @@ static void variable(bool can_assign)
             emit_byte(OP_CEIL);
             return;
         }
-        if (name.length == 5 && memcmp(name.start, "round", 5) == 0)
+        if (MATCH_BUILTIN(name, "round"))
         {
             advance();
             expression();
@@ -1430,14 +1450,14 @@ static void variable(bool can_assign)
             emit_byte(OP_ROUND);
             return;
         }
-        if (name.length == 4 && memcmp(name.start, "rand", 4) == 0)
+        if (MATCH_BUILTIN(name, "rand"))
         {
             advance();
             consume(TOKEN_RPAREN, "Expect ')' after rand.");
             emit_byte(OP_RAND);
             return;
         }
-        if (name.length == 3 && memcmp(name.start, "pow", 3) == 0)
+        if (MATCH_BUILTIN(name, "pow"))
         {
             advance();
             expression();
@@ -1448,7 +1468,7 @@ static void variable(bool can_assign)
             return;
         }
         /* Bit manipulation intrinsics */
-        if (name.length == 8 && memcmp(name.start, "popcount", 8) == 0)
+        if (MATCH_BUILTIN(name, "popcount"))
         {
             advance();
             expression();
@@ -1456,7 +1476,7 @@ static void variable(bool can_assign)
             emit_byte(OP_POPCOUNT);
             return;
         }
-        if (name.length == 3 && memcmp(name.start, "clz", 3) == 0)
+        if (MATCH_BUILTIN(name, "clz"))
         {
             advance();
             expression();
@@ -1464,7 +1484,7 @@ static void variable(bool can_assign)
             emit_byte(OP_CLZ);
             return;
         }
-        if (name.length == 3 && memcmp(name.start, "ctz", 3) == 0)
+        if (MATCH_BUILTIN(name, "ctz"))
         {
             advance();
             expression();
@@ -1472,7 +1492,7 @@ static void variable(bool can_assign)
             emit_byte(OP_CTZ);
             return;
         }
-        if (name.length == 4 && memcmp(name.start, "rotl", 4) == 0)
+        if (MATCH_BUILTIN(name, "rotl"))
         {
             advance();
             expression();
@@ -1482,7 +1502,7 @@ static void variable(bool can_assign)
             emit_byte(OP_ROTL);
             return;
         }
-        if (name.length == 4 && memcmp(name.start, "rotr", 4) == 0)
+        if (MATCH_BUILTIN(name, "rotr"))
         {
             advance();
             expression();
@@ -1493,7 +1513,7 @@ static void variable(bool can_assign)
             return;
         }
         /* String operations */
-        if (name.length == 6 && memcmp(name.start, "substr", 6) == 0)
+        if (MATCH_BUILTIN(name, "substr"))
         {
             advance();
             expression(); /* string */
@@ -1505,7 +1525,7 @@ static void variable(bool can_assign)
             emit_byte(OP_SUBSTR);
             return;
         }
-        if (name.length == 5 && memcmp(name.start, "upper", 5) == 0)
+        if (MATCH_BUILTIN(name, "upper"))
         {
             advance();
             expression();
@@ -1513,7 +1533,7 @@ static void variable(bool can_assign)
             emit_byte(OP_UPPER);
             return;
         }
-        if (name.length == 5 && memcmp(name.start, "lower", 5) == 0)
+        if (MATCH_BUILTIN(name, "lower"))
         {
             advance();
             expression();
@@ -1521,7 +1541,7 @@ static void variable(bool can_assign)
             emit_byte(OP_LOWER);
             return;
         }
-        if (name.length == 5 && memcmp(name.start, "split", 5) == 0)
+        if (MATCH_BUILTIN(name, "split"))
         {
             advance();
             expression(); /* string */
@@ -1531,7 +1551,7 @@ static void variable(bool can_assign)
             emit_byte(OP_SPLIT);
             return;
         }
-        if (name.length == 4 && memcmp(name.start, "join", 4) == 0)
+        if (MATCH_BUILTIN(name, "join"))
         {
             advance();
             expression(); /* array */
@@ -1541,7 +1561,7 @@ static void variable(bool can_assign)
             emit_byte(OP_JOIN);
             return;
         }
-        if (name.length == 7 && memcmp(name.start, "replace", 7) == 0)
+        if (MATCH_BUILTIN(name, "replace"))
         {
             advance();
             expression(); /* string */
@@ -1553,7 +1573,7 @@ static void variable(bool can_assign)
             emit_byte(OP_REPLACE);
             return;
         }
-        if (name.length == 4 && memcmp(name.start, "find", 4) == 0)
+        if (MATCH_BUILTIN(name, "find"))
         {
             advance();
             expression(); /* haystack */
@@ -1563,7 +1583,7 @@ static void variable(bool can_assign)
             emit_byte(OP_FIND);
             return;
         }
-        if (name.length == 4 && memcmp(name.start, "trim", 4) == 0)
+        if (MATCH_BUILTIN(name, "trim"))
         {
             advance();
             expression();
@@ -1571,7 +1591,7 @@ static void variable(bool can_assign)
             emit_byte(OP_TRIM);
             return;
         }
-        if (name.length == 4 && memcmp(name.start, "char", 4) == 0)
+        if (MATCH_BUILTIN(name, "char"))
         {
             advance();
             expression();
@@ -1579,7 +1599,7 @@ static void variable(bool can_assign)
             emit_byte(OP_CHAR);
             return;
         }
-        if (name.length == 3 && memcmp(name.start, "ord", 3) == 0)
+        if (MATCH_BUILTIN(name, "ord"))
         {
             advance();
             expression();
@@ -1589,7 +1609,7 @@ static void variable(bool can_assign)
         }
 
         /* ============ FILE I/O ============ */
-        if (name.length == 9 && memcmp(name.start, "read_file", 9) == 0)
+        if (MATCH_BUILTIN(name, "read_file"))
         {
             advance();
             expression();
@@ -1597,7 +1617,7 @@ static void variable(bool can_assign)
             emit_byte(OP_READ_FILE);
             return;
         }
-        if (name.length == 10 && memcmp(name.start, "write_file", 10) == 0)
+        if (MATCH_BUILTIN(name, "write_file"))
         {
             advance();
             expression();
@@ -1607,7 +1627,7 @@ static void variable(bool can_assign)
             emit_byte(OP_WRITE_FILE);
             return;
         }
-        if (name.length == 11 && memcmp(name.start, "append_file", 11) == 0)
+        if (MATCH_BUILTIN(name, "append_file"))
         {
             advance();
             expression();
@@ -1617,7 +1637,7 @@ static void variable(bool can_assign)
             emit_byte(OP_APPEND_FILE);
             return;
         }
-        if (name.length == 11 && memcmp(name.start, "file_exists", 11) == 0)
+        if (MATCH_BUILTIN(name, "file_exists"))
         {
             advance();
             expression();
@@ -1625,7 +1645,7 @@ static void variable(bool can_assign)
             emit_byte(OP_FILE_EXISTS);
             return;
         }
-        if (name.length == 8 && memcmp(name.start, "list_dir", 8) == 0)
+        if (MATCH_BUILTIN(name, "list_dir"))
         {
             advance();
             expression();
@@ -1633,7 +1653,7 @@ static void variable(bool can_assign)
             emit_byte(OP_LIST_DIR);
             return;
         }
-        if (name.length == 11 && memcmp(name.start, "delete_file", 11) == 0)
+        if (MATCH_BUILTIN(name, "delete_file"))
         {
             advance();
             expression();
@@ -1641,7 +1661,7 @@ static void variable(bool can_assign)
             emit_byte(OP_DELETE_FILE);
             return;
         }
-        if (name.length == 5 && memcmp(name.start, "mkdir", 5) == 0)
+        if (MATCH_BUILTIN(name, "mkdir"))
         {
             advance();
             expression();
@@ -1651,7 +1671,7 @@ static void variable(bool can_assign)
         }
 
         /* ============ HTTP ============ */
-        if (name.length == 8 && memcmp(name.start, "http_get", 8) == 0)
+        if (MATCH_BUILTIN(name, "http_get"))
         {
             advance();
             expression();
@@ -1659,7 +1679,7 @@ static void variable(bool can_assign)
             emit_byte(OP_HTTP_GET);
             return;
         }
-        if (name.length == 9 && memcmp(name.start, "http_post", 9) == 0)
+        if (MATCH_BUILTIN(name, "http_post"))
         {
             advance();
             expression();
@@ -1671,7 +1691,7 @@ static void variable(bool can_assign)
         }
 
         /* ============ JSON ============ */
-        if (name.length == 10 && memcmp(name.start, "json_parse", 10) == 0)
+        if (MATCH_BUILTIN(name, "json_parse"))
         {
             advance();
             expression();
@@ -1679,7 +1699,7 @@ static void variable(bool can_assign)
             emit_byte(OP_JSON_PARSE);
             return;
         }
-        if (name.length == 14 && memcmp(name.start, "json_stringify", 14) == 0)
+        if (MATCH_BUILTIN(name, "json_stringify"))
         {
             advance();
             expression();
@@ -1689,7 +1709,7 @@ static void variable(bool can_assign)
         }
 
         /* ============ PROCESS/SYSTEM ============ */
-        if (name.length == 4 && memcmp(name.start, "exec", 4) == 0)
+        if (MATCH_BUILTIN(name, "exec"))
         {
             advance();
             expression();
@@ -1697,7 +1717,7 @@ static void variable(bool can_assign)
             emit_byte(OP_EXEC);
             return;
         }
-        if (name.length == 3 && memcmp(name.start, "env", 3) == 0)
+        if (MATCH_BUILTIN(name, "env"))
         {
             advance();
             expression();
@@ -1705,7 +1725,7 @@ static void variable(bool can_assign)
             emit_byte(OP_ENV);
             return;
         }
-        if (name.length == 7 && memcmp(name.start, "set_env", 7) == 0)
+        if (MATCH_BUILTIN(name, "set_env"))
         {
             advance();
             expression();
@@ -1715,14 +1735,14 @@ static void variable(bool can_assign)
             emit_byte(OP_SET_ENV);
             return;
         }
-        if (name.length == 4 && memcmp(name.start, "args", 4) == 0)
+        if (MATCH_BUILTIN(name, "args"))
         {
             advance();
             consume(TOKEN_RPAREN, "Expect ')' after args.");
             emit_byte(OP_ARGS);
             return;
         }
-        if (name.length == 4 && memcmp(name.start, "exit", 4) == 0)
+        if (MATCH_BUILTIN(name, "exit"))
         {
             advance();
             expression();
@@ -1730,7 +1750,7 @@ static void variable(bool can_assign)
             emit_byte(OP_EXIT);
             return;
         }
-        if (name.length == 5 && memcmp(name.start, "sleep", 5) == 0)
+        if (MATCH_BUILTIN(name, "sleep"))
         {
             advance();
             expression();
@@ -1740,14 +1760,14 @@ static void variable(bool can_assign)
         }
 
         /* ============ DICTIONARY ============ */
-        if (name.length == 4 && memcmp(name.start, "dict", 4) == 0)
+        if (MATCH_BUILTIN(name, "dict"))
         {
             advance();
             consume(TOKEN_RPAREN, "Expect ')' after dict.");
             emit_byte(OP_DICT);
             return;
         }
-        if (name.length == 8 && memcmp(name.start, "dict_get", 8) == 0)
+        if (MATCH_BUILTIN(name, "dict_get"))
         {
             advance();
             expression();
@@ -1757,7 +1777,7 @@ static void variable(bool can_assign)
             emit_byte(OP_DICT_GET);
             return;
         }
-        if (name.length == 8 && memcmp(name.start, "dict_set", 8) == 0)
+        if (MATCH_BUILTIN(name, "dict_set"))
         {
             advance();
             expression();
@@ -1769,7 +1789,7 @@ static void variable(bool can_assign)
             emit_byte(OP_DICT_SET);
             return;
         }
-        if (name.length == 8 && memcmp(name.start, "dict_has", 8) == 0)
+        if (MATCH_BUILTIN(name, "dict_has"))
         {
             advance();
             expression();
@@ -1779,7 +1799,7 @@ static void variable(bool can_assign)
             emit_byte(OP_DICT_HAS);
             return;
         }
-        if (name.length == 9 && memcmp(name.start, "dict_keys", 9) == 0)
+        if (MATCH_BUILTIN(name, "dict_keys"))
         {
             advance();
             expression();
@@ -1787,7 +1807,7 @@ static void variable(bool can_assign)
             emit_byte(OP_DICT_KEYS);
             return;
         }
-        if (name.length == 11 && memcmp(name.start, "dict_values", 11) == 0)
+        if (MATCH_BUILTIN(name, "dict_values"))
         {
             advance();
             expression();
@@ -1795,7 +1815,7 @@ static void variable(bool can_assign)
             emit_byte(OP_DICT_VALUES);
             return;
         }
-        if (name.length == 11 && memcmp(name.start, "dict_delete", 11) == 0)
+        if (MATCH_BUILTIN(name, "dict_delete"))
         {
             advance();
             expression();
@@ -1807,7 +1827,7 @@ static void variable(bool can_assign)
         }
 
         /* ============ ADVANCED MATH ============ */
-        if (name.length == 3 && memcmp(name.start, "sin", 3) == 0)
+        if (MATCH_BUILTIN(name, "sin"))
         {
             advance();
             expression();
@@ -1815,7 +1835,7 @@ static void variable(bool can_assign)
             emit_byte(OP_SIN);
             return;
         }
-        if (name.length == 3 && memcmp(name.start, "cos", 3) == 0)
+        if (MATCH_BUILTIN(name, "cos"))
         {
             advance();
             expression();
@@ -1823,7 +1843,7 @@ static void variable(bool can_assign)
             emit_byte(OP_COS);
             return;
         }
-        if (name.length == 3 && memcmp(name.start, "tan", 3) == 0)
+        if (MATCH_BUILTIN(name, "tan"))
         {
             advance();
             expression();
@@ -1831,7 +1851,7 @@ static void variable(bool can_assign)
             emit_byte(OP_TAN);
             return;
         }
-        if (name.length == 4 && memcmp(name.start, "asin", 4) == 0)
+        if (MATCH_BUILTIN(name, "asin"))
         {
             advance();
             expression();
@@ -1839,7 +1859,7 @@ static void variable(bool can_assign)
             emit_byte(OP_ASIN);
             return;
         }
-        if (name.length == 4 && memcmp(name.start, "acos", 4) == 0)
+        if (MATCH_BUILTIN(name, "acos"))
         {
             advance();
             expression();
@@ -1847,7 +1867,7 @@ static void variable(bool can_assign)
             emit_byte(OP_ACOS);
             return;
         }
-        if (name.length == 4 && memcmp(name.start, "atan", 4) == 0)
+        if (MATCH_BUILTIN(name, "atan"))
         {
             advance();
             expression();
@@ -1855,7 +1875,7 @@ static void variable(bool can_assign)
             emit_byte(OP_ATAN);
             return;
         }
-        if (name.length == 5 && memcmp(name.start, "atan2", 5) == 0)
+        if (MATCH_BUILTIN(name, "atan2"))
         {
             advance();
             expression();
@@ -1865,7 +1885,7 @@ static void variable(bool can_assign)
             emit_byte(OP_ATAN2);
             return;
         }
-        if (name.length == 3 && memcmp(name.start, "log", 3) == 0)
+        if (MATCH_BUILTIN(name, "log"))
         {
             advance();
             expression();
@@ -1873,7 +1893,7 @@ static void variable(bool can_assign)
             emit_byte(OP_LOG);
             return;
         }
-        if (name.length == 5 && memcmp(name.start, "log10", 5) == 0)
+        if (MATCH_BUILTIN(name, "log10"))
         {
             advance();
             expression();
@@ -1881,7 +1901,7 @@ static void variable(bool can_assign)
             emit_byte(OP_LOG10);
             return;
         }
-        if (name.length == 4 && memcmp(name.start, "log2", 4) == 0)
+        if (MATCH_BUILTIN(name, "log2"))
         {
             advance();
             expression();
@@ -1889,7 +1909,7 @@ static void variable(bool can_assign)
             emit_byte(OP_LOG2);
             return;
         }
-        if (name.length == 3 && memcmp(name.start, "exp", 3) == 0)
+        if (MATCH_BUILTIN(name, "exp"))
         {
             advance();
             expression();
@@ -1897,7 +1917,7 @@ static void variable(bool can_assign)
             emit_byte(OP_EXP);
             return;
         }
-        if (name.length == 5 && memcmp(name.start, "hypot", 5) == 0)
+        if (MATCH_BUILTIN(name, "hypot"))
         {
             advance();
             expression();
@@ -1909,7 +1929,7 @@ static void variable(bool can_assign)
         }
 
         /* ============ VECTOR OPERATIONS ============ */
-        if (name.length == 7 && memcmp(name.start, "vec_add", 7) == 0)
+        if (MATCH_BUILTIN(name, "vec_add"))
         {
             advance();
             expression();
@@ -1919,7 +1939,7 @@ static void variable(bool can_assign)
             emit_byte(OP_VEC_ADD);
             return;
         }
-        if (name.length == 7 && memcmp(name.start, "vec_sub", 7) == 0)
+        if (MATCH_BUILTIN(name, "vec_sub"))
         {
             advance();
             expression();
@@ -1929,7 +1949,7 @@ static void variable(bool can_assign)
             emit_byte(OP_VEC_SUB);
             return;
         }
-        if (name.length == 7 && memcmp(name.start, "vec_mul", 7) == 0)
+        if (MATCH_BUILTIN(name, "vec_mul"))
         {
             advance();
             expression();
@@ -1939,7 +1959,7 @@ static void variable(bool can_assign)
             emit_byte(OP_VEC_MUL);
             return;
         }
-        if (name.length == 7 && memcmp(name.start, "vec_div", 7) == 0)
+        if (MATCH_BUILTIN(name, "vec_div"))
         {
             advance();
             expression();
@@ -1949,7 +1969,7 @@ static void variable(bool can_assign)
             emit_byte(OP_VEC_DIV);
             return;
         }
-        if (name.length == 7 && memcmp(name.start, "vec_dot", 7) == 0)
+        if (MATCH_BUILTIN(name, "vec_dot"))
         {
             advance();
             expression();
@@ -1959,7 +1979,7 @@ static void variable(bool can_assign)
             emit_byte(OP_VEC_DOT);
             return;
         }
-        if (name.length == 7 && memcmp(name.start, "vec_sum", 7) == 0)
+        if (MATCH_BUILTIN(name, "vec_sum"))
         {
             advance();
             expression();
@@ -1967,7 +1987,7 @@ static void variable(bool can_assign)
             emit_byte(OP_VEC_SUM);
             return;
         }
-        if (name.length == 8 && memcmp(name.start, "vec_prod", 8) == 0)
+        if (MATCH_BUILTIN(name, "vec_prod"))
         {
             advance();
             expression();
@@ -1975,7 +1995,7 @@ static void variable(bool can_assign)
             emit_byte(OP_VEC_PROD);
             return;
         }
-        if (name.length == 7 && memcmp(name.start, "vec_min", 7) == 0)
+        if (MATCH_BUILTIN(name, "vec_min"))
         {
             advance();
             expression();
@@ -1983,7 +2003,7 @@ static void variable(bool can_assign)
             emit_byte(OP_VEC_MIN);
             return;
         }
-        if (name.length == 7 && memcmp(name.start, "vec_max", 7) == 0)
+        if (MATCH_BUILTIN(name, "vec_max"))
         {
             advance();
             expression();
@@ -1991,7 +2011,7 @@ static void variable(bool can_assign)
             emit_byte(OP_VEC_MAX);
             return;
         }
-        if (name.length == 8 && memcmp(name.start, "vec_mean", 8) == 0)
+        if (MATCH_BUILTIN(name, "vec_mean"))
         {
             advance();
             expression();
@@ -1999,7 +2019,7 @@ static void variable(bool can_assign)
             emit_byte(OP_VEC_MEAN);
             return;
         }
-        if (name.length == 8 && memcmp(name.start, "vec_sort", 8) == 0)
+        if (MATCH_BUILTIN(name, "vec_sort"))
         {
             advance();
             expression();
@@ -2007,7 +2027,7 @@ static void variable(bool can_assign)
             emit_byte(OP_VEC_SORT);
             return;
         }
-        if (name.length == 11 && memcmp(name.start, "vec_reverse", 11) == 0)
+        if (MATCH_BUILTIN(name, "vec_reverse"))
         {
             advance();
             expression();
@@ -2015,7 +2035,7 @@ static void variable(bool can_assign)
             emit_byte(OP_VEC_REVERSE);
             return;
         }
-        if (name.length == 10 && memcmp(name.start, "vec_unique", 10) == 0)
+        if (MATCH_BUILTIN(name, "vec_unique"))
         {
             advance();
             expression();
@@ -2023,7 +2043,7 @@ static void variable(bool can_assign)
             emit_byte(OP_VEC_UNIQUE);
             return;
         }
-        if (name.length == 7 && memcmp(name.start, "vec_zip", 7) == 0)
+        if (MATCH_BUILTIN(name, "vec_zip"))
         {
             advance();
             expression();
@@ -2033,7 +2053,7 @@ static void variable(bool can_assign)
             emit_byte(OP_VEC_ZIP);
             return;
         }
-        if (name.length == 9 && memcmp(name.start, "vec_range", 9) == 0)
+        if (MATCH_BUILTIN(name, "vec_range"))
         {
             advance();
             expression();
@@ -2047,7 +2067,7 @@ static void variable(bool can_assign)
         }
 
         /* ============ BINARY ============ */
-        if (name.length == 5 && memcmp(name.start, "bytes", 5) == 0)
+        if (MATCH_BUILTIN(name, "bytes"))
         {
             advance();
             expression();
@@ -2055,7 +2075,7 @@ static void variable(bool can_assign)
             emit_byte(OP_BYTES);
             return;
         }
-        if (name.length == 11 && memcmp(name.start, "encode_utf8", 11) == 0)
+        if (MATCH_BUILTIN(name, "encode_utf8"))
         {
             advance();
             expression();
@@ -2063,7 +2083,7 @@ static void variable(bool can_assign)
             emit_byte(OP_ENCODE_UTF8);
             return;
         }
-        if (name.length == 11 && memcmp(name.start, "decode_utf8", 11) == 0)
+        if (MATCH_BUILTIN(name, "decode_utf8"))
         {
             advance();
             expression();
@@ -2071,7 +2091,7 @@ static void variable(bool can_assign)
             emit_byte(OP_DECODE_UTF8);
             return;
         }
-        if (name.length == 13 && memcmp(name.start, "encode_base64", 13) == 0)
+        if (MATCH_BUILTIN(name, "encode_base64"))
         {
             advance();
             expression();
@@ -2079,7 +2099,7 @@ static void variable(bool can_assign)
             emit_byte(OP_ENCODE_BASE64);
             return;
         }
-        if (name.length == 13 && memcmp(name.start, "decode_base64", 13) == 0)
+        if (MATCH_BUILTIN(name, "decode_base64"))
         {
             advance();
             expression();
@@ -2089,7 +2109,7 @@ static void variable(bool can_assign)
         }
 
         /* ============ HASHING ============ */
-        if (name.length == 4 && memcmp(name.start, "hash", 4) == 0)
+        if (MATCH_BUILTIN(name, "hash"))
         {
             advance();
             expression();
@@ -2097,7 +2117,7 @@ static void variable(bool can_assign)
             emit_byte(OP_HASH);
             return;
         }
-        if (name.length == 6 && memcmp(name.start, "sha256", 6) == 0)
+        if (MATCH_BUILTIN(name, "sha256"))
         {
             advance();
             expression();
@@ -2105,7 +2125,7 @@ static void variable(bool can_assign)
             emit_byte(OP_HASH_SHA256);
             return;
         }
-        if (name.length == 3 && memcmp(name.start, "md5", 3) == 0)
+        if (MATCH_BUILTIN(name, "md5"))
         {
             advance();
             expression();
@@ -2115,7 +2135,7 @@ static void variable(bool can_assign)
         }
 
         /* ============ REGEX OPERATIONS ============ */
-        if (name.length == 11 && memcmp(name.start, "regex_match", 11) == 0)
+        if (MATCH_BUILTIN(name, "regex_match"))
         {
             advance();
             expression(); /* text */
@@ -2125,7 +2145,7 @@ static void variable(bool can_assign)
             emit_byte(OP_REGEX_MATCH);
             return;
         }
-        if (name.length == 10 && memcmp(name.start, "regex_find", 10) == 0)
+        if (MATCH_BUILTIN(name, "regex_find"))
         {
             advance();
             expression(); /* text */
@@ -2135,7 +2155,7 @@ static void variable(bool can_assign)
             emit_byte(OP_REGEX_FIND);
             return;
         }
-        if (name.length == 13 && memcmp(name.start, "regex_replace", 13) == 0)
+        if (MATCH_BUILTIN(name, "regex_replace"))
         {
             advance();
             expression(); /* text */
@@ -2149,7 +2169,7 @@ static void variable(bool can_assign)
         }
 
         /* ============ TENSOR OPERATIONS ============ */
-        if (name.length == 12 && memcmp(name.start, "tensor_zeros", 12) == 0)
+        if (MATCH_BUILTIN(name, "tensor_zeros"))
         {
             advance();
             expression(); /* shape array */
@@ -2157,7 +2177,7 @@ static void variable(bool can_assign)
             emit_byte(OP_TENSOR_ZEROS);
             return;
         }
-        if (name.length == 11 && memcmp(name.start, "tensor_ones", 11) == 0)
+        if (MATCH_BUILTIN(name, "tensor_ones"))
         {
             advance();
             expression(); /* shape array */
@@ -2165,7 +2185,7 @@ static void variable(bool can_assign)
             emit_byte(OP_TENSOR_ONES);
             return;
         }
-        if (name.length == 11 && memcmp(name.start, "tensor_rand", 11) == 0)
+        if (MATCH_BUILTIN(name, "tensor_rand"))
         {
             advance();
             expression(); /* shape array */
@@ -2173,7 +2193,7 @@ static void variable(bool can_assign)
             emit_byte(OP_TENSOR_RAND);
             return;
         }
-        if (name.length == 12 && memcmp(name.start, "tensor_randn", 12) == 0)
+        if (MATCH_BUILTIN(name, "tensor_randn"))
         {
             advance();
             expression(); /* shape array */
@@ -2181,7 +2201,7 @@ static void variable(bool can_assign)
             emit_byte(OP_TENSOR_RANDN);
             return;
         }
-        if (name.length == 13 && memcmp(name.start, "tensor_arange", 13) == 0)
+        if (MATCH_BUILTIN(name, "tensor_arange"))
         {
             advance();
             expression(); /* start */
@@ -2193,7 +2213,7 @@ static void variable(bool can_assign)
             emit_byte(OP_TENSOR_ARANGE);
             return;
         }
-        if (name.length == 6 && memcmp(name.start, "tensor", 6) == 0)
+        if (MATCH_BUILTIN(name, "tensor"))
         {
             advance();
             expression(); /* array data */
@@ -2201,7 +2221,7 @@ static void variable(bool can_assign)
             emit_byte(OP_TENSOR);
             return;
         }
-        if (name.length == 10 && memcmp(name.start, "tensor_add", 10) == 0)
+        if (MATCH_BUILTIN(name, "tensor_add"))
         {
             advance();
             expression(); /* tensor a */
@@ -2211,7 +2231,7 @@ static void variable(bool can_assign)
             emit_byte(OP_TENSOR_ADD);
             return;
         }
-        if (name.length == 10 && memcmp(name.start, "tensor_sub", 10) == 0)
+        if (MATCH_BUILTIN(name, "tensor_sub"))
         {
             advance();
             expression();
@@ -2221,7 +2241,7 @@ static void variable(bool can_assign)
             emit_byte(OP_TENSOR_SUB);
             return;
         }
-        if (name.length == 10 && memcmp(name.start, "tensor_mul", 10) == 0)
+        if (MATCH_BUILTIN(name, "tensor_mul"))
         {
             advance();
             expression();
@@ -2231,7 +2251,7 @@ static void variable(bool can_assign)
             emit_byte(OP_TENSOR_MUL);
             return;
         }
-        if (name.length == 10 && memcmp(name.start, "tensor_div", 10) == 0)
+        if (MATCH_BUILTIN(name, "tensor_div"))
         {
             advance();
             expression();
@@ -2241,7 +2261,7 @@ static void variable(bool can_assign)
             emit_byte(OP_TENSOR_DIV);
             return;
         }
-        if (name.length == 10 && memcmp(name.start, "tensor_sum", 10) == 0)
+        if (MATCH_BUILTIN(name, "tensor_sum"))
         {
             advance();
             expression();
@@ -2249,7 +2269,7 @@ static void variable(bool can_assign)
             emit_byte(OP_TENSOR_SUM);
             return;
         }
-        if (name.length == 11 && memcmp(name.start, "tensor_mean", 11) == 0)
+        if (MATCH_BUILTIN(name, "tensor_mean"))
         {
             advance();
             expression();
@@ -2257,7 +2277,7 @@ static void variable(bool can_assign)
             emit_byte(OP_TENSOR_MEAN);
             return;
         }
-        if (name.length == 10 && memcmp(name.start, "tensor_min", 10) == 0)
+        if (MATCH_BUILTIN(name, "tensor_min"))
         {
             advance();
             expression();
@@ -2265,7 +2285,7 @@ static void variable(bool can_assign)
             emit_byte(OP_TENSOR_MIN);
             return;
         }
-        if (name.length == 10 && memcmp(name.start, "tensor_max", 10) == 0)
+        if (MATCH_BUILTIN(name, "tensor_max"))
         {
             advance();
             expression();
@@ -2273,7 +2293,7 @@ static void variable(bool can_assign)
             emit_byte(OP_TENSOR_MAX);
             return;
         }
-        if (name.length == 11 && memcmp(name.start, "tensor_sqrt", 11) == 0)
+        if (MATCH_BUILTIN(name, "tensor_sqrt"))
         {
             advance();
             expression();
@@ -2281,7 +2301,7 @@ static void variable(bool can_assign)
             emit_byte(OP_TENSOR_SQRT);
             return;
         }
-        if (name.length == 10 && memcmp(name.start, "tensor_exp", 10) == 0)
+        if (MATCH_BUILTIN(name, "tensor_exp"))
         {
             advance();
             expression();
@@ -2289,7 +2309,7 @@ static void variable(bool can_assign)
             emit_byte(OP_TENSOR_EXP);
             return;
         }
-        if (name.length == 10 && memcmp(name.start, "tensor_log", 10) == 0)
+        if (MATCH_BUILTIN(name, "tensor_log"))
         {
             advance();
             expression();
@@ -2297,7 +2317,7 @@ static void variable(bool can_assign)
             emit_byte(OP_TENSOR_LOG);
             return;
         }
-        if (name.length == 10 && memcmp(name.start, "tensor_abs", 10) == 0)
+        if (MATCH_BUILTIN(name, "tensor_abs"))
         {
             advance();
             expression();
@@ -2305,7 +2325,7 @@ static void variable(bool can_assign)
             emit_byte(OP_TENSOR_ABS);
             return;
         }
-        if (name.length == 10 && memcmp(name.start, "tensor_neg", 10) == 0)
+        if (MATCH_BUILTIN(name, "tensor_neg"))
         {
             advance();
             expression();
@@ -2313,7 +2333,7 @@ static void variable(bool can_assign)
             emit_byte(OP_TENSOR_NEG);
             return;
         }
-        if (name.length == 10 && memcmp(name.start, "tensor_dot", 10) == 0)
+        if (MATCH_BUILTIN(name, "tensor_dot"))
         {
             advance();
             expression();
@@ -2323,7 +2343,7 @@ static void variable(bool can_assign)
             emit_byte(OP_TENSOR_DOT);
             return;
         }
-        if (name.length == 13 && memcmp(name.start, "tensor_matmul", 13) == 0)
+        if (MATCH_BUILTIN(name, "tensor_matmul"))
         {
             advance();
             expression();
@@ -2333,7 +2353,7 @@ static void variable(bool can_assign)
             emit_byte(OP_TENSOR_MATMUL);
             return;
         }
-        if (name.length == 14 && memcmp(name.start, "tensor_reshape", 14) == 0)
+        if (MATCH_BUILTIN(name, "tensor_reshape"))
         {
             advance();
             expression(); /* tensor */
@@ -2345,7 +2365,7 @@ static void variable(bool can_assign)
         }
 
         /* ============ MATRIX OPERATIONS ============ */
-        if (name.length == 6 && memcmp(name.start, "matrix", 6) == 0)
+        if (MATCH_BUILTIN(name, "matrix"))
         {
             advance();
             expression(); /* 2D array */
@@ -2353,7 +2373,7 @@ static void variable(bool can_assign)
             emit_byte(OP_MATRIX);
             return;
         }
-        if (name.length == 12 && memcmp(name.start, "matrix_zeros", 12) == 0)
+        if (MATCH_BUILTIN(name, "matrix_zeros"))
         {
             advance();
             expression(); /* rows */
@@ -2363,7 +2383,7 @@ static void variable(bool can_assign)
             emit_byte(OP_MATRIX_ZEROS);
             return;
         }
-        if (name.length == 11 && memcmp(name.start, "matrix_ones", 11) == 0)
+        if (MATCH_BUILTIN(name, "matrix_ones"))
         {
             advance();
             expression();
@@ -2373,7 +2393,7 @@ static void variable(bool can_assign)
             emit_byte(OP_MATRIX_ONES);
             return;
         }
-        if (name.length == 10 && memcmp(name.start, "matrix_eye", 10) == 0)
+        if (MATCH_BUILTIN(name, "matrix_eye"))
         {
             advance();
             expression(); /* n */
@@ -2381,7 +2401,7 @@ static void variable(bool can_assign)
             emit_byte(OP_MATRIX_EYE);
             return;
         }
-        if (name.length == 11 && memcmp(name.start, "matrix_rand", 11) == 0)
+        if (MATCH_BUILTIN(name, "matrix_rand"))
         {
             advance();
             expression();
@@ -2391,7 +2411,7 @@ static void variable(bool can_assign)
             emit_byte(OP_MATRIX_RAND);
             return;
         }
-        if (name.length == 10 && memcmp(name.start, "matrix_add", 10) == 0)
+        if (MATCH_BUILTIN(name, "matrix_add"))
         {
             advance();
             expression();
@@ -2401,7 +2421,7 @@ static void variable(bool can_assign)
             emit_byte(OP_MATRIX_ADD);
             return;
         }
-        if (name.length == 10 && memcmp(name.start, "matrix_sub", 10) == 0)
+        if (MATCH_BUILTIN(name, "matrix_sub"))
         {
             advance();
             expression();
@@ -2411,7 +2431,7 @@ static void variable(bool can_assign)
             emit_byte(OP_MATRIX_SUB);
             return;
         }
-        if (name.length == 13 && memcmp(name.start, "matrix_matmul", 13) == 0)
+        if (MATCH_BUILTIN(name, "matrix_matmul"))
         {
             advance();
             expression();
@@ -2421,7 +2441,7 @@ static void variable(bool can_assign)
             emit_byte(OP_MATRIX_MATMUL);
             return;
         }
-        if (name.length == 8 && memcmp(name.start, "matrix_t", 8) == 0)
+        if (MATCH_BUILTIN(name, "matrix_t"))
         {
             advance();
             expression();
@@ -2429,7 +2449,7 @@ static void variable(bool can_assign)
             emit_byte(OP_MATRIX_T);
             return;
         }
-        if (name.length == 10 && memcmp(name.start, "matrix_inv", 10) == 0)
+        if (MATCH_BUILTIN(name, "matrix_inv"))
         {
             advance();
             expression();
@@ -2437,7 +2457,7 @@ static void variable(bool can_assign)
             emit_byte(OP_MATRIX_INV);
             return;
         }
-        if (name.length == 10 && memcmp(name.start, "matrix_det", 10) == 0)
+        if (MATCH_BUILTIN(name, "matrix_det"))
         {
             advance();
             expression();
@@ -2445,7 +2465,7 @@ static void variable(bool can_assign)
             emit_byte(OP_MATRIX_DET);
             return;
         }
-        if (name.length == 12 && memcmp(name.start, "matrix_trace", 12) == 0)
+        if (MATCH_BUILTIN(name, "matrix_trace"))
         {
             advance();
             expression();
@@ -2453,7 +2473,7 @@ static void variable(bool can_assign)
             emit_byte(OP_MATRIX_TRACE);
             return;
         }
-        if (name.length == 12 && memcmp(name.start, "matrix_solve", 12) == 0)
+        if (MATCH_BUILTIN(name, "matrix_solve"))
         {
             advance();
             expression(); /* A */
@@ -2465,7 +2485,7 @@ static void variable(bool can_assign)
         }
 
         /* ============ NEURAL NETWORK ============ */
-        if (name.length == 4 && memcmp(name.start, "relu", 4) == 0)
+        if (MATCH_BUILTIN(name, "relu"))
         {
             advance();
             expression();
@@ -2473,7 +2493,7 @@ static void variable(bool can_assign)
             emit_byte(OP_NN_RELU);
             return;
         }
-        if (name.length == 7 && memcmp(name.start, "sigmoid", 7) == 0)
+        if (MATCH_BUILTIN(name, "sigmoid"))
         {
             advance();
             expression();
@@ -2481,7 +2501,7 @@ static void variable(bool can_assign)
             emit_byte(OP_NN_SIGMOID);
             return;
         }
-        if (name.length == 4 && memcmp(name.start, "tanh", 4) == 0)
+        if (MATCH_BUILTIN(name, "tanh"))
         {
             advance();
             expression();
@@ -2489,7 +2509,7 @@ static void variable(bool can_assign)
             emit_byte(OP_NN_TANH);
             return;
         }
-        if (name.length == 7 && memcmp(name.start, "softmax", 7) == 0)
+        if (MATCH_BUILTIN(name, "softmax"))
         {
             advance();
             expression();
@@ -2497,7 +2517,7 @@ static void variable(bool can_assign)
             emit_byte(OP_NN_SOFTMAX);
             return;
         }
-        if (name.length == 8 && memcmp(name.start, "mse_loss", 8) == 0)
+        if (MATCH_BUILTIN(name, "mse_loss"))
         {
             advance();
             expression(); /* predictions */
@@ -2507,7 +2527,7 @@ static void variable(bool can_assign)
             emit_byte(OP_NN_MSE_LOSS);
             return;
         }
-        if (name.length == 7 && memcmp(name.start, "ce_loss", 7) == 0)
+        if (MATCH_BUILTIN(name, "ce_loss"))
         {
             advance();
             expression();
@@ -2519,7 +2539,7 @@ static void variable(bool can_assign)
         }
 
         /* ============ AUTOGRAD ============ */
-        if (name.length == 9 && memcmp(name.start, "grad_tape", 9) == 0)
+        if (MATCH_BUILTIN(name, "grad_tape"))
         {
             advance();
             consume(TOKEN_RPAREN, "Expect ')' after grad_tape.");

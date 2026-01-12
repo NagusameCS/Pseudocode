@@ -118,12 +118,13 @@ jobs:
         shell: msys2 {0}
         run: |
           cd cvm
-          # Windows x64 build with static linking for portability
+          # Windows x64 build with FULL static linking for portability
+          # Link pcre2 statically so no DLLs are needed
           gcc -O3 -flto -fomit-frame-pointer -DNDEBUG -Wall -Wextra -std=gnu11 \
             -o pseudo-win32-x64.exe \
             main.c lexer.c compiler.c vm.c memory.c import.c \
             jit_trace.c trace_recorder.c trace_regalloc.c trace_codegen.c tensor.c \
-            -lm -lpcre2-8 -static-libgcc
+            -lm -Wl,-Bstatic -lpcre2-8 -Wl,-Bdynamic -static-libgcc
       
       - name: Test binary
         shell: msys2 {0}
