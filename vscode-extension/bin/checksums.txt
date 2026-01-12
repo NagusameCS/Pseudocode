@@ -1,0 +1,3 @@
+c3a0b193e7ae2d19807ff23d9e3a31f878ff6fde8476ec44938d61b6be30ad4c  pseudo-darwin-arm64
+ba46b15c503edbc3498423d4aaf1bef663df68532ff30d001e04d206fbc89588  pseudo-linux-x64
+af63edac9fb663cfd5c92e3324d278e354d4cec9c8df71340657e1fdd50d5b0d  pseudo-win32-x64.exe
