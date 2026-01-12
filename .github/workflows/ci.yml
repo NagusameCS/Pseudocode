@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # Quick build and test on all platforms
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            name: Linux x64
+            artifact: pseudo-linux-x64
+          - os: macos-14
+            name: macOS ARM64
+            artifact: pseudo-darwin-arm64
+          - os: macos-13
+            name: macOS x64
+            artifact: pseudo-darwin-x64
+    
+    runs-on: ${{ matrix.os }}
+    name: Build (${{ matrix.name }})
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libpcre2-dev
+      
+      - name: Install dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: brew install pcre2
+      
+      - name: Build
+        run: |
+          cd cvm
+          make release
+      
+      - name: Run tests
+        run: |
+          cd cvm
+          echo "=== Testing basic examples ==="
+          ./pseudo ../examples/hello.pseudo
+          ./pseudo ../examples/fibonacci.pseudo
+          ./pseudo ../examples/factorial.pseudo
+          ./pseudo ../examples/fizzbuzz.pseudo
+          echo "=== Testing JIT ==="
+          ./pseudo -j ../examples/arrays.pseudo
+          ./pseudo -j ../examples/fibonacci.pseudo
+          echo "=== All tests passed ==="
+
+  # Windows build (separate due to MSYS2)
+  build-windows:
+    runs-on: windows-latest
+    name: Build (Windows x64)
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-pcre2
+            make
+      
+      - name: Build
+        shell: msys2 {0}
+        run: |
+          cd cvm
+          make release
+      
+      - name: Run tests
+        shell: msys2 {0}
+        run: |
+          cd cvm
+          echo "=== Testing basic examples ==="
+          ./pseudo ../examples/hello.pseudo
+          ./pseudo ../examples/fibonacci.pseudo
+          ./pseudo ../examples/factorial.pseudo
+          echo "=== All tests passed ==="

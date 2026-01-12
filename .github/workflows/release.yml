@@ -5,27 +5,44 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      create_release:
+        description: 'Create a release with artifacts'
+        required: false
+        default: 'false'
+        type: boolean
 
 permissions:
   contents: write
 
 jobs:
-  build-linux:
+  # ============================================
+  # Linux x64 Build
+  # ============================================
+  build-linux-x64:
     runs-on: ubuntu-22.04
     
     steps:
       - uses: actions/checkout@v4
       
-      - name: Install PCRE2
+      - name: Install dependencies
         run: sudo apt-get update && sudo apt-get install -y libpcre2-dev
       
       - name: Build VM
         run: |
           cd cvm
-          make release
+          # Use portable flags instead of -march=native for distribution
+          gcc -O3 -flto -fomit-frame-pointer -DNDEBUG -Wall -Wextra -std=gnu11 \
+            -o pseudo-linux-x64 \
+            main.c lexer.c compiler.c vm.c memory.c import.c \
+            jit_trace.c trace_recorder.c trace_regalloc.c trace_codegen.c tensor.c \
+            -lm -lpcre2-8
       
-      - name: Rename binary
-        run: mv cvm/pseudo cvm/pseudo-linux-x64
+      - name: Test binary
+        run: |
+          cd cvm
+          ./pseudo-linux-x64 ../examples/hello.pseudo
+          ./pseudo-linux-x64 ../examples/fibonacci.pseudo
       
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -33,30 +50,200 @@ jobs:
           name: pseudo-linux-x64
           path: cvm/pseudo-linux-x64
 
-  create-release:
-    needs: build-linux
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
+  # ============================================
+  # macOS ARM64 Build (Apple Silicon)
+  # ============================================
+  build-macos-arm64:
+    runs-on: macos-14  # M1 runner
     
     steps:
-      - name: Download Linux binary
+      - uses: actions/checkout@v4
+      
+      - name: Install dependencies
+        run: brew install pcre2
+      
+      - name: Build VM
+        run: |
+          cd cvm
+          # ARM64 optimized build
+          clang -O3 -flto -fomit-frame-pointer -DNDEBUG -Wall -Wextra -std=gnu11 \
+            -o pseudo-darwin-arm64 \
+            main.c lexer.c compiler.c vm.c memory.c import.c \
+            jit_trace.c trace_recorder.c trace_regalloc.c trace_codegen.c tensor.c \
+            -lm -lpcre2-8
+      
+      - name: Test binary
+        run: |
+          cd cvm
+          ./pseudo-darwin-arm64 ../examples/hello.pseudo
+          ./pseudo-darwin-arm64 ../examples/fibonacci.pseudo
+          # Test JIT on ARM64
+          ./pseudo-darwin-arm64 -j ../examples/arrays.pseudo
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pseudo-darwin-arm64
+          path: cvm/pseudo-darwin-arm64
+
+  # ============================================
+  # macOS x64 Build (Intel)
+  # ============================================
+  build-macos-x64:
+    runs-on: macos-13  # Intel runner
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install dependencies
+        run: brew install pcre2
+      
+      - name: Build VM
+        run: |
+          cd cvm
+          # x64 optimized build
+          clang -O3 -flto -fomit-frame-pointer -DNDEBUG -Wall -Wextra -std=gnu11 \
+            -o pseudo-darwin-x64 \
+            main.c lexer.c compiler.c vm.c memory.c import.c \
+            jit_trace.c trace_recorder.c trace_regalloc.c trace_codegen.c tensor.c \
+            -lm -lpcre2-8
+      
+      - name: Test binary
+        run: |
+          cd cvm
+          ./pseudo-darwin-x64 ../examples/hello.pseudo
+          ./pseudo-darwin-x64 ../examples/fibonacci.pseudo
+          # Test JIT on x64
+          ./pseudo-darwin-x64 -j ../examples/arrays.pseudo
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pseudo-darwin-x64
+          path: cvm/pseudo-darwin-x64
+
+  # ============================================
+  # Windows x64 Build
+  # ============================================
+  build-windows-x64:
+    runs-on: windows-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-pcre2
+            make
+      
+      - name: Build VM
+        shell: msys2 {0}
+        run: |
+          cd cvm
+          # Windows x64 build with static linking for portability
+          gcc -O3 -flto -fomit-frame-pointer -DNDEBUG -Wall -Wextra -std=gnu11 \
+            -o pseudo-win32-x64.exe \
+            main.c lexer.c compiler.c vm.c memory.c import.c \
+            jit_trace.c trace_recorder.c trace_regalloc.c trace_codegen.c tensor.c \
+            -lm -lpcre2-8 -static-libgcc
+      
+      - name: Test binary
+        shell: msys2 {0}
+        run: |
+          cd cvm
+          ./pseudo-win32-x64.exe ../examples/hello.pseudo
+          ./pseudo-win32-x64.exe ../examples/fibonacci.pseudo
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pseudo-win32-x64
+          path: cvm/pseudo-win32-x64.exe
+
+  # ============================================
+  # Create Release (only on tags or manual trigger)
+  # ============================================
+  create-release:
+    needs: [build-linux-x64, build-macos-arm64, build-macos-x64, build-windows-x64]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && github.event.inputs.create_release == 'true')
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          name: pseudo-linux-x64
           path: artifacts
+      
+      - name: Prepare release files
+        run: |
+          mkdir release
+          cp artifacts/pseudo-linux-x64/pseudo-linux-x64 release/
+          cp artifacts/pseudo-darwin-arm64/pseudo-darwin-arm64 release/
+          cp artifacts/pseudo-darwin-x64/pseudo-darwin-x64 release/
+          cp artifacts/pseudo-win32-x64/pseudo-win32-x64.exe release/
+          chmod +x release/pseudo-*
+          ls -la release/
+      
+      - name: Create checksums
+        run: |
+          cd release
+          sha256sum * > checksums.txt
+          cat checksums.txt
+      
+      - name: Get version
+        id: version
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            echo "version=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=dev-$(date +%Y%m%d)-$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          fi
       
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: artifacts/*
+          tag_name: ${{ steps.version.outputs.version }}
+          name: Pseudocode ${{ steps.version.outputs.version }}
+          files: release/*
           draft: false
-          prerelease: false
+          prerelease: ${{ !startsWith(github.ref, 'refs/tags/') }}
           body: |
-            ## Pseudocode ${{ github.ref_name }}
+            ## Pseudocode ${{ steps.version.outputs.version }}
             
-            ### VM Binaries
-            - **Linux x64**: `pseudo-linux-x64` (included)
-            - **macOS/Windows**: Run `scripts/build-mac.sh` or `scripts/build-windows.sh`
+            ### Download
+            | Platform | Architecture | Binary |
+            |----------|--------------|--------|
+            | Linux    | x64          | `pseudo-linux-x64` |
+            | macOS    | ARM64 (Apple Silicon) | `pseudo-darwin-arm64` |
+            | macOS    | x64 (Intel)  | `pseudo-darwin-x64` |
+            | Windows  | x64          | `pseudo-win32-x64.exe` |
+            
+            ### Installation
+            
+            **Linux/macOS:**
+            ```bash
+            chmod +x pseudo-*
+            sudo mv pseudo-* /usr/local/bin/pseudo
+            ```
+            
+            **Windows:**
+            Add the directory containing `pseudo-win32-x64.exe` to your PATH.
+            
+            ### Features
+            - High-performance bytecode VM
+            - Tracing JIT compiler (x64 and ARM64)
+            - 80+ built-in functions
+            - Pattern matching, classes, lambdas
             
             ### VS Code Extension
-            Build locally with: `cd vscode-extension && npm install && npx @vscode/vsce package`
+            Install from the VS Code Marketplace or build from source:
+            ```bash
+            cd vscode-extension && npm install && npx @vscode/vsce package
+            ```
