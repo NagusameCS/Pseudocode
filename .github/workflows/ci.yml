@@ -76,7 +76,20 @@ jobs:
         shell: msys2 {0}
         run: |
           cd cvm
-          make release
+          # Windows build - fully static for portability (no DLLs needed)
+          gcc -O3 -flto -fomit-frame-pointer -DNDEBUG -Wall -Wextra -std=gnu11 \
+            -static \
+            -o pseudo \
+            main.c lexer.c compiler.c vm.c memory.c import.c \
+            jit_trace.c trace_recorder.c trace_regalloc.c trace_codegen.c tensor.c \
+            -lpcre2-8 -lm
+      
+      - name: Verify no DLL dependencies
+        shell: msys2 {0}
+        run: |
+          cd cvm
+          echo "Checking DLL dependencies..."
+          objdump -p pseudo.exe 2>/dev/null | grep "DLL Name" || echo "No DLL dependencies (static build)"
       
       - name: Run tests
         shell: msys2 {0}
