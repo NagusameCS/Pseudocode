@@ -82,6 +82,21 @@ typedef enum
     TOKEN_MODULE,
     TOKEN_EXPORT,
     TOKEN_IMPORT,
+    
+    /* Control flow extensions */
+    TOKEN_BREAK,
+    TOKEN_CONTINUE,
+    TOKEN_REPEAT,
+    TOKEN_UNTIL,
+    TOKEN_STEP,
+    TOKEN_TO,
+    
+    /* IB/Educational compatibility keywords */
+    TOKEN_MOD,       /* alias for % */
+    TOKEN_DIV,       /* integer division */
+    TOKEN_OUTPUT,    /* alias for print */
+    TOKEN_FUNCTION,  /* alias for fn */
+    TOKEN_PROCEDURE, /* alias for fn (no return) */
 
     /* Operators */
     TOKEN_PLUS,
@@ -253,6 +268,12 @@ typedef struct Compiler
     int scope_depth;
 
     Upvalue upvalues[256];
+    
+    /* Loop tracking for break/continue */
+    int loop_start;        /* Bytecode position of loop start (for continue) */
+    int loop_scope_depth;  /* Scope depth when loop began (for break cleanup) */
+    int break_jumps[64];   /* Jump locations that need patching for break */
+    int break_count;       /* Number of break statements in current loop */
 } Compiler;
 
 static Parser parser;
@@ -668,6 +689,9 @@ static void init_compiler(Compiler *compiler, FunctionType type)
     compiler->type = type;
     compiler->local_count = 0;
     compiler->scope_depth = 0;
+    compiler->loop_start = -1;        /* No loop active */
+    compiler->loop_scope_depth = -1;
+    compiler->break_count = 0;
     compiler->function = new_function(compiling_vm);
     current = compiler;
 
@@ -3060,6 +3084,15 @@ static void binary(bool can_assign)
     case TOKEN_SHR:
         emit_byte(OP_SHR);
         break;
+    case TOKEN_MOD:
+        /* IB-compatible: 'mod' is alias for '%' */
+        emit_byte(OP_MOD);
+        break;
+    case TOKEN_DIV:
+        /* IB-compatible: 'div' is integer division (floor) */
+        emit_byte(OP_DIV);
+        emit_byte(OP_FLOOR);  /* Floor the result for true integer division */
+        break;
     default:
         return;
     }
@@ -3375,6 +3408,17 @@ ParseRule rules[] = {
     [TOKEN_MODULE] = {NULL, NULL, PREC_NONE},
     [TOKEN_EXPORT] = {NULL, NULL, PREC_NONE},
     [TOKEN_IMPORT] = {NULL, NULL, PREC_NONE},
+    [TOKEN_BREAK] = {NULL, NULL, PREC_NONE},
+    [TOKEN_CONTINUE] = {NULL, NULL, PREC_NONE},
+    [TOKEN_REPEAT] = {NULL, NULL, PREC_NONE},
+    [TOKEN_UNTIL] = {NULL, NULL, PREC_NONE},
+    [TOKEN_STEP] = {NULL, NULL, PREC_NONE},
+    [TOKEN_TO] = {NULL, NULL, PREC_NONE},
+    [TOKEN_MOD] = {NULL, binary, PREC_FACTOR},     /* mod as infix operator */
+    [TOKEN_DIV] = {NULL, binary, PREC_FACTOR},     /* div as infix operator */
+    [TOKEN_OUTPUT] = {NULL, NULL, PREC_NONE},
+    [TOKEN_FUNCTION] = {lambda, NULL, PREC_NONE},  /* function = fn */
+    [TOKEN_PROCEDURE] = {lambda, NULL, PREC_NONE}, /* procedure = fn */
     [TOKEN_ERROR] = {NULL, NULL, PREC_NONE},
     [TOKEN_EOF] = {NULL, NULL, PREC_NONE},
 };
@@ -3423,7 +3467,7 @@ static void block(void)
     skip_newlines();
     while (!check(TOKEN_END) && !check(TOKEN_ELSE) && !check(TOKEN_ELIF) &&
            !check(TOKEN_CASE) && !check(TOKEN_CATCH) && !check(TOKEN_FINALLY) &&
-           !check(TOKEN_EOF))
+           !check(TOKEN_UNTIL) && !check(TOKEN_EOF))
     {
         declaration();
         skip_newlines();
@@ -3480,9 +3524,81 @@ static void if_statement(void)
     consume(TOKEN_END, "Expect 'end' after if statement.");
 }
 
+/* Break statement: exit current loop */
+static void break_statement(void)
+{
+    if (current->loop_start == -1)
+    {
+        error("Cannot use 'break' outside of a loop.");
+        return;
+    }
+    
+    /* Pop locals that were created inside the loop */
+    int locals_to_pop = 0;
+    for (int i = current->local_count - 1; i >= 0; i--)
+    {
+        if (current->locals[i].depth <= current->loop_scope_depth)
+            break;
+        locals_to_pop++;
+    }
+    
+    /* Emit pops for loop-local variables */
+    for (int i = 0; i < locals_to_pop; i++)
+    {
+        emit_byte(OP_POP);
+    }
+    
+    /* Record jump to be patched at loop end */
+    if (current->break_count < 64)
+    {
+        current->break_jumps[current->break_count++] = emit_jump(OP_JMP);
+    }
+    else
+    {
+        error("Too many break statements in loop.");
+    }
+}
+
+/* Continue statement: jump to loop start */
+static void continue_statement(void)
+{
+    if (current->loop_start == -1)
+    {
+        error("Cannot use 'continue' outside of a loop.");
+        return;
+    }
+    
+    /* Pop locals that were created inside the loop body */
+    int locals_to_pop = 0;
+    for (int i = current->local_count - 1; i >= 0; i--)
+    {
+        if (current->locals[i].depth <= current->loop_scope_depth)
+            break;
+        locals_to_pop++;
+    }
+    
+    /* Emit pops for loop-local variables */
+    for (int i = 0; i < locals_to_pop; i++)
+    {
+        emit_byte(OP_POP);
+    }
+    
+    /* Jump back to loop start */
+    emit_loop(current->loop_start);
+}
+
 static void while_statement(void)
 {
+    /* Save outer loop state */
+    int outer_loop_start = current->loop_start;
+    int outer_loop_scope = current->loop_scope_depth;
+    int outer_break_count = current->break_count;
+    
+    /* Set up this loop */
     int loop_start = current_chunk()->count;
+    current->loop_start = loop_start;
+    current->loop_scope_depth = current->scope_depth;
+    current->break_count = 0;
 
     expression();
     consume(TOKEN_DO, "Expect 'do' after condition.");
@@ -3496,13 +3612,30 @@ static void while_statement(void)
     emit_loop(loop_start);
     patch_jump(exit_jump);
     emit_pop_for_jump(exit_jump); /* Skip POP if fused */
+    
+    /* Patch all break jumps to exit point */
+    for (int i = 0; i < current->break_count; i++)
+    {
+        patch_jump(current->break_jumps[i]);
+    }
 
     consume(TOKEN_END, "Expect 'end' after while loop.");
+    
+    /* Restore outer loop state */
+    current->loop_start = outer_loop_start;
+    current->loop_scope_depth = outer_loop_scope;
+    current->break_count = outer_break_count;
 }
 
 static void for_statement(void)
 {
     begin_scope();
+    
+    /* Save outer loop state */
+    int outer_loop_start = current->loop_start;
+    int outer_loop_scope = current->loop_scope_depth;
+    int outer_break_count = current->break_count;
+    current->break_count = 0;
 
     consume(TOKEN_IDENT, "Expect variable name.");
     Token var_name = parser.previous;
@@ -3544,6 +3677,10 @@ static void for_statement(void)
         emit_byte(OP_NIL); /* Placeholder, will be set by FOR_COUNT */
 
         int loop_start = current_chunk()->count;
+        
+        /* Set up loop context for break/continue */
+        current->loop_start = loop_start;
+        current->loop_scope_depth = current->scope_depth;
 
         /* Ultra-fast FOR_COUNT instruction */
         /* Format: OP_FOR_COUNT, start_slot, end_slot, var_slot, offset[2] */
@@ -3566,6 +3703,12 @@ static void for_statement(void)
         int jump = current_chunk()->count - exit_jump - 2;
         current_chunk()->code[exit_jump] = (jump >> 8) & 0xff;
         current_chunk()->code[exit_jump + 1] = jump & 0xff;
+        
+        /* Patch all break jumps to exit point */
+        for (int i = 0; i < current->break_count; i++)
+        {
+            patch_jump(current->break_jumps[i]);
+        }
     }
     else
     {
@@ -3595,6 +3738,10 @@ static void for_statement(void)
         emit_byte(OP_NIL);
 
         int loop_start = current_chunk()->count;
+        
+        /* Set up loop context for break/continue */
+        current->loop_start = loop_start;
+        current->loop_scope_depth = current->scope_depth;
 
         /* Use OP_FOR_LOOP with 3 slots: iter, idx, var */
         emit_byte(OP_FOR_LOOP);
@@ -3614,10 +3761,21 @@ static void for_statement(void)
         int jump = current_chunk()->count - exit_jump - 2;
         current_chunk()->code[exit_jump] = (jump >> 8) & 0xff;
         current_chunk()->code[exit_jump + 1] = jump & 0xff;
+        
+        /* Patch all break jumps to exit point */
+        for (int i = 0; i < current->break_count; i++)
+        {
+            patch_jump(current->break_jumps[i]);
+        }
     }
 
     consume(TOKEN_END, "Expect 'end' after for loop.");
     end_scope();
+    
+    /* Restore outer loop state */
+    current->loop_start = outer_loop_start;
+    current->loop_scope_depth = outer_loop_scope;
+    current->break_count = outer_break_count;
 }
 
 static void return_statement(void)
@@ -3813,6 +3971,54 @@ static void match_statement(void)
     consume(TOKEN_END, "Expect 'end' after match statement.");
 }
 
+/* Repeat...until loop: repeat body until condition */
+static void repeat_statement(void)
+{
+    /* Save outer loop state */
+    int outer_loop_start = current->loop_start;
+    int outer_loop_scope = current->loop_scope_depth;
+    int outer_break_count = current->break_count;
+    
+    /* Set up this loop */
+    int loop_start = current_chunk()->count;
+    current->loop_start = loop_start;
+    current->loop_scope_depth = current->scope_depth;
+    current->break_count = 0;
+    
+    skip_newlines();
+    
+    /* Loop body */
+    block();
+    
+    consume(TOKEN_UNTIL, "Expect 'until' after repeat body.");
+    
+    /* Condition - loop continues while condition is FALSE */
+    expression();
+    
+    /* Jump back to start if condition is false */
+    int exit_jump = emit_jump(OP_JMP_TRUE);
+    emit_loop(loop_start);
+    patch_jump(exit_jump);
+    
+    /* Patch all break jumps to exit point */
+    for (int i = 0; i < current->break_count; i++)
+    {
+        patch_jump(current->break_jumps[i]);
+    }
+    
+    /* Restore outer loop state */
+    current->loop_start = outer_loop_start;
+    current->loop_scope_depth = outer_loop_scope;
+    current->break_count = outer_break_count;
+}
+
+/* Output statement: output expr (IB-compatible alias for print) */
+static void output_statement(void)
+{
+    expression();
+    emit_byte(OP_PRINT);
+}
+
 static void statement(void)
 {
     if (match(TOKEN_IF))
@@ -3826,6 +4032,10 @@ static void statement(void)
     else if (match(TOKEN_FOR))
     {
         for_statement();
+    }
+    else if (match(TOKEN_REPEAT))
+    {
+        repeat_statement();
     }
     else if (match(TOKEN_MATCH))
     {
@@ -3842,6 +4052,18 @@ static void statement(void)
     else if (match(TOKEN_RETURN))
     {
         return_statement();
+    }
+    else if (match(TOKEN_BREAK))
+    {
+        break_statement();
+    }
+    else if (match(TOKEN_CONTINUE))
+    {
+        continue_statement();
+    }
+    else if (match(TOKEN_OUTPUT))
+    {
+        output_statement();
     }
     else
     {
@@ -4474,7 +4696,7 @@ static void declaration(void)
 {
     skip_newlines();
 
-    if (match(TOKEN_FN))
+    if (match(TOKEN_FN) || match(TOKEN_FUNCTION) || match(TOKEN_PROCEDURE))
     {
         fn_declaration();
     }

@@ -60,6 +60,21 @@ typedef enum
     TOKEN_MODULE,
     TOKEN_EXPORT,
     TOKEN_IMPORT,
+    
+    /* Control flow extensions */
+    TOKEN_BREAK,
+    TOKEN_CONTINUE,
+    TOKEN_REPEAT,
+    TOKEN_UNTIL,
+    TOKEN_STEP,
+    TOKEN_TO,
+    
+    /* IB/Educational compatibility keywords */
+    TOKEN_MOD,       /* alias for % */
+    TOKEN_DIV,       /* integer division */
+    TOKEN_OUTPUT,    /* alias for print */
+    TOKEN_FUNCTION,  /* alias for fn */
+    TOKEN_PROCEDURE, /* alias for fn (no return) */
 
     /* Operators */
     TOKEN_PLUS,
@@ -268,13 +283,22 @@ static TokenType identifier_type(void)
             }
         }
         break;
+    case 'b':
+        return check_keyword(1, 4, "reak", TOKEN_BREAK);
     case 'c':
         if (scanner.current - scanner.start > 1)
         {
             switch (scanner.start[1])
             {
             case 'o':
-                return check_keyword(2, 3, "nst", TOKEN_CONST);
+                if (scanner.current - scanner.start > 2 && scanner.start[2] == 'n')
+                {
+                    if (scanner.current - scanner.start == 5)
+                        return check_keyword(3, 2, "st", TOKEN_CONST);
+                    if (scanner.current - scanner.start == 8)
+                        return check_keyword(3, 5, "tinue", TOKEN_CONTINUE);
+                }
+                break;
             case 'a':
                 if (scanner.current - scanner.start > 2)
                 {
@@ -290,7 +314,11 @@ static TokenType identifier_type(void)
         }
         break;
     case 'd':
-        return check_keyword(1, 1, "o", TOKEN_DO);
+        if (scanner.current - scanner.start == 2)
+            return check_keyword(1, 1, "o", TOKEN_DO);
+        if (scanner.current - scanner.start == 3)
+            return check_keyword(1, 2, "iv", TOKEN_DIV);
+        break;
     case 'e':
         if (scanner.current - scanner.start > 1)
         {
@@ -342,6 +370,8 @@ static TokenType identifier_type(void)
                 return check_keyword(2, 5, "nally", TOKEN_FINALLY);
             case 'r':
                 return check_keyword(2, 2, "om", TOKEN_FROM);
+            case 'u':
+                return check_keyword(2, 6, "nction", TOKEN_FUNCTION);
             }
         }
         break;
@@ -369,6 +399,8 @@ static TokenType identifier_type(void)
             case 'a':
                 return check_keyword(2, 3, "tch", TOKEN_MATCH);
             case 'o':
+                if (scanner.current - scanner.start == 3)
+                    return check_keyword(2, 1, "d", TOKEN_MOD);
                 return check_keyword(2, 4, "dule", TOKEN_MODULE);
             }
         }
@@ -386,9 +418,30 @@ static TokenType identifier_type(void)
         }
         break;
     case 'o':
-        return check_keyword(1, 1, "r", TOKEN_OR);
+        if (scanner.current - scanner.start == 2)
+            return check_keyword(1, 1, "r", TOKEN_OR);
+        if (scanner.current - scanner.start == 6)
+            return check_keyword(1, 5, "utput", TOKEN_OUTPUT);
+        break;
+    case 'p':
+        return check_keyword(1, 8, "rocedure", TOKEN_PROCEDURE);
     case 'r':
-        return check_keyword(1, 5, "eturn", TOKEN_RETURN);
+        if (scanner.current - scanner.start > 1)
+        {
+            switch (scanner.start[1])
+            {
+            case 'e':
+                if (scanner.current - scanner.start > 2)
+                {
+                    if (scanner.start[2] == 't')
+                        return check_keyword(3, 3, "urn", TOKEN_RETURN);
+                    if (scanner.start[2] == 'p')
+                        return check_keyword(3, 3, "eat", TOKEN_REPEAT);
+                }
+                break;
+            }
+        }
+        break;
     case 's':
         if (scanner.current - scanner.start > 1)
         {
@@ -399,6 +452,8 @@ static TokenType identifier_type(void)
             case 'u':
                 return check_keyword(2, 3, "per", TOKEN_SUPER);
             case 't':
+                if (scanner.current - scanner.start == 4)
+                    return check_keyword(2, 2, "ep", TOKEN_STEP);
                 return check_keyword(2, 4, "atic", TOKEN_STATIC);
             }
         }
@@ -427,9 +482,13 @@ static TokenType identifier_type(void)
                         return check_keyword(3, 0, "", TOKEN_TRY);
                 }
                 break;
+            case 'o':
+                return check_keyword(2, 0, "", TOKEN_TO);
             }
         }
         break;
+    case 'u':
+        return check_keyword(1, 4, "ntil", TOKEN_UNTIL);
     case 'w':
         return check_keyword(1, 4, "hile", TOKEN_WHILE);
     case 'y':
