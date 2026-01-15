@@ -1,6 +1,9 @@
 /*
  * Pseudocode Language - VS Code Extension
  *
+ * Full LSP-based language support with fallback to embedded providers.
+ * The LSP server runs as pure JavaScript - no architecture-specific binaries needed.
+ *
  * Copyright (c) 2026 NagusameCS
  * Licensed under the MIT License
  */
@@ -22,125 +25,138 @@ import { registerDebugger } from './debugAdapter';
 import { registerRepl } from './repl';
 import { registerAdvancedFeatures } from './advancedFeatures';
 import { registerExtraFeatures } from './extraFeatures';
+import { activateLspClient, deactivateLspClient } from './lspClient';
 
 let outputChannel: vscode.OutputChannel;
 let diagnosticCollection: vscode.DiagnosticCollection;
 let diagnosticsTimeout: NodeJS.Timeout | undefined;
 let activeChildProcesses: Set<import('child_process').ChildProcess> = new Set();
+let useLspServer = false;
 
-export function activate(context: vscode.ExtensionContext) {
-    // Pre-warm all caches immediately to avoid first-use lag
-    prewarmCaches();
-    
+export async function activate(context: vscode.ExtensionContext) {
     outputChannel = vscode.window.createOutputChannel('Pseudocode');
     diagnosticCollection = vscode.languages.createDiagnosticCollection('pseudocode');
 
     const selector: vscode.DocumentSelector = { language: 'pseudocode', scheme: 'file' };
 
-    // ============ Language Features ============
-
-    // Autocomplete
-    const completionProvider = vscode.languages.registerCompletionItemProvider(
-        selector,
-        new PseudocodeCompletionProvider(),
-        '.', '(' // Trigger characters
-    );
-
-    // Hover documentation
-    const hoverProvider = vscode.languages.registerHoverProvider(
-        selector,
-        new PseudocodeHoverProvider()
-    );
-
-    // Document outline (symbols)
-    const symbolProvider = vscode.languages.registerDocumentSymbolProvider(
-        selector,
-        new PseudocodeDocumentSymbolProvider()
-    );
-
-    // Signature help (function parameters)
-    const signatureProvider = vscode.languages.registerSignatureHelpProvider(
-        selector,
-        new PseudocodeSignatureHelpProvider(),
-        '(', ','
-    );
-
-    // Document formatter
-    const formatterProvider = vscode.languages.registerDocumentFormattingEditProvider(
-        selector,
-        new PseudocodeDocumentFormatter()
-    );
-
-    // Debounced diagnostics to prevent lag while typing
-    const DIAGNOSTICS_DELAY = 500; // ms delay after typing stops (increased for better performance)
+    // ============ LSP Server Mode ============
+    // Try to start the LSP server for full language intelligence
+    // The LSP server is pure JavaScript - works on all platforms without recompilation
+    const config = vscode.workspace.getConfiguration('pseudocode');
+    const lspEnabled = config.get<boolean>('lsp.enabled', true);
     
-    const updateDiagnosticsDebounced = (document: vscode.TextDocument) => {
-        if (document.languageId !== 'pseudocode') return;
-        
-        // Check if diagnostics are enabled (disabled by default)
-        const config = vscode.workspace.getConfiguration('pseudocode');
-        if (!config.get<boolean>('diagnostics.enabled', false)) {
-            return;
+    if (lspEnabled) {
+        try {
+            const serverPath = path.join(context.extensionPath, 'out', 'server', 'server.js');
+            if (fs.existsSync(serverPath)) {
+                const client = await activateLspClient(context);
+                if (client) {
+                    useLspServer = true;
+                    console.log('Pseudocode LSP server activated - full language intelligence enabled');
+                }
+            }
+        } catch (error) {
+            console.warn('LSP server not available, falling back to embedded providers:', error);
         }
+    }
+
+    // ============ Fallback: Embedded Language Features ============
+    // Only register embedded providers if LSP is not running
+    if (!useLspServer) {
+        // Pre-warm all caches immediately to avoid first-use lag
+        prewarmCaches();
+
+        // Autocomplete
+        const completionProvider = vscode.languages.registerCompletionItemProvider(
+            selector,
+            new PseudocodeCompletionProvider(),
+            '.', '(' // Trigger characters
+        );
+
+        // Hover documentation
+        const hoverProvider = vscode.languages.registerHoverProvider(
+            selector,
+            new PseudocodeHoverProvider()
+        );
+
+        // Document outline (symbols)
+        const symbolProvider = vscode.languages.registerDocumentSymbolProvider(
+            selector,
+            new PseudocodeDocumentSymbolProvider()
+        );
+
+        // Signature help (function parameters)
+        const signatureProvider = vscode.languages.registerSignatureHelpProvider(
+            selector,
+            new PseudocodeSignatureHelpProvider(),
+            '(', ','
+        );
+
+        // Document formatter
+        const formatterProvider = vscode.languages.registerDocumentFormattingEditProvider(
+            selector,
+            new PseudocodeDocumentFormatter()
+        );
+
+        // Debounced diagnostics
+        const DIAGNOSTICS_DELAY = 500;
         
-        // Clear previous timeout
-        if (diagnosticsTimeout) {
-            clearTimeout(diagnosticsTimeout);
-        }
-        
-        // Set new debounced timeout
-        diagnosticsTimeout = setTimeout(() => {
-            createDiagnostics(document, diagnosticCollection);
-        }, DIAGNOSTICS_DELAY);
-    };
-    
-    // Debounced diagnostics for document open (same delay as typing)
-    const updateDiagnosticsImmediate = (document: vscode.TextDocument) => {
-        if (document.languageId === 'pseudocode') {
-            // Check if diagnostics are enabled (disabled by default)
+        const updateDiagnosticsDebounced = (document: vscode.TextDocument) => {
+            if (document.languageId !== 'pseudocode') return;
+            
             const config = vscode.workspace.getConfiguration('pseudocode');
             if (!config.get<boolean>('diagnostics.enabled', false)) {
                 return;
             }
-            // Use debounced update to avoid lag on file open
-            updateDiagnosticsDebounced(document);
-        }
-    };
+            
+            if (diagnosticsTimeout) {
+                clearTimeout(diagnosticsTimeout);
+            }
+            
+            diagnosticsTimeout = setTimeout(() => {
+                createDiagnostics(document, diagnosticCollection);
+            }, DIAGNOSTICS_DELAY);
+        };
+        
+        const updateDiagnosticsImmediate = (document: vscode.TextDocument) => {
+            if (document.languageId === 'pseudocode') {
+                const config = vscode.workspace.getConfiguration('pseudocode');
+                if (!config.get<boolean>('diagnostics.enabled', false)) {
+                    return;
+                }
+                updateDiagnosticsDebounced(document);
+            }
+        };
 
-    // Update diagnostics on document change (debounced)
-    vscode.workspace.onDidChangeTextDocument(event => {
-        updateDiagnosticsDebounced(event.document);
-    }, null, context.subscriptions);
+        vscode.workspace.onDidChangeTextDocument(event => {
+            updateDiagnosticsDebounced(event.document);
+        }, null, context.subscriptions);
 
-    // Update diagnostics on document open (immediate)
-    vscode.workspace.onDidOpenTextDocument(document => {
-        updateDiagnosticsImmediate(document);
-    }, null, context.subscriptions);
+        vscode.workspace.onDidOpenTextDocument(document => {
+            updateDiagnosticsImmediate(document);
+        }, null, context.subscriptions);
 
-    // Update diagnostics for all open pseudocode files
-    vscode.workspace.textDocuments.forEach(updateDiagnosticsImmediate);
+        vscode.workspace.textDocuments.forEach(updateDiagnosticsImmediate);
 
-    // Clear diagnostics on close
-    vscode.workspace.onDidCloseTextDocument(document => {
-        diagnosticCollection.delete(document.uri);
-    }, null, context.subscriptions);
+        vscode.workspace.onDidCloseTextDocument(document => {
+            diagnosticCollection.delete(document.uri);
+        }, null, context.subscriptions);
 
-    context.subscriptions.push(
-        completionProvider,
-        hoverProvider,
-        symbolProvider,
-        signatureProvider,
-        formatterProvider,
-        diagnosticCollection
-    );
+        context.subscriptions.push(
+            completionProvider,
+            hoverProvider,
+            symbolProvider,
+            signatureProvider,
+            formatterProvider,
+            diagnosticCollection
+        );
 
-    // ============ Advanced Features ============
-    // Code Lens, Go to Definition, References, Rename, Semantic Tokens, Status Bar
-    registerAdvancedFeatures(context);
+        // ============ Advanced Features (fallback mode) ============
+        registerAdvancedFeatures(context);
 
-    // ============ Extra Features ============
-    // Inlay Hints, Call Hierarchy, Color Provider, Smart Selection
-    registerExtraFeatures(context);
+        // ============ Extra Features (fallback mode) ============
+        registerExtraFeatures(context);
+    }
 
     // ============ Commands ============
 
@@ -496,7 +512,12 @@ function buildVm(cvmPath: string): void {
     });
 }
 
-export function deactivate() {
+export async function deactivate() {
+    // Stop LSP client if running
+    if (useLspServer) {
+        await deactivateLspClient();
+    }
+    
     // Clean up diagnostics timeout
     if (diagnosticsTimeout) {
         clearTimeout(diagnosticsTimeout);

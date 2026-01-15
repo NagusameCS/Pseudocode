@@ -13,8 +13,23 @@
   <a href="#installation">Installation</a> |
   <a href="#quick-start">Quick Start</a> |
   <a href="#commands">Commands</a> |
-  <a href="#snippets">Snippets</a>
+  <a href="#snippets">Snippets</a> |
+  <a href="#architecture">Architecture</a>
 </p>
+
+---
+
+## Architecture
+
+This extension uses a **Language Server Protocol (LSP)** architecture for maximum performance and cross-platform compatibility:
+
+- **Pure JavaScript LSP Server** — No architecture-specific binaries needed for language intelligence
+- **Works Everywhere** — Same code runs on Windows, macOS, and Linux (x64 and ARM64)
+- **Zero Rebuild Required** — Add new platforms without recompiling
+- **Fast & Efficient** — Incremental parsing and aggressive caching
+- **Full LSP Support** — Completion, hover, go-to-definition, references, rename, and more
+
+The VM binaries (for running code) are pre-compiled for each platform, but the **language server itself is universal JavaScript**.
 
 ---
 

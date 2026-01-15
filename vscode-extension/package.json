@@ -343,6 +343,11 @@
                     "type": "boolean",
                     "default": false,
                     "markdownDescription": "⚠️ **Experimental** - Show Pseudocode info in status bar. May cause lag."
+                },
+                "pseudocode.lsp.enabled": {
+                    "type": "boolean",
+                    "default": true,
+                    "markdownDescription": "Enable the Language Server Protocol (LSP) for full language intelligence. The LSP server is pure JavaScript and works on all platforms without recompilation. Disable to use embedded providers."
                 }
             }
         },
@@ -504,6 +509,11 @@
         "watch": "tsc -watch -p ./",
         "package": "vsce package",
         "publish": "vsce publish"
+    },
+    "dependencies": {
+        "vscode-languageclient": "^9.0.1",
+        "vscode-languageserver": "^9.0.1",
+        "vscode-languageserver-textdocument": "^1.0.11"
     },
     "devDependencies": {
         "@types/node": "^18.0.0",
