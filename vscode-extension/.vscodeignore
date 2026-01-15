@@ -7,3 +7,8 @@ tsconfig.json
 **/*.map
 node_modules/**
 .npm/**
+# Exclude platform-specific binaries (no longer needed with WASM)
+bin/**
+
+# Keep WASM bundle
+!out/**

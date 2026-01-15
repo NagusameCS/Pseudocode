@@ -260,6 +260,19 @@ static Compiler *current = NULL;
 static Chunk *compiling_chunk;
 static VM *compiling_vm;
 
+/* Inline cache slot allocation for property access */
+static uint16_t next_ic_slot = 0;
+
+static uint8_t alloc_ic_slot(void)
+{
+    if (next_ic_slot >= 256)
+    {
+        /* IC cache full - fall back to non-IC opcode */
+        return 255;
+    }
+    return (uint8_t)next_ic_slot++;
+}
+
 static Chunk *current_chunk(void)
 {
     return compiling_chunk;
@@ -4353,6 +4366,7 @@ static void class_declaration(void)
     else
     {
         emit_bytes(OP_SET_GLOBAL, name_constant);
+        /* Note: class stays on stack for method/field definitions */
     }
 
     /* Optional inheritance: class Foo extends Bar */
@@ -4448,6 +4462,12 @@ static void class_declaration(void)
     }
 
     consume(TOKEN_END, "Expect 'end' after class body.");
+
+    /* Pop the class from stack if at global scope */
+    if (current->scope_depth == 0)
+    {
+        emit_byte(OP_POP);
+    }
 }
 
 static void declaration(void)
@@ -4700,6 +4720,9 @@ bool compile(const char *source, Chunk *chunk, VM *vm)
 
     /* Initialize inline cache for this compilation */
     init_inline_cache();
+    
+    /* Reset IC slot counter for property access caching */
+    next_ic_slot = 0;
 
     parser.had_error = false;
     parser.panic_mode = false;

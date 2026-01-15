@@ -26,12 +26,14 @@ import { registerRepl } from './repl';
 import { registerAdvancedFeatures } from './advancedFeatures';
 import { registerExtraFeatures } from './extraFeatures';
 import { activateLspClient, deactivateLspClient } from './lspClient';
+import { registerWasmCommands, disposeWasmRuntime, getWasmRuntime } from './wasm';
 
 let outputChannel: vscode.OutputChannel;
 let diagnosticCollection: vscode.DiagnosticCollection;
 let diagnosticsTimeout: NodeJS.Timeout | undefined;
 let activeChildProcesses: Set<import('child_process').ChildProcess> = new Set();
 let useLspServer = false;
+let useWasmRuntime = true; // Default to WASM for cross-platform
 
 export async function activate(context: vscode.ExtensionContext) {
     outputChannel = vscode.window.createOutputChannel('Pseudocode');
@@ -160,7 +162,14 @@ export async function activate(context: vscode.ExtensionContext) {
 
     // ============ Commands ============
 
-    // Register run command
+    // Check runtime preference
+    const runtimeConfig = vscode.workspace.getConfiguration('pseudocode');
+    useWasmRuntime = runtimeConfig.get<boolean>('useWasmRuntime', true);
+
+    // Register WASM commands (always available)
+    registerWasmCommands(context);
+
+    // Register run command (uses WASM by default, falls back to native)
     const runCommand = vscode.commands.registerCommand('pseudocode.run', async () => {
         const editor = vscode.window.activeTextEditor;
         if (!editor || editor.document.languageId !== 'pseudocode') {
@@ -168,14 +177,33 @@ export async function activate(context: vscode.ExtensionContext) {
             return;
         }
 
-        // Save the file first
+        // Use WASM runtime by default
+        if (useWasmRuntime) {
+            try {
+                const runtime = await getWasmRuntime();
+                runtime.clearOutput();
+                runtime.showOutput();
+                
+                const result = await runtime.runSource(editor.document.getText());
+                
+                if (!result.success) {
+                    vscode.window.showErrorMessage(`Execution failed: ${result.errors[0]}`);
+                }
+                return;
+            } catch (wasmError) {
+                // Fall back to native if WASM fails
+                console.warn('WASM runtime failed, falling back to native:', wasmError);
+            }
+        }
+
+        // Fall back to native binary
         await editor.document.save();
 
         const filePath = editor.document.fileName;
         const vmPath = await findVmPath(context.extensionPath);
 
         if (!vmPath) {
-            vscode.window.showErrorMessage('Pseudocode VM not found. The extension may be missing binaries for your platform.');
+            vscode.window.showErrorMessage('Pseudocode VM not found. Try enabling WASM runtime in settings.');
             return;
         }
 
@@ -517,6 +545,9 @@ export async function deactivate() {
     if (useLspServer) {
         await deactivateLspClient();
     }
+    
+    // Dispose WASM runtime
+    disposeWasmRuntime();
     
     // Clean up diagnostics timeout
     if (diagnosticsTimeout) {

@@ -283,6 +283,13 @@ typedef struct ObjBoundMethod
 #define CLASS_MAX_FIELDS 64
 #define CLASS_MAX_METHODS 64
 #define CLASS_MAX_STATIC 32
+#define CLASS_FIELD_HASH_SIZE 128  /* Must be power of 2, >= 2*CLASS_MAX_FIELDS */
+
+/* Field hash table entry: maps name hash -> field index */
+typedef struct {
+    uint32_t hash;      /* String hash (0 = empty slot) */
+    int16_t index;      /* Field index, or -1 if empty */
+} FieldHashEntry;
 
 typedef struct ObjClass
 {
@@ -297,6 +304,7 @@ typedef struct ObjClass
     ObjString *method_names[CLASS_MAX_METHODS]; /* Method name lookup */
     Value statics[CLASS_MAX_STATIC];            /* Static properties/methods */
     ObjString *static_names[CLASS_MAX_STATIC];  /* Static name lookup */
+    FieldHashEntry field_hash[CLASS_FIELD_HASH_SIZE]; /* O(1) field lookup */
 } ObjClass;
 
 /* Instance - runtime class instance with fixed-slot fields */

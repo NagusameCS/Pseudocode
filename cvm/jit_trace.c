@@ -1048,6 +1048,71 @@ int jit_compile_loop(uint8_t *loop_start, uint8_t *loop_end,
 
     /*
      * ============================================================
+     * PRE-SCAN: Reject loops with non-JIT-safe bytecodes
+     * ============================================================
+     *
+     * Scan loop body for bytecodes that cannot be safely JIT-compiled
+     * (e.g., OP_CALL which may operate on strings, objects, etc.)
+     * This prevents the JIT from generating incorrect code for loops
+     * that use dynamic features.
+     */
+    {
+        uint8_t *scan_ip = body;
+        while (scan_ip < loop_end)
+        {
+            uint8_t op = *scan_ip++;
+            switch (op)
+            {
+            /* These opcodes may involve non-numeric types - bail out */
+            case OP_CALL:
+            case OP_INVOKE:
+            case OP_INVOKE_IC:
+            case OP_INVOKE_PIC:
+            case OP_GET_FIELD:
+            case OP_SET_FIELD:
+            case OP_GET_FIELD_IC:
+            case OP_SET_FIELD_IC:
+            case OP_GET_FIELD_PIC:
+            case OP_SET_FIELD_PIC:
+            case OP_ARRAY:
+            case OP_DICT:
+            case OP_INDEX:
+            case OP_INDEX_SET:
+            case OP_ITER_NEXT:
+            case OP_ITER_ARRAY:
+                he->trace_idx = -2; /* Mark as uncompilable */
+                return -1;
+            
+            /* Skip operands for opcodes with arguments */
+            case OP_CONST:
+            case OP_GET_LOCAL:
+            case OP_SET_LOCAL:
+            case OP_GET_UPVALUE:
+            case OP_SET_UPVALUE:
+            case OP_GET_GLOBAL:
+            case OP_SET_GLOBAL:
+                scan_ip++; /* 1-byte operand */
+                break;
+            case OP_CONST_LONG:
+                scan_ip += 3; /* 3-byte operand */
+                break;
+            case OP_JMP:
+            case OP_JMP_FALSE:
+            case OP_JMP_TRUE:
+            case OP_LOOP:
+            case OP_LT_JMP_FALSE:
+            case OP_EQ_JMP_FALSE:
+                scan_ip += 2; /* 2-byte offset */
+                break;
+            default:
+                /* Single-byte opcodes, continue scanning */
+                break;
+            }
+        }
+    }
+
+    /*
+     * ============================================================
      * GENERAL LOOP COMPILATION (Phase 1: Method JIT)
      * ============================================================
      *
@@ -1136,15 +1201,22 @@ int jit_compile_loop(uint8_t *loop_start, uint8_t *loop_end,
                 {
                     ir->ops[ir->nops++] = (IRIns){
                         .op = IR_CONST_INT64, .type = IR_TYPE_INT64, .dst = v, .imm.i64 = as_int(constants[idx])};
+                    if (vstack_top < 32)
+                        vstack[vstack_top++] = v;
+                }
+                else if (idx < num_constants && IS_NUM(constants[idx]))
+                {
+                    /* Float constant - can still do numeric ops */
+                    ir->ops[ir->nops++] = (IRIns){
+                        .op = IR_CONST_INT64, .type = IR_TYPE_INT64, .dst = v, .imm.i64 = (int64_t)as_num(constants[idx])};
+                    if (vstack_top < 32)
+                        vstack[vstack_top++] = v;
                 }
                 else
                 {
-                    /* Non-int constant - load as boxed */
-                    ir->ops[ir->nops++] = (IRIns){
-                        .op = IR_LOAD_CONST, .type = IR_TYPE_BOXED, .dst = v, .aux = idx};
+                    /* Non-numeric constant (string, etc) - cannot JIT compile */
+                    compile_ok = false;
                 }
-                if (vstack_top < 32)
-                    vstack[vstack_top++] = v;
                 break;
             }
 

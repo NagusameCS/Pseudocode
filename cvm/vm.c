@@ -116,6 +116,59 @@ static void win_closedir(WIN_DIR *dir) {
 #define USE_COMPUTED_GOTO 0
 #endif
 
+/* ============ Field Hash Table Helpers ============ */
+/* O(1) field lookup using open addressing with linear probing */
+
+/* Find field index by name, returns -1 if not found */
+static inline int16_t field_hash_find(ObjClass *klass, ObjString *name)
+{
+    uint32_t hash = name->hash;
+    uint32_t mask = CLASS_FIELD_HASH_SIZE - 1;
+    uint32_t idx = hash & mask;
+    
+    for (uint32_t i = 0; i < CLASS_FIELD_HASH_SIZE; i++)
+    {
+        FieldHashEntry *entry = &klass->field_hash[idx];
+        if (entry->hash == 0)
+            return -1;  /* Empty slot - not found */
+        if (entry->hash == hash)
+        {
+            /* Hash match - verify the actual string */
+            ObjString *field_name = klass->field_names[entry->index];
+            if (field_name == name ||
+                (field_name->length == name->length &&
+                 memcmp(field_name->chars, name->chars, name->length) == 0))
+            {
+                return entry->index;
+            }
+        }
+        idx = (idx + 1) & mask;  /* Linear probe */
+    }
+    return -1;  /* Table full - shouldn't happen */
+}
+
+/* Insert field into hash table */
+static inline void field_hash_insert(ObjClass *klass, ObjString *name, int16_t field_idx)
+{
+    uint32_t hash = name->hash;
+    uint32_t mask = CLASS_FIELD_HASH_SIZE - 1;
+    uint32_t idx = hash & mask;
+    
+    for (uint32_t i = 0; i < CLASS_FIELD_HASH_SIZE; i++)
+    {
+        FieldHashEntry *entry = &klass->field_hash[idx];
+        if (entry->hash == 0)
+        {
+            /* Empty slot - insert here */
+            entry->hash = hash ? hash : 1;  /* Ensure non-zero hash */
+            entry->index = field_idx;
+            return;
+        }
+        idx = (idx + 1) & mask;
+    }
+    /* Table full - shouldn't happen with proper sizing */
+}
+
 /* ============ VM Initialization ============ */
 
 void vm_init(VM *vm)
@@ -1795,8 +1848,12 @@ InterpretResult vm_run(VM *vm)
             ObjClass *klass = AS_CLASS(callee);
             vm->sp = sp; /* Sync sp for allocation */
 
-            /* Create instance */
-            size_t size = sizeof(ObjInstance) + sizeof(Value) * klass->field_count;
+            /* Create instance with space for dynamic fields
+             * Pre-allocate CLASS_MAX_FIELDS to allow dynamic field addition
+             * without reallocation. This is a trade-off between memory usage
+             * and performance - avoids O(n) reallocation on field addition.
+             */
+            size_t size = sizeof(ObjInstance) + sizeof(Value) * CLASS_MAX_FIELDS;
             ObjInstance *instance = (ObjInstance *)pseudo_realloc(vm, NULL, 0, size);
             instance->obj.type = OBJ_INSTANCE;
             instance->obj.next = vm->objects;
@@ -1804,8 +1861,8 @@ InterpretResult vm_run(VM *vm)
             vm->objects = (Obj *)instance;
             instance->klass = klass;
 
-            /* Initialize fields to nil */
-            for (uint16_t i = 0; i < klass->field_count; i++)
+            /* Initialize all fields to nil (including space for dynamic fields) */
+            for (uint16_t i = 0; i < CLASS_MAX_FIELDS; i++)
             {
                 instance->fields[i] = VAL_NIL;
             }
@@ -6565,6 +6622,8 @@ InterpretResult vm_run(VM *vm)
         klass->superclass = NULL;
         klass->field_count = 0;
         klass->method_count = 0;
+        /* Initialize field hash table for O(1) lookup */
+        memset(klass->field_hash, 0, sizeof(klass->field_hash));
         PUSH(val_obj(klass));
         DISPATCH();
     }
@@ -6590,12 +6649,13 @@ InterpretResult vm_run(VM *vm)
         }
         subclass->method_count = superclass->method_count;
 
-        /* Copy superclass field names */
+        /* Copy superclass field names and hash table */
         for (uint16_t i = 0; i < superclass->field_count; i++)
         {
             subclass->field_names[i] = superclass->field_names[i];
         }
         subclass->field_count = superclass->field_count;
+        memcpy(subclass->field_hash, superclass->field_hash, sizeof(subclass->field_hash));
         DISPATCH();
     }
 
@@ -6605,7 +6665,25 @@ InterpretResult vm_run(VM *vm)
         ObjString *name = AS_STRING(READ_CONST());
         Value method = POP();
         ObjClass *klass = AS_CLASS(PEEK(0));
-        if (klass->method_count < CLASS_MAX_METHODS)
+        
+        /* Check if method already exists (override from inheritance) */
+        bool found = false;
+        for (uint16_t i = 0; i < klass->method_count; i++)
+        {
+            if (klass->method_names[i] == name ||
+                (klass->method_names[i]->length == name->length &&
+                 klass->method_names[i]->hash == name->hash &&
+                 memcmp(klass->method_names[i]->chars, name->chars, name->length) == 0))
+            {
+                /* Override existing method */
+                klass->methods[i] = method;
+                found = true;
+                break;
+            }
+        }
+        
+        /* Add as new method if not an override */
+        if (!found && klass->method_count < CLASS_MAX_METHODS)
         {
             klass->methods[klass->method_count] = method;
             klass->method_names[klass->method_count] = name;
@@ -6621,15 +6699,16 @@ InterpretResult vm_run(VM *vm)
         ObjClass *klass = AS_CLASS(PEEK(0));
         if (klass->field_count < CLASS_MAX_FIELDS)
         {
-            klass->field_names[klass->field_count] = name;
-            klass->field_count++;
+            uint16_t idx = klass->field_count++;
+            klass->field_names[idx] = name;
+            field_hash_insert(klass, name, idx);  /* Add to hash table for O(1) lookup */
         }
         DISPATCH();
     }
 
     CASE(get_field) :
     {
-        /* OP_GET_FIELD: Get field from instance */
+        /* OP_GET_FIELD: Get field from instance - O(1) hash lookup */
         Value instance_val = PEEK(0);
         if (!IS_INSTANCE(instance_val))
         {
@@ -6639,20 +6718,16 @@ InterpretResult vm_run(VM *vm)
         ObjInstance *instance = AS_INSTANCE(instance_val);
         ObjString *name = AS_STRING(READ_CONST());
 
-        /* Look up field by name */
-        for (uint16_t i = 0; i < instance->klass->field_count; i++)
+        /* O(1) hash-based field lookup */
+        int16_t field_idx = field_hash_find(instance->klass, name);
+        if (field_idx >= 0)
         {
-            if (instance->klass->field_names[i] == name ||
-                (instance->klass->field_names[i]->length == name->length &&
-                 memcmp(instance->klass->field_names[i]->chars, name->chars, name->length) == 0))
-            {
-                POP();
-                PUSH(instance->fields[i]);
-                DISPATCH();
-            }
+            POP();
+            PUSH(instance->fields[field_idx]);
+            DISPATCH();
         }
 
-        /* Not a field - look for method */
+        /* Not a field - look for method (still linear for methods) */
         for (uint16_t i = 0; i < instance->klass->method_count; i++)
         {
             if (instance->klass->method_names[i] == name ||
@@ -6672,7 +6747,7 @@ InterpretResult vm_run(VM *vm)
 
     CASE(set_field) :
     {
-        /* OP_SET_FIELD: Set field on instance */
+        /* OP_SET_FIELD: Set field on instance - O(1) hash lookup */
         Value instance_val = PEEK(1);
         if (!IS_INSTANCE(instance_val))
         {
@@ -6683,18 +6758,14 @@ InterpretResult vm_run(VM *vm)
         ObjString *name = AS_STRING(READ_CONST());
         Value value = POP();
 
-        /* Look up field by name */
-        for (uint16_t i = 0; i < instance->klass->field_count; i++)
+        /* O(1) hash-based field lookup */
+        int16_t field_idx = field_hash_find(instance->klass, name);
+        if (field_idx >= 0)
         {
-            if (instance->klass->field_names[i] == name ||
-                (instance->klass->field_names[i]->length == name->length &&
-                 memcmp(instance->klass->field_names[i]->chars, name->chars, name->length) == 0))
-            {
-                instance->fields[i] = value;
-                POP();       /* Pop instance */
-                PUSH(value); /* Result is the assigned value */
-                DISPATCH();
-            }
+            instance->fields[field_idx] = value;
+            POP();       /* Pop instance */
+            PUSH(value); /* Result is the assigned value */
+            DISPATCH();
         }
 
         /* Field not found - add it dynamically */
@@ -6702,6 +6773,7 @@ InterpretResult vm_run(VM *vm)
         {
             uint16_t idx = instance->klass->field_count++;
             instance->klass->field_names[idx] = name;
+            field_hash_insert(instance->klass, name, idx);  /* Add to hash table */
             instance->fields[idx] = value;
             POP();       /* Pop instance */
             PUSH(value); /* Result is the assigned value */
@@ -7147,8 +7219,8 @@ InterpretResult vm_run(VM *vm)
             if (IS_CLASS(instance_val))
             {
                 ObjClass *klass = AS_CLASS(instance_val);
-                /* Create instance */
-                size_t size = sizeof(ObjInstance) + sizeof(Value) * klass->field_count;
+                /* Create instance with space for dynamic fields */
+                size_t size = sizeof(ObjInstance) + sizeof(Value) * CLASS_MAX_FIELDS;
                 ObjInstance *instance = (ObjInstance *)pseudo_realloc(vm, NULL, 0, size);
                 instance->obj.type = OBJ_INSTANCE;
                 instance->obj.next = vm->objects;
@@ -7156,8 +7228,8 @@ InterpretResult vm_run(VM *vm)
                 vm->objects = (Obj *)instance;
                 instance->klass = klass;
 
-                /* Initialize fields to nil */
-                for (uint16_t i = 0; i < klass->field_count; i++)
+                /* Initialize all fields to nil (including space for dynamic fields) */
+                for (uint16_t i = 0; i < CLASS_MAX_FIELDS; i++)
                 {
                     instance->fields[i] = VAL_NIL;
                 }

@@ -158,6 +158,22 @@
                 "title": "Open REPL",
                 "category": "Pseudocode",
                 "icon": "$(terminal)"
+            },
+            {
+                "command": "pseudocode.runWasm",
+                "title": "Run with WASM Runtime",
+                "category": "Pseudocode",
+                "icon": "$(play)"
+            },
+            {
+                "command": "pseudocode.runSelectionWasm",
+                "title": "Run Selection with WASM",
+                "category": "Pseudocode"
+            },
+            {
+                "command": "pseudocode.showWasm",
+                "title": "Show Compiled WASM",
+                "category": "Pseudocode"
             }
         ],
         "menus": {
@@ -258,6 +274,11 @@
                     "type": "string",
                     "default": "",
                     "description": "Path to the Pseudocode VM executable (pseudo). If empty, assumes 'pseudo' is in PATH or looks in the workspace."
+                },
+                "pseudocode.useWasmRuntime": {
+                    "type": "boolean",
+                    "default": true,
+                    "markdownDescription": "**Recommended** - Use the built-in WebAssembly runtime instead of native binaries. This makes the extension work on all platforms without recompilation."
                 },
                 "pseudocode.showExecutionTime": {
                     "type": "boolean",
@@ -513,7 +534,8 @@
     "dependencies": {
         "vscode-languageclient": "^9.0.1",
         "vscode-languageserver": "^9.0.1",
-        "vscode-languageserver-textdocument": "^1.0.11"
+        "vscode-languageserver-textdocument": "^1.0.11",
+        "@pseudocode/wasm": "file:../wasm"
     },
     "devDependencies": {
         "@types/node": "^18.0.0",
