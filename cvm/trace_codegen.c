@@ -641,6 +641,14 @@ static void emit_test_ri(MCode *mc, int reg, int32_t imm)
     emit32(mc, imm);
 }
 
+/* TEST reg, reg (sets ZF if reg is zero) */
+static void emit_test_rr(MCode *mc, int dst, int src)
+{
+    emit(mc, rex(1, src, 0, dst));
+    emit(mc, 0x85);
+    emit(mc, 0xc0 | ((src & 7) << 3) | (dst & 7));
+}
+
 /* XOR reg, reg */
 static void emit_xor_rr(MCode *mc, int dst, int src)
 {
@@ -1363,46 +1371,44 @@ static void compile_ir_op(MCode *mc, TraceIR *ir, IRIns *ins,
         if (dst >= 0 && src1 >= 0 && src2 >= 0)
         {
             /* IDIV uses RDX:RAX / divisor -> RAX=quotient, RDX=remainder
-             * CQO sign-extends RAX into RDX, clobbering RDX!
-             * IDIV clobbers both RAX and RDX
-             *
-             * Critical register clobber cases:
-             * - src1 == R11: reading src2 into R11 would clobber src1
-             * - src2 == R10: reading src1 into R10 would clobber src2
-             * Solution: read to RAX first (safe), then move to scratch regs
+             * Optimized: only save registers that will be clobbered and are live
+             * RAX and RDX are always clobbered by IDIV
              */
-
-            /* Save all potentially clobbered registers */
-            emit_push(mc, RAX);
-            emit_push(mc, RDX);
-            emit_push(mc, R10);
-            emit_push(mc, R11);
-
-            /* Read both operands into RAX/RDX first (they're saved on stack)
-             * This avoids any src vs R10/R11 conflicts */
-            emit_mov_rr(mc, RAX, src1); /* dividend into RAX */
-            emit_mov_rr(mc, RDX, src2); /* divisor into RDX (temp) */
-
-            /* Now move to final positions - no conflict possible */
-            emit_mov_rr(mc, R11, RDX); /* divisor to R11 */
-            /* RAX already has dividend, no need to copy to R10 */
-
+            
+            /* Check if src2 is already in a safe register (not RAX/RDX) */
+            int divisor_reg = src2;
+            bool need_save_src2 = (src2 == RAX || src2 == RDX);
+            
+            /* Save RAX if it's live and not dst (we'll overwrite dst anyway) */
+            bool save_rax = (dst != RAX);
+            bool save_rdx = true; /* CQO clobbers RDX */
+            
+            if (save_rax) emit_push(mc, RAX);
+            if (save_rdx) emit_push(mc, RDX);
+            
+            /* If divisor is in RAX or RDX, move it to R11 first */
+            if (need_save_src2)
+            {
+                emit_mov_rr(mc, R11, src2);
+                divisor_reg = R11;
+            }
+            
+            /* Move dividend to RAX */
+            if (src1 != RAX)
+                emit_mov_rr(mc, RAX, src1);
+            
             /* Sign-extend RAX to RDX:RAX */
-            emit_cqo(mc);       /* Sign-extend RAX into RDX:RAX */
-            emit_idiv(mc, R11); /* RDX:RAX / R11 -> RAX=quot, RDX=rem */
-
-            /* Save result (quotient) to R10 */
-            emit_mov_rr(mc, R10, RAX);
-
-            /* Restore scratch regs (we'll move result after) */
-            emit_pop(mc, R11);
-            /* Skip R10 restore - we need its value */
-            emit_add_ri(mc, RSP, 8); /* Discard R10 from stack */
-            emit_pop(mc, RDX);
-            emit_pop(mc, RAX);
-
-            /* Move result to destination */
-            emit_mov_rr(mc, dst, R10);
+            emit_cqo(mc);
+            emit_idiv(mc, divisor_reg);
+            
+            /* Result (quotient) is in RAX, move to dst */
+            if (dst != RAX)
+                emit_mov_rr(mc, dst, RAX);
+            
+            /* Restore RDX first (it was pushed second) */
+            if (save_rdx) emit_pop(mc, RDX);
+            if (save_rax && dst != RAX) emit_pop(mc, RAX);
+            else if (save_rax) emit_add_ri(mc, RSP, 8); /* Discard saved RAX */
         }
         break;
 
@@ -1413,46 +1419,43 @@ static void compile_ir_op(MCode *mc, TraceIR *ir, IRIns *ins,
             fprintf(stderr, "[IR_MOD_INT] dst=%d, src1=%d, src2=%d\n", dst, src1, src2);
 #endif
             /* IDIV uses RDX:RAX / divisor -> RAX=quotient, RDX=remainder
-             * CQO sign-extends RAX into RDX, clobbering RDX!
-             * IDIV clobbers both RAX and RDX
-             *
-             * Critical register clobber cases:
-             * - src1 == R11: reading src2 into R11 would clobber src1
-             * - src2 == R10: reading src1 into R10 would clobber src2
-             * Solution: read to RAX first (safe), then move to scratch regs
+             * Optimized: only save registers that will be clobbered and are live
              */
-
-            /* Save all potentially clobbered registers */
-            emit_push(mc, RAX);
-            emit_push(mc, RDX);
-            emit_push(mc, R10);
-            emit_push(mc, R11);
-
-            /* Read both operands into RAX/RDX first (they're saved on stack)
-             * This avoids any src vs R10/R11 conflicts */
-            emit_mov_rr(mc, RAX, src1); /* dividend into RAX */
-            emit_mov_rr(mc, RDX, src2); /* divisor into RDX (temp) */
-
-            /* Now move to final positions - no conflict possible */
-            emit_mov_rr(mc, R11, RDX); /* divisor to R11 */
-            emit_mov_rr(mc, R10, RAX); /* dividend stays in RAX, copy to R10 for clarity */
-
-            /* RAX already has dividend, sign-extend to RDX:RAX */
-            emit_cqo(mc);       /* Sign-extend RAX into RDX:RAX */
-            emit_idiv(mc, R11); /* RDX:RAX / R11 -> RAX=quot, RDX=rem */
-
-            /* Save result (remainder) to R10 */
-            emit_mov_rr(mc, R10, RDX);
-
-            /* Restore scratch regs (we'll move result after) */
-            emit_pop(mc, R11);
-            /* Skip R10 restore - we need its value */
-            emit_add_ri(mc, RSP, 8); /* Discard R10 from stack */
-            emit_pop(mc, RDX);
-            emit_pop(mc, RAX);
-
-            /* Move result to destination */
-            emit_mov_rr(mc, dst, R10);
+            
+            /* Check if src2 is already in a safe register (not RAX/RDX) */
+            int divisor_reg = src2;
+            bool need_save_src2 = (src2 == RAX || src2 == RDX);
+            
+            /* Save RAX and RDX (both clobbered by IDIV) */
+            bool save_rax = (dst != RAX);
+            bool save_rdx = (dst != RDX); /* We want RDX for result */
+            
+            if (save_rax) emit_push(mc, RAX);
+            if (save_rdx) emit_push(mc, RDX);
+            
+            /* If divisor is in RAX or RDX, move it to R11 first */
+            if (need_save_src2)
+            {
+                emit_mov_rr(mc, R11, src2);
+                divisor_reg = R11;
+            }
+            
+            /* Move dividend to RAX */
+            if (src1 != RAX)
+                emit_mov_rr(mc, RAX, src1);
+            
+            /* Sign-extend RAX to RDX:RAX */
+            emit_cqo(mc);
+            emit_idiv(mc, divisor_reg);
+            
+            /* Result (remainder) is in RDX, move to dst */
+            if (dst != RDX)
+                emit_mov_rr(mc, dst, RDX);
+            
+            /* Restore saved registers */
+            if (save_rdx && dst != RDX) emit_pop(mc, RDX);
+            else if (save_rdx) emit_add_ri(mc, RSP, 8);
+            if (save_rax) emit_pop(mc, RAX);
         }
         break;
 
@@ -2090,6 +2093,21 @@ static void compile_ir_op(MCode *mc, TraceIR *ir, IRIns *ins,
         }
         break;
 
+    case IR_GUARD_NONZERO:
+        /* Guard value is not zero (for division by zero) */
+        if (src1 >= 0)
+        {
+            /* Test if value is zero */
+            emit_test_rr(mc, src1, src1);
+            if (*num_exits < IR_MAX_EXITS)
+            {
+                exits[*num_exits].code_offset = emit_je(mc); /* Exit if zero (ZF set) */
+                exits[*num_exits].snapshot_idx = ins->imm.snapshot;
+                (*num_exits)++;
+            }
+        }
+        break;
+
     case IR_GUARD_FUNC:
         /* Guard that function pointer matches expected */
         if (src1 >= 0)
@@ -2333,20 +2351,24 @@ bool trace_compile(TraceIR *ir, void **code_out, size_t *size_out,
     emit_pop(&mc, RBX);
     emit_ret(&mc);
 
-    /* Generate exit stubs */
+    /* Generate shared exit epilogue (all exits jump here) */
+    size_t exit_epilogue = mc.length;
+    emit_mov_ri32(&mc, RAX, -1);  /* Return -1 to indicate guard failure */
+    emit_pop(&mc, R15);
+    emit_pop(&mc, R14);
+    emit_pop(&mc, R13);
+    emit_pop(&mc, R12);
+    emit_pop(&mc, RBX);
+    emit_ret(&mc);
+
+    /* Generate exit stubs - each is just a JMP to shared epilogue */
     for (uint32_t i = 0; i < num_exits; i++)
     {
         size_t stub_addr = mc.length;
 
-        /* Exit stub: call deopt handler */
-        /* For now, just return with error code */
-        emit_mov_ri32(&mc, RAX, -1);
-        emit_pop(&mc, R15);
-        emit_pop(&mc, R14);
-        emit_pop(&mc, R13);
-        emit_pop(&mc, R12);
-        emit_pop(&mc, RBX);
-        emit_ret(&mc);
+        /* Compact exit stub: just jump to shared epilogue */
+        size_t jmp_offset = emit_jmp(&mc);
+        patch32(&mc, jmp_offset, (int32_t)(exit_epilogue - (jmp_offset + 4)));
 
         /* Patch the guard jump to point here */
         patch32(&mc, exits[i].code_offset,

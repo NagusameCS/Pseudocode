@@ -3,7 +3,7 @@
  *
  * Translates Pseudocode AST into WebAssembly bytecode.
  */
-import { createWasmBuilder, TYPE_I32, TYPE_I64, TYPE_F64, OP, encodeULEB128, encodeSLEB128 } from './wasm-builder';
+import { createWasmBuilder, TYPE_I32, TYPE_I64, TYPE_F64, OP, encodeULEB128, encodeSLEB128, encodeSLEB128BigInt } from './wasm-builder';
 // We use i64 for tagged values
 const VALUE_TYPE = TYPE_I64;
 /**
@@ -754,11 +754,11 @@ function emitFloat(ctx, value) {
     const buffer = new ArrayBuffer(8);
     const view = new DataView(buffer);
     view.setFloat64(0, value, true);
-    const bits = view.getBigInt64(0, true);
+    const bits = view.getBigUint64(0, true);
     const encoded = 3n | (bits << 3n);
-    // For large numbers, we need to emit as two i32s and combine
-    // Simplified: use i64.const for values that fit
-    ctx.body.push(OP.I64_CONST, ...encodeSLEB128(Number(encoded & 0xffffffffn)));
+    // Emit full 64-bit value using SLEB128 encoding
+    // encodeSLEB128 handles BigInt properly for full i64 range
+    ctx.body.push(OP.I64_CONST, ...encodeSLEB128BigInt(encoded));
 }
 /**
  * Emit string value.

@@ -205,6 +205,27 @@ export function encodeSLEB128(value) {
     return bytes;
 }
 /**
+ * Encodes a signed LEB128 BigInt (for full 64-bit values).
+ */
+export function encodeSLEB128BigInt(value) {
+    const bytes = [];
+    let more = true;
+    while (more) {
+        let byte = Number(value & 0x7fn);
+        value >>= 7n;
+        // Check if more bytes needed
+        if ((value === 0n && (byte & 0x40) === 0) ||
+            (value === -1n && (byte & 0x40) !== 0)) {
+            more = false;
+        }
+        else {
+            byte |= 0x80;
+        }
+        bytes.push(byte);
+    }
+    return bytes;
+}
+/**
  * Encodes a string with its length prefix.
  */
 export function encodeString(str) {

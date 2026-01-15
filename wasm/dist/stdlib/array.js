@@ -1,7 +1,7 @@
 /*
  * Pseudocode WASM Standard Library - Array Functions
  */
-import { valInt, valBool, valNil, valArray, isArray, isFunction, asPointer, asNumber, isTruthy } from '../runtime/values';
+import { valInt, valBool, valNil, valArray, isArray, isFunction, asPointer, asNumber, isTruthy, valEquals } from '../runtime/values';
 /**
  * Create array functions for the runtime.
  */
@@ -306,7 +306,7 @@ export function createArrayFunctions(memory, callFunction) {
             const count = memory.arrayCount(ptr);
             for (let i = 0; i < count; i++) {
                 const elem = memory.arrayGet(ptr, i);
-                if (elem === value) {
+                if (valEquals(elem, value)) {
                     return valBool(true);
                 }
             }
@@ -323,7 +323,7 @@ export function createArrayFunctions(memory, callFunction) {
             const count = memory.arrayCount(ptr);
             for (let i = 0; i < count; i++) {
                 const elem = memory.arrayGet(ptr, i);
-                if (elem === value) {
+                if (valEquals(elem, value)) {
                     return valInt(i);
                 }
             }

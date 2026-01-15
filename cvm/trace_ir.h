@@ -143,6 +143,7 @@ typedef enum
     IR_GUARD_OVERFLOW, /* Guard no overflow occurred */
     IR_GUARD_BOUNDS,   /* Guard array bounds */
     IR_GUARD_FUNC,     /* Guard function identity */
+    IR_GUARD_NONZERO,  /* Guard value is not zero (for division) */
 
     /* Function calls */
     IR_CALL,        /* Call function */

@@ -4,7 +4,7 @@
 
 import { 
     Value, valInt, valBool, valNil, valArray,
-    isArray, isFunction, asPointer, asNumber, isTruthy, valToString
+    isArray, isFunction, asPointer, asNumber, isTruthy, valToString, valEquals
 } from '../runtime/values';
 import { Memory } from '../runtime/memory';
 
@@ -359,7 +359,7 @@ export function createArrayFunctions(memory: Memory, callFunction: (funcIdx: num
             
             for (let i = 0; i < count; i++) {
                 const elem = memory.arrayGet(ptr, i);
-                if (elem === value) {
+                if (valEquals(elem, value)) {
                     return valBool(true);
                 }
             }
@@ -380,7 +380,7 @@ export function createArrayFunctions(memory: Memory, callFunction: (funcIdx: num
             
             for (let i = 0; i < count; i++) {
                 const elem = memory.arrayGet(ptr, i);
-                if (elem === value) {
+                if (valEquals(elem, value)) {
                     return valInt(i);
                 }
             }

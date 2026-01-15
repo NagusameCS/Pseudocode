@@ -804,6 +804,11 @@ interface SymbolCache {
 }
 const documentSymbolCache = new Map<string, SymbolCache>();
 
+// Export for cleanup on document close
+export function clearDocumentSymbolCache(uri: string): void {
+    documentSymbolCache.delete(uri);
+}
+
 export class PseudocodeDocumentSymbolProvider implements vscode.DocumentSymbolProvider {
     provideDocumentSymbols(document: vscode.TextDocument): vscode.DocumentSymbol[] {
         try {

@@ -40,6 +40,11 @@ interface CachedSymbols {
 
 const symbolCache = new Map<string, CachedSymbols>();
 
+// Export for cleanup on document close
+export function clearSymbolCache(uri: string): void {
+    symbolCache.delete(uri);
+}
+
 function parseDocument(document: vscode.TextDocument): FileSymbols {
     // Check if we have a valid cached version
     const cached = symbolCache.get(document.uri.toString());

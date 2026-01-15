@@ -19,11 +19,12 @@ import {
     PseudocodeSignatureHelpProvider,
     PseudocodeDocumentFormatter,
     createDiagnostics,
-    prewarmCaches
+    prewarmCaches,
+    clearDocumentSymbolCache
 } from './languageFeatures';
 import { registerDebugger } from './debugAdapter';
 import { registerRepl } from './repl';
-import { registerAdvancedFeatures } from './advancedFeatures';
+import { registerAdvancedFeatures, clearSymbolCache } from './advancedFeatures';
 import { registerExtraFeatures } from './extraFeatures';
 import { activateLspClient, deactivateLspClient } from './lspClient';
 import { registerWasmCommands, disposeWasmRuntime, getWasmRuntime } from './wasm';
@@ -142,6 +143,10 @@ export async function activate(context: vscode.ExtensionContext) {
 
         vscode.workspace.onDidCloseTextDocument(document => {
             diagnosticCollection.delete(document.uri);
+            // Clear symbol caches to prevent memory leaks
+            const uri = document.uri.toString();
+            clearSymbolCache(uri);
+            clearDocumentSymbolCache(uri);
         }, null, context.subscriptions);
 
         context.subscriptions.push(

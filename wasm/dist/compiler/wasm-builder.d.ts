@@ -155,6 +155,10 @@ export declare function encodeULEB128(value: number): number[];
  */
 export declare function encodeSLEB128(value: number): number[];
 /**
+ * Encodes a signed LEB128 BigInt (for full 64-bit values).
+ */
+export declare function encodeSLEB128BigInt(value: bigint): number[];
+/**
  * Encodes a string with its length prefix.
  */
 export declare function encodeString(str: string): number[];

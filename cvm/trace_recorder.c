@@ -565,12 +565,64 @@ bool recorder_step(TraceRecorder *rec, uint8_t *pc,
 
     case OP_DIV:
     case OP_DIV_II:
+    {
+        uint16_t b = rec_pop(rec);
+        uint16_t a = rec_pop(rec);
+        IRType ta = ir->vregs[a].type;
+        IRType tb = ir->vregs[b].type;
+        
+        /* Division by zero guard */
+        uint32_t snap = make_snapshot(rec, pc - 1);
+        ir_emit_guard(ir, IR_GUARD_NONZERO, b, snap, pc - 1);
+        
+        uint16_t dst = ir_vreg(ir, IR_TYPE_INT32);
+        
+        if (ta == IR_TYPE_INT32 && tb == IR_TYPE_INT32)
+        {
+            ir_emit(ir, IR_DIV_INT, IR_TYPE_INT32, dst, a, b);
+        }
+        else if (ta == IR_TYPE_DOUBLE || tb == IR_TYPE_DOUBLE)
+        {
+            ir_emit(ir, IR_DIV_DOUBLE, IR_TYPE_DOUBLE, dst, a, b);
+            ir->vregs[dst].type = IR_TYPE_DOUBLE;
+        }
+        else
+        {
+            ir_emit_guard(ir, IR_GUARD_INT, a, snap, pc - 1);
+            ir_emit_guard(ir, IR_GUARD_INT, b, snap, pc - 1);
+            ir_emit(ir, IR_DIV_INT, IR_TYPE_INT32, dst, a, b);
+        }
+        rec_push(rec, dst);
+        break;
+    }
+    
     case OP_MOD:
     case OP_MOD_II:
-        /* Division/modulo have complex register interactions in JIT.
-         * Bail out to interpreter for correctness. */
-        recorder_abort(rec, "division/modulo not JIT-compiled");
-        return false;
+    {
+        uint16_t b = rec_pop(rec);
+        uint16_t a = rec_pop(rec);
+        IRType ta = ir->vregs[a].type;
+        IRType tb = ir->vregs[b].type;
+        
+        /* Division by zero guard */
+        uint32_t snap = make_snapshot(rec, pc - 1);
+        ir_emit_guard(ir, IR_GUARD_NONZERO, b, snap, pc - 1);
+        
+        uint16_t dst = ir_vreg(ir, IR_TYPE_INT32);
+        
+        if (ta == IR_TYPE_INT32 && tb == IR_TYPE_INT32)
+        {
+            ir_emit(ir, IR_MOD_INT, IR_TYPE_INT32, dst, a, b);
+        }
+        else
+        {
+            ir_emit_guard(ir, IR_GUARD_INT, a, snap, pc - 1);
+            ir_emit_guard(ir, IR_GUARD_INT, b, snap, pc - 1);
+            ir_emit(ir, IR_MOD_INT, IR_TYPE_INT32, dst, a, b);
+        }
+        rec_push(rec, dst);
+        break;
+    }
 
     case OP_NEG:
     case OP_NEG_II:
