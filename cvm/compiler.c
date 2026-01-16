@@ -509,6 +509,33 @@ static void consume(TokenType type, const char *message)
     error_at_current(message);
 }
 
+/* Check if current token can be used as a variable/parameter name */
+/* Allows contextual keywords like 'step', 'to', 'from', 'as', 'input' etc. */
+static bool is_identifier_like(void)
+{
+    TokenType t = parser.current.type;
+    return t == TOKEN_IDENT || 
+           t == TOKEN_STEP ||
+           t == TOKEN_TO ||
+           t == TOKEN_FROM ||
+           t == TOKEN_AS ||
+           t == TOKEN_INPUT ||
+           t == TOKEN_OUTPUT ||
+           t == TOKEN_MOD ||
+           t == TOKEN_DIV;
+}
+
+/* Consume a token that can be used as an identifier (name) */
+static void consume_identifier_like(const char *message)
+{
+    if (is_identifier_like())
+    {
+        advance();
+        return;
+    }
+    error_at_current(message);
+}
+
 static bool check(TokenType type)
 {
     return parser.current.type == type;
@@ -923,7 +950,7 @@ static uint8_t identifier_constant(Token *name)
 
 static uint8_t parse_variable(const char *error_message)
 {
-    consume(TOKEN_IDENT, error_message);
+    consume_identifier_like(error_message);
 
     declare_variable();
     if (current->scope_depth > 0)
@@ -3421,8 +3448,8 @@ ParseRule rules[] = {
     [TOKEN_ASYNC] = {NULL, NULL, PREC_NONE},
     [TOKEN_AWAIT] = {await_expr, NULL, PREC_NONE},
     [TOKEN_STATIC] = {NULL, NULL, PREC_NONE},
-    [TOKEN_FROM] = {NULL, NULL, PREC_NONE},
-    [TOKEN_AS] = {NULL, NULL, PREC_NONE},
+    [TOKEN_FROM] = {variable, NULL, PREC_NONE},  /* Allow 'from' as variable name */
+    [TOKEN_AS] = {variable, NULL, PREC_NONE},    /* Allow 'as' as variable name */
     [TOKEN_MODULE] = {NULL, NULL, PREC_NONE},
     [TOKEN_EXPORT] = {NULL, NULL, PREC_NONE},
     [TOKEN_IMPORT] = {NULL, NULL, PREC_NONE},
@@ -3430,13 +3457,13 @@ ParseRule rules[] = {
     [TOKEN_CONTINUE] = {NULL, NULL, PREC_NONE},
     [TOKEN_REPEAT] = {NULL, NULL, PREC_NONE},
     [TOKEN_UNTIL] = {NULL, NULL, PREC_NONE},
-    [TOKEN_STEP] = {NULL, NULL, PREC_NONE},
-    [TOKEN_TO] = {NULL, NULL, PREC_NONE},
+    [TOKEN_STEP] = {variable, NULL, PREC_NONE},  /* Allow 'step' as variable name */
+    [TOKEN_TO] = {variable, NULL, PREC_NONE},    /* Allow 'to' as variable name */
     [TOKEN_LOOP] = {NULL, NULL, PREC_NONE},
     [TOKEN_MOD] = {NULL, binary, PREC_FACTOR},     /* mod as infix operator */
     [TOKEN_DIV] = {NULL, binary, PREC_FACTOR},     /* div as infix operator */
-    [TOKEN_OUTPUT] = {NULL, NULL, PREC_NONE},
-    [TOKEN_INPUT] = {NULL, NULL, PREC_NONE},
+    [TOKEN_OUTPUT] = {variable, NULL, PREC_NONE},  /* Allow 'output' as variable name */
+    [TOKEN_INPUT] = {variable, NULL, PREC_NONE},   /* Allow 'input' as variable name */
     [TOKEN_FUNCTION] = {lambda, NULL, PREC_NONE},  /* function = fn */
     [TOKEN_PROCEDURE] = {lambda, NULL, PREC_NONE}, /* procedure = fn */
     [TOKEN_ERROR] = {NULL, NULL, PREC_NONE},
