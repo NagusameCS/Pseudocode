@@ -568,13 +568,13 @@ static void emit_bytes(uint8_t byte1, uint8_t byte2)
     emit_byte(byte2);
 }
 
-/* Emit an opcode, handling extended opcodes (>= 255) automatically */
+/* Emit an opcode, handling extended opcodes (>= 256) automatically */
 static void emit_opcode(int opcode)
 {
-    if (opcode >= 255) {
+    if (opcode >= 256) {
         /* Extended opcode: emit prefix + extended index */
         emit_byte(OP_EXTENDED);
-        emit_byte((uint8_t)(opcode - 255));
+        emit_byte((uint8_t)(opcode - 256));
     } else {
         emit_byte((uint8_t)opcode);
     }
