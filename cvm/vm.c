@@ -1252,6 +1252,7 @@ InterpretResult vm_run(VM *vm)
         [OP_JOIN] = &&op_join,
         [OP_REPLACE] = &&op_replace,
         [OP_FIND] = &&op_find,
+        [OP_CONTAINS] = &&op_contains,
         [OP_TRIM] = &&op_trim,
         [OP_CHAR] = &&op_char,
         [OP_ORD] = &&op_ord,
@@ -1377,8 +1378,6 @@ InterpretResult vm_run(VM *vm)
         [OP_BYTES_SET] = &&op_bytes_set,
         [OP_ENCODE_UTF8] = &&op_encode_utf8,
         [OP_DECODE_UTF8] = &&op_decode_utf8,
-        [OP_ENCODE_BASE64] = &&op_encode_base64,
-        [OP_DECODE_BASE64] = &&op_decode_base64,
         /* Exception handling */
         [OP_TRY] = &&op_try,
         [OP_TRY_END] = &&op_try_end,
@@ -1441,7 +1440,12 @@ InterpretResult vm_run(VM *vm)
     /* Secondary dispatch table for extended opcodes (>= 256) */
     /* Index is (opcode - 256) */
     static void *extended_dispatch_table[] = {
-        /* Regex - extended index 0-2 */
+        /* Additional builtins - extended index 0-3 */
+        [OP_RANDINT - 256] = &&op_randint,
+        [OP_CHAR_AT - 256] = &&op_char_at,
+        [OP_ENCODE_BASE64 - 256] = &&op_encode_base64,
+        [OP_DECODE_BASE64 - 256] = &&op_decode_base64,
+        /* Regex - extended index 4-6 */
         [OP_REGEX_MATCH - 256] = &&op_regex_match,
         [OP_REGEX_FIND - 256] = &&op_regex_find,
         [OP_REGEX_REPLACE - 256] = &&op_regex_replace,
@@ -2658,6 +2662,18 @@ InterpretResult vm_run(VM *vm)
         DISPATCH();
     }
 
+    CASE(randint) :
+    {
+        Value vmax = POP();
+        Value vmin = POP();
+        int32_t min_val = IS_INT(vmin) ? as_int(vmin) : (int32_t)as_num(vmin);
+        int32_t max_val = IS_INT(vmax) ? as_int(vmax) : (int32_t)as_num(vmax);
+        int32_t range = max_val - min_val + 1;
+        int32_t result = min_val + (rand() % range);
+        PUSH(val_int(result));
+        DISPATCH();
+    }
+
     /* ============ BIT MANIPULATION INTRINSICS ============ */
     /* Map directly to CPU instructions via GCC builtins */
 
@@ -2965,6 +2981,24 @@ InterpretResult vm_run(VM *vm)
         DISPATCH();
     }
 
+    CASE(contains) :
+    {
+        Value vneedle = POP();
+        Value vhaystack = POP();
+
+        if (!IS_OBJ(vhaystack) || !IS_OBJ(vneedle))
+        {
+            PUSH(VAL_FALSE);
+            DISPATCH();
+        }
+        ObjString *haystack = (ObjString *)as_obj(vhaystack);
+        ObjString *needle = (ObjString *)as_obj(vneedle);
+
+        const char *found = strstr(haystack->chars, needle->chars);
+        PUSH(found ? VAL_TRUE : VAL_FALSE);
+        DISPATCH();
+    }
+
     CASE(trim) :
     {
         Value v = POP();
@@ -2996,6 +3030,27 @@ InterpretResult vm_run(VM *vm)
         Value v = POP();
         int32_t code = IS_INT(v) ? as_int(v) : (int32_t)as_num(v);
         char buf[2] = {(char)code, '\0'};
+        PUSH(val_obj(copy_string(vm, buf, 1)));
+        DISPATCH();
+    }
+
+    CASE(char_at) :
+    {
+        Value vidx = POP();
+        Value vstr = POP();
+        if (!IS_OBJ(vstr))
+        {
+            runtime_error(vm, "char_at requires a string.");
+            return INTERPRET_RUNTIME_ERROR;
+        }
+        ObjString *str = (ObjString *)as_obj(vstr);
+        int32_t idx = IS_INT(vidx) ? as_int(vidx) : (int32_t)as_num(vidx);
+        if (idx < 0 || idx >= (int32_t)str->length)
+        {
+            runtime_error(vm, "char_at index out of bounds.");
+            return INTERPRET_RUNTIME_ERROR;
+        }
+        char buf[2] = {str->chars[idx], '\0'};
         PUSH(val_obj(copy_string(vm, buf, 1)));
         DISPATCH();
     }

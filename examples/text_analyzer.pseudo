@@ -45,6 +45,7 @@ print("")
 // Word frequency analysis
 print("=== Word Frequency ===")
 let word_freq = dict()
+let count = 0
 
 for word in words do
     // Remove punctuation
@@ -55,7 +56,7 @@ for word in words do
     
     if len(clean) > 0 then
         if dict_has(word_freq, clean) then
-            let count = dict_get(word_freq, clean)
+            count = dict_get(word_freq, clean)
             dict_set(word_freq, clean, count + 1)
         else
             dict_set(word_freq, clean, 1)
@@ -82,12 +83,15 @@ print("=== Character Frequency ===")
 // Count letter frequency
 let letter_freq = dict()
 let alphabet = "abcdefghijklmnopqrstuvwxyz"
+let c = ""
+let freq = 0
 
 for i in 0..len(lower_text) do
-    let c = char_at(lower_text, i)
+    c = char_at(lower_text, i)
     if contains(alphabet, c) then
         if dict_has(letter_freq, c) then
-            dict_set(letter_freq, c, dict_get(letter_freq, c) + 1)
+            freq = dict_get(letter_freq, c)
+            dict_set(letter_freq, c, freq + 1)
         else
             dict_set(letter_freq, c, 1)
         end
@@ -97,20 +101,23 @@ end
 // Find most common letters
 print("Most common letters:")
 let letters = dict_keys(letter_freq)
+let temp = ""
+
 // Simple bubble sort by frequency
 for i in 0..(len(letters) - 1) do
     for j in 0..(len(letters) - i - 1) do
         if dict_get(letter_freq, letters[j]) < dict_get(letter_freq, letters[j + 1]) then
-            let temp = letters[j]
+            temp = letters[j]
             letters[j] = letters[j + 1]
             letters[j + 1] = temp
         end
     end
 end
 
+let letter = ""
 for i in 0..5 do
     if i < len(letters) then
-        let letter = letters[i]
+        letter = letters[i]
         print("  '" + letter + "': " + str(dict_get(letter_freq, letter)))
     end
 end

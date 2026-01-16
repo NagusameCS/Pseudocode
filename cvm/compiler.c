@@ -1535,6 +1535,16 @@ static void variable(bool can_assign)
             emit_byte(OP_RAND);
             return;
         }
+        if (MATCH_BUILTIN(name, "randint"))
+        {
+            advance();
+            expression(); /* min */
+            consume(TOKEN_COMMA, "Expect ',' after min.");
+            expression(); /* max */
+            consume(TOKEN_RPAREN, "Expect ')' after randint arguments.");
+            emit_opcode(OP_RANDINT);
+            return;
+        }
         if (MATCH_BUILTIN(name, "pow"))
         {
             advance();
@@ -1661,6 +1671,16 @@ static void variable(bool can_assign)
             emit_byte(OP_FIND);
             return;
         }
+        if (MATCH_BUILTIN(name, "contains"))
+        {
+            advance();
+            expression(); /* haystack */
+            consume(TOKEN_COMMA, "Expect ',' after string.");
+            expression(); /* needle */
+            consume(TOKEN_RPAREN, "Expect ')' after contains arguments.");
+            emit_byte(OP_CONTAINS);
+            return;
+        }
         if (MATCH_BUILTIN(name, "trim"))
         {
             advance();
@@ -1675,6 +1695,16 @@ static void variable(bool can_assign)
             expression();
             consume(TOKEN_RPAREN, "Expect ')' after char argument.");
             emit_byte(OP_CHAR);
+            return;
+        }
+        if (MATCH_BUILTIN(name, "char_at"))
+        {
+            advance();
+            expression(); /* string */
+            consume(TOKEN_COMMA, "Expect ',' after string.");
+            expression(); /* index */
+            consume(TOKEN_RPAREN, "Expect ')' after char_at arguments.");
+            emit_opcode(OP_CHAR_AT);
             return;
         }
         if (MATCH_BUILTIN(name, "ord"))
@@ -2174,7 +2204,7 @@ static void variable(bool can_assign)
             advance();
             expression();
             consume(TOKEN_RPAREN, "Expect ')' after encode_base64 argument.");
-            emit_byte(OP_ENCODE_BASE64);
+            emit_opcode(OP_ENCODE_BASE64);
             return;
         }
         if (MATCH_BUILTIN(name, "decode_base64"))
@@ -2182,7 +2212,7 @@ static void variable(bool can_assign)
             advance();
             expression();
             consume(TOKEN_RPAREN, "Expect ')' after decode_base64 argument.");
-            emit_byte(OP_DECODE_BASE64);
+            emit_opcode(OP_DECODE_BASE64);
             return;
         }
 

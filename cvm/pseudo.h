@@ -633,6 +633,7 @@ typedef enum
     OP_JOIN,    /* Join array into string */
     OP_REPLACE, /* Replace in string */
     OP_FIND,    /* Find substring */
+    OP_CONTAINS, /* Check if substring exists */
     OP_TRIM,    /* Trim whitespace */
     OP_CHAR,    /* Get char code */
     OP_ORD,     /* Char code to string */
@@ -798,8 +799,6 @@ typedef enum
     OP_BYTES_SET,     /* Set byte at index */
     OP_ENCODE_UTF8,   /* String to UTF-8 bytes */
     OP_DECODE_UTF8,   /* UTF-8 bytes to string */
-    OP_ENCODE_BASE64, /* Encode to base64 */
-    OP_DECODE_BASE64, /* Decode from base64 */
     
     /* Extended opcode prefix - opcodes >= 255 use this prefix + extended index */
     /* Note: Explicit value ensures OP_EXTENDED is always 254 regardless of preceding opcodes */
@@ -808,9 +807,15 @@ typedef enum
     /* ============ EXTENDED OPCODES (index 256+) ============ */
     /* These opcodes are emitted as: OP_EXTENDED, (opcode - 256) */
     /* Total extended opcodes: ~65 (well within uint8_t range) */
+
+    /* Additional builtins - extended index 0-3 */
+    OP_RANDINT = 256,   /* Random integer in range [min, max] */
+    OP_CHAR_AT,         /* Get character at index as string */
+    OP_ENCODE_BASE64,   /* Encode to base64 */
+    OP_DECODE_BASE64,   /* Decode from base64 */
     
-    /* Regex - extended index 0-2 */
-    OP_REGEX_MATCH = 256,   /* Check if string matches regex */
+    /* Regex - extended index 4-6 */
+    OP_REGEX_MATCH,   /* Check if string matches regex */
     OP_REGEX_FIND,    /* Find all regex matches */
     OP_REGEX_REPLACE, /* Replace with regex */
 
