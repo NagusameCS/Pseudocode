@@ -1764,7 +1764,10 @@ static void compile_legacy_loops(void)
         code[i++] = 0xc9;
         /* jnz loop */
         code[i++] = 0x75;
-        code[i++] = (uint8_t)(loop_start - (i + 1));
+        {
+            int offset = loop_start - (i + 1);
+            code[i++] = (uint8_t)offset;
+        }
         /* done: ret */
         code[i++] = 0xc3;
         mprotect_rx(code, 4096);

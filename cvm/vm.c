@@ -1862,7 +1862,8 @@ InterpretResult vm_run(VM *vm)
 
     CASE(not) :
     {
-        PUSH(val_bool(!is_truthy(POP())));
+        Value v = POP();
+        PUSH(val_bool(!is_truthy(v)));
         DISPATCH();
     }
 
