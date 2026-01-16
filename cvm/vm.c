@@ -1170,6 +1170,7 @@ InterpretResult vm_run(VM *vm)
         [OP_FOR_INT_INIT] = &&op_for_int_init,
         [OP_FOR_INT_LOOP] = &&op_for_int_loop,
         [OP_FOR_COUNT] = &&op_for_count,
+        [OP_FOR_COUNT_STEP] = &&op_for_count_step,
         [OP_ADD_LOCAL_INT] = &&op_add_local_int,
         [OP_LOCAL_LT_LOOP] = &&op_local_lt_loop,
         /* Fused local arithmetic */
@@ -1691,6 +1692,15 @@ InterpretResult vm_run(VM *vm)
                 DISPATCH();
             }
         }
+        /* Handle int vs float comparison: compare numeric values */
+        if ((IS_INT(a) && IS_NUM(b)) || (IS_NUM(a) && IS_INT(b)) ||
+            (IS_INT(a) && IS_INT(b)) || (IS_NUM(a) && IS_NUM(b) && !IS_OBJ(a) && !IS_OBJ(b)))
+        {
+            double da = IS_INT(a) ? (double)as_int(a) : as_num(a);
+            double db = IS_INT(b) ? (double)as_int(b) : as_num(b);
+            PUSH(val_bool(da == db));
+            DISPATCH();
+        }
         PUSH(val_bool(a == b));
         DISPATCH();
     }
@@ -1713,6 +1723,15 @@ InterpretResult vm_run(VM *vm)
                 PUSH(val_bool(!equal));
                 DISPATCH();
             }
+        }
+        /* Handle int vs float comparison: compare numeric values */
+        if ((IS_INT(a) && IS_NUM(b)) || (IS_NUM(a) && IS_INT(b)) ||
+            (IS_INT(a) && IS_INT(b)) || (IS_NUM(a) && IS_NUM(b) && !IS_OBJ(a) && !IS_OBJ(b)))
+        {
+            double da = IS_INT(a) ? (double)as_int(a) : as_num(a);
+            double db = IS_INT(b) ? (double)as_int(b) : as_num(b);
+            PUSH(val_bool(da != db));
+            DISPATCH();
         }
         PUSH(val_bool(a != b));
         DISPATCH();
@@ -3220,7 +3239,19 @@ InterpretResult vm_run(VM *vm)
         uint16_t offset = READ_SHORT();
         Value b = POP();
         Value a = POP();
-        if (a != b)
+        /* Handle int vs float comparison: compare numeric values */
+        bool equal;
+        if ((IS_INT(a) || IS_NUM(a)) && (IS_INT(b) || IS_NUM(b)) && !IS_OBJ(a) && !IS_OBJ(b))
+        {
+            double da = IS_INT(a) ? (double)as_int(a) : as_num(a);
+            double db = IS_INT(b) ? (double)as_int(b) : as_num(b);
+            equal = (da == db);
+        }
+        else
+        {
+            equal = (a == b);
+        }
+        if (!equal)
             ip += offset;
         DISPATCH();
     }
@@ -3230,7 +3261,19 @@ InterpretResult vm_run(VM *vm)
         uint16_t offset = READ_SHORT();
         Value b = POP();
         Value a = POP();
-        if (a == b) /* != is false when equal */
+        /* Handle int vs float comparison: compare numeric values */
+        bool equal;
+        if ((IS_INT(a) || IS_NUM(a)) && (IS_INT(b) || IS_NUM(b)) && !IS_OBJ(a) && !IS_OBJ(b))
+        {
+            double da = IS_INT(a) ? (double)as_int(a) : as_num(a);
+            double db = IS_INT(b) ? (double)as_int(b) : as_num(b);
+            equal = (da == db);
+        }
+        else
+        {
+            equal = (a == b);
+        }
+        if (equal) /* != is false when equal */
             ip += offset;
         DISPATCH();
     }
@@ -3500,6 +3543,53 @@ InterpretResult vm_run(VM *vm)
         {
             bp[var_slot] = val_int(counter);
             bp[counter_slot] = val_int(counter + 1);
+        }
+        DISPATCH();
+    }
+
+    /* Stepped counting loop for IB compatibility */
+    /* Format: OP_FOR_COUNT_STEP, counter_slot, end_slot, step_slot, var_slot, offset[2] */
+    CASE(for_count_step) :
+    {
+        uint8_t counter_slot = READ_BYTE();
+        uint8_t end_slot = READ_BYTE();
+        uint8_t step_slot = READ_BYTE();
+        uint8_t var_slot = READ_BYTE();
+        uint16_t offset = READ_SHORT();
+
+        /* Get values from local slots */
+        int32_t counter, end_val, step;
+        FAST_INT(bp[counter_slot], counter);
+        FAST_INT(bp[end_slot], end_val);
+        FAST_INT(bp[step_slot], step);
+
+        /* Check loop condition based on step direction */
+        /* NOTE: This uses IB-style inclusive bounds */
+        /* For positive step: iterate while counter <= end_val */
+        /* For negative step: iterate while counter >= end_val */
+        bool done;
+        if (step > 0)
+        {
+            done = (counter > end_val);  /* Inclusive: 1 to 5 means 1,2,3,4,5 */
+        }
+        else if (step < 0)
+        {
+            done = (counter < end_val);  /* Inclusive: 5 to 1 means 5,4,3,2,1 */
+        }
+        else
+        {
+            /* step == 0: infinite loop protection, exit immediately */
+            done = true;
+        }
+
+        if (done)
+        {
+            ip += offset; /* Exit loop */
+        }
+        else
+        {
+            bp[var_slot] = val_int(counter);
+            bp[counter_slot] = val_int(counter + step);
         }
         DISPATCH();
     }

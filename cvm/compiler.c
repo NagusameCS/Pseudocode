@@ -90,11 +90,13 @@ typedef enum
     TOKEN_UNTIL,
     TOKEN_STEP,
     TOKEN_TO,
+    TOKEN_LOOP,      /* loop...end loop construct */
     
     /* IB/Educational compatibility keywords */
     TOKEN_MOD,       /* alias for % */
     TOKEN_DIV,       /* integer division */
     TOKEN_OUTPUT,    /* alias for print */
+    TOKEN_INPUT,     /* input varname statement */
     TOKEN_FUNCTION,  /* alias for fn */
     TOKEN_PROCEDURE, /* alias for fn (no return) */
 
@@ -3166,6 +3168,10 @@ static void call(bool can_assign)
      */
 
     emit_bytes(OP_CALL, arg_count);
+    /* Reset last_emit since function call result is not a compile-time constant.
+     * This prevents constant folding from incorrectly treating call results as constants.
+     */
+    reset_last_emit();
     /* Track for tail call optimization */
     last_was_call = true;
     last_call_arg_count = arg_count;
@@ -3414,9 +3420,11 @@ ParseRule rules[] = {
     [TOKEN_UNTIL] = {NULL, NULL, PREC_NONE},
     [TOKEN_STEP] = {NULL, NULL, PREC_NONE},
     [TOKEN_TO] = {NULL, NULL, PREC_NONE},
+    [TOKEN_LOOP] = {NULL, NULL, PREC_NONE},
     [TOKEN_MOD] = {NULL, binary, PREC_FACTOR},     /* mod as infix operator */
     [TOKEN_DIV] = {NULL, binary, PREC_FACTOR},     /* div as infix operator */
     [TOKEN_OUTPUT] = {NULL, NULL, PREC_NONE},
+    [TOKEN_INPUT] = {NULL, NULL, PREC_NONE},
     [TOKEN_FUNCTION] = {lambda, NULL, PREC_NONE},  /* function = fn */
     [TOKEN_PROCEDURE] = {lambda, NULL, PREC_NONE}, /* procedure = fn */
     [TOKEN_ERROR] = {NULL, NULL, PREC_NONE},
@@ -3642,13 +3650,24 @@ static void for_statement(void)
 
     consume(TOKEN_IN, "Expect 'in' after variable.");
 
-    /* Parse the start expression (before ..) */
+    /* Parse the start expression (before .. or 'to') */
     parse_precedence(PREC_SHIFT); /* Parse up to but not including .. */
 
     /* Check if this is a range expression for the fast path */
-    if (match(TOKEN_RANGE))
+    /* Track whether we're using 'to' (IB inclusive) or '..' (Python exclusive) */
+    bool is_ib_style = false;
+    if (match(TOKEN_TO))
     {
-        /* FAST PATH: for i in start..end - no Range object! */
+        is_ib_style = true;
+    }
+    else if (!match(TOKEN_RANGE))
+    {
+        /* Neither 'to' nor '..', must be slow path (array iteration) */
+        goto slow_path;
+    }
+
+    {
+        /* FAST PATH: for i in start..end OR for i in start to end - no Range object! */
         /* Stack has: start_value */
 
         /* Create __start local */
@@ -3661,11 +3680,35 @@ static void for_statement(void)
         parse_precedence(PREC_TERM);
         /* Stack has: end_value */
 
+        /* For IB 'to' style WITHOUT step, make it inclusive by adding 1 to end value */
+        /* With step, we use a different VM opcode that handles inclusive bounds */
+        bool has_step = check(TOKEN_STEP);
+        if (is_ib_style && !has_step)
+        {
+            /* Emit: end = end + 1 (for inclusive upper bound, step=1 assumed) */
+            emit_byte(OP_CONST_1);
+            emit_byte(OP_ADD);
+        }
+
         /* Create __end local */
         add_local((Token){.start = "__end", .length = 5, .line = 0});
         mark_initialized();
         int end_slot = current->local_count - 1;
         /* end_value is now in end_slot */
+
+        /* Check for optional 'step' keyword (IB compatibility) */
+        int step_slot = -1;
+        if (match(TOKEN_STEP))
+        {
+            /* Parse step expression */
+            parse_precedence(PREC_TERM);
+            /* Stack has: step_value */
+            
+            /* Create __step local */
+            add_local((Token){.start = "__step", .length = 6, .line = 0});
+            mark_initialized();
+            step_slot = current->local_count - 1;
+        }
 
         consume(TOKEN_DO, "Expect 'do' after range.");
         skip_newlines();
@@ -3682,14 +3725,29 @@ static void for_statement(void)
         current->loop_start = loop_start;
         current->loop_scope_depth = current->scope_depth;
 
-        /* Ultra-fast FOR_COUNT instruction */
-        /* Format: OP_FOR_COUNT, start_slot, end_slot, var_slot, offset[2] */
-        emit_byte(OP_FOR_COUNT);
-        emit_byte(start_slot); /* Counter (starts at start, incremented each iter) */
-        emit_byte(end_slot);   /* End value (constant) */
-        emit_byte(var_slot);   /* Loop variable (set to counter each iter) */
-        emit_byte(0xff);
-        emit_byte(0xff);
+        if (step_slot >= 0)
+        {
+            /* Stepped loop: OP_FOR_COUNT_STEP */
+            /* Format: OP_FOR_COUNT_STEP, counter_slot, end_slot, step_slot, var_slot, offset[2] */
+            emit_byte(OP_FOR_COUNT_STEP);
+            emit_byte(start_slot);  /* Counter (starts at start) */
+            emit_byte(end_slot);    /* End value */
+            emit_byte(step_slot);   /* Step value */
+            emit_byte(var_slot);    /* Loop variable */
+            emit_byte(0xff);
+            emit_byte(0xff);
+        }
+        else
+        {
+            /* Ultra-fast FOR_COUNT instruction (step=1) */
+            /* Format: OP_FOR_COUNT, start_slot, end_slot, var_slot, offset[2] */
+            emit_byte(OP_FOR_COUNT);
+            emit_byte(start_slot); /* Counter (starts at start, incremented each iter) */
+            emit_byte(end_slot);   /* End value (constant) */
+            emit_byte(var_slot);   /* Loop variable (set to counter each iter) */
+            emit_byte(0xff);
+            emit_byte(0xff);
+        }
         int exit_jump = current_chunk()->count - 2;
 
         /* Loop body */
@@ -3709,8 +3767,12 @@ static void for_statement(void)
         {
             patch_jump(current->break_jumps[i]);
         }
+        
+        /* Skip slow path */
+        goto for_end;
     }
-    else
+
+    slow_path:
     {
         /* SLOW PATH: generic iterable (array, etc.) */
         /* The expression we just parsed is the full iterable */
@@ -3769,6 +3831,7 @@ static void for_statement(void)
         }
     }
 
+    for_end:
     consume(TOKEN_END, "Expect 'end' after for loop.");
     end_scope();
     
@@ -3995,10 +4058,12 @@ static void repeat_statement(void)
     /* Condition - loop continues while condition is FALSE */
     expression();
     
-    /* Jump back to start if condition is false */
+    /* Jump to exit if condition is true (exit the loop) */
     int exit_jump = emit_jump(OP_JMP_TRUE);
+    emit_pop_for_jump(exit_jump); /* Pop condition value when looping back */
     emit_loop(loop_start);
     patch_jump(exit_jump);
+    emit_pop_for_jump(exit_jump); /* Pop condition value when exiting */
     
     /* Patch all break jumps to exit point */
     for (int i = 0; i < current->break_count; i++)
@@ -4019,6 +4084,85 @@ static void output_statement(void)
     emit_byte(OP_PRINT);
 }
 
+/* Input statement: input varname (IB-compatible syntax) */
+static void input_statement(void)
+{
+    consume(TOKEN_IDENT, "Expect variable name after 'input'.");
+    
+    /* Get the variable name */
+    Token name = parser.previous;
+    
+    /* Emit OP_INPUT to read from stdin and push result */
+    emit_byte(OP_INPUT);
+    
+    /* Check if this is a new variable or existing one */
+    int arg = resolve_local(current, &name);
+    if (arg != -1)
+    {
+        /* Existing local - assign to it */
+        emit_bytes(OP_SET_LOCAL, (uint8_t)arg);
+    }
+    else
+    {
+        arg = resolve_upvalue(current, &name);
+        if (arg != -1)
+        {
+            /* Existing upvalue - assign to it */
+            emit_bytes(OP_SET_UPVALUE, (uint8_t)arg);
+        }
+        else
+        {
+            /* Global - use named_variable logic */
+            uint8_t global_idx = identifier_constant(&name);
+            emit_bytes(OP_SET_GLOBAL, global_idx);
+        }
+    }
+    
+    /* Pop the value that was left on stack after assignment */
+    emit_byte(OP_POP);
+}
+
+/* Loop statement: loop ... end loop (IB-compatible infinite loop) */
+static void loop_statement(void)
+{
+    /* Save outer loop context */
+    int outer_loop_start = current->loop_start;
+    int outer_loop_scope = current->loop_scope_depth;
+    int outer_break_count = current->break_count;
+    
+    /* Set up new loop context */
+    current->loop_start = current_chunk()->count;
+    current->loop_scope_depth = current->scope_depth;
+    current->break_count = 0;
+    
+    /* Parse loop body until 'end' */
+    while (!check(TOKEN_END) && !check(TOKEN_EOF))
+    {
+        declaration();
+    }
+    
+    /* Jump back to start (infinite loop) */
+    emit_loop(current->loop_start);
+    
+    /* Expect 'end loop' or just 'end' */
+    consume(TOKEN_END, "Expect 'end' after loop body.");
+    if (check(TOKEN_LOOP))
+    {
+        advance(); /* consume optional 'loop' after 'end' */
+    }
+    
+    /* Patch all break jumps to point here */
+    for (int i = 0; i < current->break_count; i++)
+    {
+        patch_jump(current->break_jumps[i]);
+    }
+    
+    /* Restore outer loop context */
+    current->loop_start = outer_loop_start;
+    current->loop_scope_depth = outer_loop_scope;
+    current->break_count = outer_break_count;
+}
+
 static void statement(void)
 {
     if (match(TOKEN_IF))
@@ -4036,6 +4180,10 @@ static void statement(void)
     else if (match(TOKEN_REPEAT))
     {
         repeat_statement();
+    }
+    else if (match(TOKEN_LOOP))
+    {
+        loop_statement();
     }
     else if (match(TOKEN_MATCH))
     {
@@ -4064,6 +4212,10 @@ static void statement(void)
     else if (match(TOKEN_OUTPUT))
     {
         output_statement();
+    }
+    else if (match(TOKEN_INPUT))
+    {
+        input_statement();
     }
     else
     {

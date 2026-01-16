@@ -673,7 +673,8 @@ typedef enum
     OP_FOR_INT_LOOP, /* Int loop: start_slot, end_slot, var_slot, offset - no heap alloc! */
 
     /* Ultra-tight counting loop - no heap, no type checks, just raw ints */
-    OP_FOR_COUNT,     /* for i in 0..N: counter_slot, end_slot, var_slot, offset */
+    OP_FOR_COUNT,      /* for i in 0..N: counter_slot, end_slot, var_slot, offset */
+    OP_FOR_COUNT_STEP, /* for i in start to end step S: counter_slot, end_slot, step_slot, var_slot, offset */
     OP_ADD_LOCAL_INT, /* local[slot] += immediate (8-bit signed) */
     OP_LOCAL_LT_LOOP, /* if local[a] < local[b] then jump backward */
 

@@ -68,11 +68,13 @@ typedef enum
     TOKEN_UNTIL,
     TOKEN_STEP,
     TOKEN_TO,
+    TOKEN_LOOP,      /* loop...end loop construct */
     
     /* IB/Educational compatibility keywords */
     TOKEN_MOD,       /* alias for % */
     TOKEN_DIV,       /* integer division */
     TOKEN_OUTPUT,    /* alias for print */
+    TOKEN_INPUT,     /* input varname statement */
     TOKEN_FUNCTION,  /* alias for fn */
     TOKEN_PROCEDURE, /* alias for fn (no return) */
 
@@ -383,14 +385,23 @@ static TokenType identifier_type(void)
             case 'f':
                 return check_keyword(2, 0, "", TOKEN_IF);
             case 'n':
-                return check_keyword(2, 0, "", TOKEN_IN);
+                /* Handle both 'in' and 'input' */
+                if (scanner.current - scanner.start == 2)
+                    return check_keyword(2, 0, "", TOKEN_IN);
+                if (scanner.current - scanner.start == 5)
+                    return check_keyword(2, 3, "put", TOKEN_INPUT);
+                break;
             case 'm':
                 return check_keyword(2, 4, "port", TOKEN_IMPORT);
             }
         }
         break;
     case 'l':
-        return check_keyword(1, 2, "et", TOKEN_LET);
+        if (scanner.current - scanner.start == 3)
+            return check_keyword(1, 2, "et", TOKEN_LET);
+        if (scanner.current - scanner.start == 4)
+            return check_keyword(1, 3, "oop", TOKEN_LOOP);
+        break;
     case 'm':
         if (scanner.current - scanner.start > 1)
         {
