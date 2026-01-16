@@ -3230,6 +3230,9 @@ static void index_(bool can_assign)
     {
         emit_byte(OP_INDEX);
     }
+    /* Result of indexing is NOT a constant - reset to prevent incorrect
+       constant folding in expressions like `arr[0] + 1` */
+    reset_last_emit();
 }
 
 static void array_literal(bool can_assign)
@@ -3254,6 +3257,8 @@ static void array_literal(bool can_assign)
 
     consume(TOKEN_RBRACKET, "Expect ']' after array elements.");
     emit_bytes(OP_ARRAY, count);
+    /* Array literal result is not a compile-time constant */
+    reset_last_emit();
 }
 
 static void range_expr(bool can_assign)
@@ -3261,6 +3266,8 @@ static void range_expr(bool can_assign)
     (void)can_assign;
     parse_precedence(PREC_TERM); /* Parse end value */
     emit_byte(OP_RANGE);
+    /* Range result is not a compile-time constant */
+    reset_last_emit();
 }
 
 /* Parse property access: obj.property or obj.method() */
@@ -3285,6 +3292,8 @@ static void dot(bool can_assign)
     {
         emit_bytes(OP_GET_FIELD, name);
     }
+    /* Result of property access/method call is not a compile-time constant */
+    reset_last_emit();
 }
 
 /* Parse 'self' keyword in methods */
