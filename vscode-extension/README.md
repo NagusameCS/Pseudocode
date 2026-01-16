@@ -37,7 +37,7 @@ The VM binaries (for running code) are pre-compiled for each platform, but the *
 
 ### IntelliSense
 
-- **Smart Autocompletion** — Suggestions for keywords, 80+ built-in functions, and your variables/functions
+- **Smart Autocompletion** — Suggestions for keywords, 140+ built-in functions, and your variables/functions
 - **Hover Documentation** — Detailed docs with examples for every built-in function
 - **Signature Help** — Parameter hints as you type function calls
 - **Inlay Hints** — See parameter names inline in function calls
@@ -200,7 +200,7 @@ Over 50 snippets for rapid development:
 
 ---
 
-## Built-in Functions (80+)
+## Built-in Functions (140+)
 
 ### Core
 

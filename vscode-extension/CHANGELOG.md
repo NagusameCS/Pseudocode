@@ -2,6 +2,12 @@
 
 All notable changes to the Pseudocode Language extension will be documented in this file.
 
+## [2.1.0] - 2026-01-16
+
+### Fixed
+- **Walkthrough Media** — Fixed broken walkthrough steps that were treating markdown content as file paths
+- Updated documentation to reflect 140+ built-in functions
+
 ## [2.0.0] - 2026-01-16
 
 ### Changed

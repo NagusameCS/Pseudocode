@@ -2,7 +2,7 @@
     "name": "pseudocode-lang",
     "displayName": "Pseudocode Language",
     "description": "Full language support for Pseudocode - IntelliSense, autocomplete, diagnostics, formatting, and a blazingly fast runtime",
-    "version": "2.0.0",
+    "version": "2.1.0",
     "publisher": "NagusameCS",
     "author": {
         "name": "NagusameCS"
@@ -186,7 +186,7 @@
                         "title": "Create Your First File",
                         "description": "Create a new file with `.pseudo` extension to start coding.\n\n[Create hello.pseudo](command:workbench.action.files.newUntitledFile)",
                         "media": {
-                            "markdown": "# Hello, Pseudocode! 👋\n\nPseudocode looks like the algorithms you learned in textbooks:\n\n```pseudo\nfn greet(name)\n    print(\"Hello, \" + name + \"!\")\nend\n\ngreet(\"World\")\n```"
+                            "markdown": "media/walkthrough/hello.md"
                         }
                     },
                     {
@@ -194,7 +194,7 @@
                         "title": "Run Your Code",
                         "description": "Press **Ctrl+Shift+R** (or **Cmd+Shift+R** on Mac) to run your code, or click the ▶ button.\n\n[Run Current File](command:pseudocode.run)",
                         "media": {
-                            "markdown": "# Running Pseudocode ⚡\n\nPseudocode is **2-5x faster than Python**!\n\nRun with JIT for even better performance on loops."
+                            "markdown": "media/walkthrough/running.md"
                         }
                     },
                     {
@@ -202,7 +202,7 @@
                         "title": "Use Code Snippets",
                         "description": "Type `fn`, `if`, `for`, `while`, or `match` and press **Tab** to insert code templates.\n\nTry these:\n- `fn` → function\n- `ife` → if-else\n- `fori` → for loop with range",
                         "media": {
-                            "markdown": "# Code Snippets 📝\n\n50+ snippets available!\n\n- `qsort` → Quicksort\n- `bsearch` → Binary search\n- `fib` → Fibonacci\n- `httpget` → HTTP request"
+                            "markdown": "media/walkthrough/snippets.md"
                         }
                     },
                     {
@@ -210,7 +210,7 @@
                         "title": "Explore IDE Features",
                         "description": "This extension provides:\n- **Ctrl+Space** → Autocomplete\n- **Hover** → Documentation\n- **F12** → Go to Definition\n- **Shift+F12** → Find References\n- **F2** → Rename Symbol",
                         "media": {
-                            "markdown": "# Full IDE Support 🛠️\n\n- IntelliSense\n- Syntax highlighting\n- Error detection\n- Code formatting\n- Debugging\n- REPL"
+                            "markdown": "media/walkthrough/ide.md"
                         }
                     },
                     {
@@ -218,7 +218,7 @@
                         "title": "Learn More",
                         "description": "Check out the documentation and examples:\n\n[View Documentation](https://github.com/NagusameCS/Pseudocode)\n\n[View Examples](command:workbench.action.openFolder)",
                         "media": {
-                            "markdown": "# Resources 📚\n\n- [GitHub Repository](https://github.com/NagusameCS/Pseudocode)\n- 80+ built-in functions\n- Examples included"
+                            "markdown": "media/walkthrough/resources.md"
                         }
                     }
                 ]
