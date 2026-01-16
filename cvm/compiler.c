@@ -541,6 +541,18 @@ static void emit_bytes(uint8_t byte1, uint8_t byte2)
     emit_byte(byte2);
 }
 
+/* Emit an opcode, handling extended opcodes (>= 255) automatically */
+static void emit_opcode(int opcode)
+{
+    if (opcode >= 255) {
+        /* Extended opcode: emit prefix + extended index */
+        emit_byte(OP_EXTENDED);
+        emit_byte((uint8_t)(opcode - 255));
+    } else {
+        emit_byte((uint8_t)opcode);
+    }
+}
+
 static void emit_short(uint16_t value)
 {
     emit_byte((value >> 8) & 0xff);
@@ -2153,7 +2165,7 @@ static void variable(bool can_assign)
             advance();
             expression();
             consume(TOKEN_RPAREN, "Expect ')' after hash argument.");
-            emit_byte(OP_HASH);
+            emit_opcode(OP_HASH);
             return;
         }
         if (MATCH_BUILTIN(name, "sha256"))
@@ -2161,7 +2173,7 @@ static void variable(bool can_assign)
             advance();
             expression();
             consume(TOKEN_RPAREN, "Expect ')' after sha256 argument.");
-            emit_byte(OP_HASH_SHA256);
+            emit_opcode(OP_HASH_SHA256);
             return;
         }
         if (MATCH_BUILTIN(name, "md5"))
@@ -2169,7 +2181,7 @@ static void variable(bool can_assign)
             advance();
             expression();
             consume(TOKEN_RPAREN, "Expect ')' after md5 argument.");
-            emit_byte(OP_HASH_MD5);
+            emit_opcode(OP_HASH_MD5);
             return;
         }
 
@@ -2181,7 +2193,7 @@ static void variable(bool can_assign)
             consume(TOKEN_COMMA, "Expect ',' after text argument.");
             expression(); /* pattern */
             consume(TOKEN_RPAREN, "Expect ')' after regex_match arguments.");
-            emit_byte(OP_REGEX_MATCH);
+            emit_opcode(OP_REGEX_MATCH);
             return;
         }
         if (MATCH_BUILTIN(name, "regex_find"))
@@ -2191,7 +2203,7 @@ static void variable(bool can_assign)
             consume(TOKEN_COMMA, "Expect ',' after text argument.");
             expression(); /* pattern */
             consume(TOKEN_RPAREN, "Expect ')' after regex_find arguments.");
-            emit_byte(OP_REGEX_FIND);
+            emit_opcode(OP_REGEX_FIND);
             return;
         }
         if (MATCH_BUILTIN(name, "regex_replace"))
@@ -2203,7 +2215,7 @@ static void variable(bool can_assign)
             consume(TOKEN_COMMA, "Expect ',' after pattern argument.");
             expression(); /* replacement */
             consume(TOKEN_RPAREN, "Expect ')' after regex_replace arguments.");
-            emit_byte(OP_REGEX_REPLACE);
+            emit_opcode(OP_REGEX_REPLACE);
             return;
         }
 
@@ -2213,7 +2225,7 @@ static void variable(bool can_assign)
             advance();
             expression(); /* shape array */
             consume(TOKEN_RPAREN, "Expect ')' after tensor_zeros argument.");
-            emit_byte(OP_TENSOR_ZEROS);
+            emit_opcode(OP_TENSOR_ZEROS);
             return;
         }
         if (MATCH_BUILTIN(name, "tensor_ones"))
@@ -2221,7 +2233,7 @@ static void variable(bool can_assign)
             advance();
             expression(); /* shape array */
             consume(TOKEN_RPAREN, "Expect ')' after tensor_ones argument.");
-            emit_byte(OP_TENSOR_ONES);
+            emit_opcode(OP_TENSOR_ONES);
             return;
         }
         if (MATCH_BUILTIN(name, "tensor_rand"))
@@ -2229,7 +2241,7 @@ static void variable(bool can_assign)
             advance();
             expression(); /* shape array */
             consume(TOKEN_RPAREN, "Expect ')' after tensor_rand argument.");
-            emit_byte(OP_TENSOR_RAND);
+            emit_opcode(OP_TENSOR_RAND);
             return;
         }
         if (MATCH_BUILTIN(name, "tensor_randn"))
@@ -2237,7 +2249,7 @@ static void variable(bool can_assign)
             advance();
             expression(); /* shape array */
             consume(TOKEN_RPAREN, "Expect ')' after tensor_randn argument.");
-            emit_byte(OP_TENSOR_RANDN);
+            emit_opcode(OP_TENSOR_RANDN);
             return;
         }
         if (MATCH_BUILTIN(name, "tensor_arange"))
@@ -2249,7 +2261,7 @@ static void variable(bool can_assign)
             consume(TOKEN_COMMA, "Expect ',' after stop.");
             expression(); /* step */
             consume(TOKEN_RPAREN, "Expect ')' after tensor_arange arguments.");
-            emit_byte(OP_TENSOR_ARANGE);
+            emit_opcode(OP_TENSOR_ARANGE);
             return;
         }
         if (MATCH_BUILTIN(name, "tensor"))
@@ -2257,7 +2269,7 @@ static void variable(bool can_assign)
             advance();
             expression(); /* array data */
             consume(TOKEN_RPAREN, "Expect ')' after tensor argument.");
-            emit_byte(OP_TENSOR);
+            emit_opcode(OP_TENSOR);
             return;
         }
         if (MATCH_BUILTIN(name, "tensor_add"))
@@ -2267,7 +2279,7 @@ static void variable(bool can_assign)
             consume(TOKEN_COMMA, "Expect ',' after first tensor.");
             expression(); /* tensor b */
             consume(TOKEN_RPAREN, "Expect ')' after tensor_add arguments.");
-            emit_byte(OP_TENSOR_ADD);
+            emit_opcode(OP_TENSOR_ADD);
             return;
         }
         if (MATCH_BUILTIN(name, "tensor_sub"))
@@ -2277,7 +2289,7 @@ static void variable(bool can_assign)
             consume(TOKEN_COMMA, "Expect ',' after first tensor.");
             expression();
             consume(TOKEN_RPAREN, "Expect ')' after tensor_sub arguments.");
-            emit_byte(OP_TENSOR_SUB);
+            emit_opcode(OP_TENSOR_SUB);
             return;
         }
         if (MATCH_BUILTIN(name, "tensor_mul"))
@@ -2287,7 +2299,7 @@ static void variable(bool can_assign)
             consume(TOKEN_COMMA, "Expect ',' after first tensor.");
             expression();
             consume(TOKEN_RPAREN, "Expect ')' after tensor_mul arguments.");
-            emit_byte(OP_TENSOR_MUL);
+            emit_opcode(OP_TENSOR_MUL);
             return;
         }
         if (MATCH_BUILTIN(name, "tensor_div"))
@@ -2297,7 +2309,7 @@ static void variable(bool can_assign)
             consume(TOKEN_COMMA, "Expect ',' after first tensor.");
             expression();
             consume(TOKEN_RPAREN, "Expect ')' after tensor_div arguments.");
-            emit_byte(OP_TENSOR_DIV);
+            emit_opcode(OP_TENSOR_DIV);
             return;
         }
         if (MATCH_BUILTIN(name, "tensor_sum"))
@@ -2305,7 +2317,7 @@ static void variable(bool can_assign)
             advance();
             expression();
             consume(TOKEN_RPAREN, "Expect ')' after tensor_sum argument.");
-            emit_byte(OP_TENSOR_SUM);
+            emit_opcode(OP_TENSOR_SUM);
             return;
         }
         if (MATCH_BUILTIN(name, "tensor_mean"))
@@ -2313,7 +2325,7 @@ static void variable(bool can_assign)
             advance();
             expression();
             consume(TOKEN_RPAREN, "Expect ')' after tensor_mean argument.");
-            emit_byte(OP_TENSOR_MEAN);
+            emit_opcode(OP_TENSOR_MEAN);
             return;
         }
         if (MATCH_BUILTIN(name, "tensor_min"))
@@ -2321,7 +2333,7 @@ static void variable(bool can_assign)
             advance();
             expression();
             consume(TOKEN_RPAREN, "Expect ')' after tensor_min argument.");
-            emit_byte(OP_TENSOR_MIN);
+            emit_opcode(OP_TENSOR_MIN);
             return;
         }
         if (MATCH_BUILTIN(name, "tensor_max"))
@@ -2329,7 +2341,7 @@ static void variable(bool can_assign)
             advance();
             expression();
             consume(TOKEN_RPAREN, "Expect ')' after tensor_max argument.");
-            emit_byte(OP_TENSOR_MAX);
+            emit_opcode(OP_TENSOR_MAX);
             return;
         }
         if (MATCH_BUILTIN(name, "tensor_sqrt"))
@@ -2337,7 +2349,7 @@ static void variable(bool can_assign)
             advance();
             expression();
             consume(TOKEN_RPAREN, "Expect ')' after tensor_sqrt argument.");
-            emit_byte(OP_TENSOR_SQRT);
+            emit_opcode(OP_TENSOR_SQRT);
             return;
         }
         if (MATCH_BUILTIN(name, "tensor_exp"))
@@ -2345,7 +2357,7 @@ static void variable(bool can_assign)
             advance();
             expression();
             consume(TOKEN_RPAREN, "Expect ')' after tensor_exp argument.");
-            emit_byte(OP_TENSOR_EXP);
+            emit_opcode(OP_TENSOR_EXP);
             return;
         }
         if (MATCH_BUILTIN(name, "tensor_log"))
@@ -2353,7 +2365,7 @@ static void variable(bool can_assign)
             advance();
             expression();
             consume(TOKEN_RPAREN, "Expect ')' after tensor_log argument.");
-            emit_byte(OP_TENSOR_LOG);
+            emit_opcode(OP_TENSOR_LOG);
             return;
         }
         if (MATCH_BUILTIN(name, "tensor_abs"))
@@ -2361,7 +2373,7 @@ static void variable(bool can_assign)
             advance();
             expression();
             consume(TOKEN_RPAREN, "Expect ')' after tensor_abs argument.");
-            emit_byte(OP_TENSOR_ABS);
+            emit_opcode(OP_TENSOR_ABS);
             return;
         }
         if (MATCH_BUILTIN(name, "tensor_neg"))
@@ -2369,7 +2381,7 @@ static void variable(bool can_assign)
             advance();
             expression();
             consume(TOKEN_RPAREN, "Expect ')' after tensor_neg argument.");
-            emit_byte(OP_TENSOR_NEG);
+            emit_opcode(OP_TENSOR_NEG);
             return;
         }
         if (MATCH_BUILTIN(name, "tensor_dot"))
@@ -2379,7 +2391,7 @@ static void variable(bool can_assign)
             consume(TOKEN_COMMA, "Expect ',' after first tensor.");
             expression();
             consume(TOKEN_RPAREN, "Expect ')' after tensor_dot arguments.");
-            emit_byte(OP_TENSOR_DOT);
+            emit_opcode(OP_TENSOR_DOT);
             return;
         }
         if (MATCH_BUILTIN(name, "tensor_matmul"))
@@ -2389,7 +2401,7 @@ static void variable(bool can_assign)
             consume(TOKEN_COMMA, "Expect ',' after first tensor.");
             expression();
             consume(TOKEN_RPAREN, "Expect ')' after tensor_matmul arguments.");
-            emit_byte(OP_TENSOR_MATMUL);
+            emit_opcode(OP_TENSOR_MATMUL);
             return;
         }
         if (MATCH_BUILTIN(name, "tensor_reshape"))
@@ -2399,7 +2411,7 @@ static void variable(bool can_assign)
             consume(TOKEN_COMMA, "Expect ',' after tensor.");
             expression(); /* new shape */
             consume(TOKEN_RPAREN, "Expect ')' after tensor_reshape arguments.");
-            emit_byte(OP_TENSOR_RESHAPE);
+            emit_opcode(OP_TENSOR_RESHAPE);
             return;
         }
 
@@ -2409,7 +2421,7 @@ static void variable(bool can_assign)
             advance();
             expression(); /* 2D array */
             consume(TOKEN_RPAREN, "Expect ')' after matrix argument.");
-            emit_byte(OP_MATRIX);
+            emit_opcode(OP_MATRIX);
             return;
         }
         if (MATCH_BUILTIN(name, "matrix_zeros"))
@@ -2419,7 +2431,7 @@ static void variable(bool can_assign)
             consume(TOKEN_COMMA, "Expect ',' after rows.");
             expression(); /* cols */
             consume(TOKEN_RPAREN, "Expect ')' after matrix_zeros arguments.");
-            emit_byte(OP_MATRIX_ZEROS);
+            emit_opcode(OP_MATRIX_ZEROS);
             return;
         }
         if (MATCH_BUILTIN(name, "matrix_ones"))
@@ -2429,7 +2441,7 @@ static void variable(bool can_assign)
             consume(TOKEN_COMMA, "Expect ',' after rows.");
             expression();
             consume(TOKEN_RPAREN, "Expect ')' after matrix_ones arguments.");
-            emit_byte(OP_MATRIX_ONES);
+            emit_opcode(OP_MATRIX_ONES);
             return;
         }
         if (MATCH_BUILTIN(name, "matrix_eye"))
@@ -2437,7 +2449,7 @@ static void variable(bool can_assign)
             advance();
             expression(); /* n */
             consume(TOKEN_RPAREN, "Expect ')' after matrix_eye argument.");
-            emit_byte(OP_MATRIX_EYE);
+            emit_opcode(OP_MATRIX_EYE);
             return;
         }
         if (MATCH_BUILTIN(name, "matrix_rand"))
@@ -2447,7 +2459,7 @@ static void variable(bool can_assign)
             consume(TOKEN_COMMA, "Expect ',' after rows.");
             expression();
             consume(TOKEN_RPAREN, "Expect ')' after matrix_rand arguments.");
-            emit_byte(OP_MATRIX_RAND);
+            emit_opcode(OP_MATRIX_RAND);
             return;
         }
         if (MATCH_BUILTIN(name, "matrix_add"))
@@ -2457,7 +2469,7 @@ static void variable(bool can_assign)
             consume(TOKEN_COMMA, "Expect ',' after first matrix.");
             expression();
             consume(TOKEN_RPAREN, "Expect ')' after matrix_add arguments.");
-            emit_byte(OP_MATRIX_ADD);
+            emit_opcode(OP_MATRIX_ADD);
             return;
         }
         if (MATCH_BUILTIN(name, "matrix_sub"))
@@ -2467,7 +2479,7 @@ static void variable(bool can_assign)
             consume(TOKEN_COMMA, "Expect ',' after first matrix.");
             expression();
             consume(TOKEN_RPAREN, "Expect ')' after matrix_sub arguments.");
-            emit_byte(OP_MATRIX_SUB);
+            emit_opcode(OP_MATRIX_SUB);
             return;
         }
         if (MATCH_BUILTIN(name, "matrix_matmul"))
@@ -2477,7 +2489,7 @@ static void variable(bool can_assign)
             consume(TOKEN_COMMA, "Expect ',' after first matrix.");
             expression();
             consume(TOKEN_RPAREN, "Expect ')' after matrix_matmul arguments.");
-            emit_byte(OP_MATRIX_MATMUL);
+            emit_opcode(OP_MATRIX_MATMUL);
             return;
         }
         if (MATCH_BUILTIN(name, "matrix_t"))
@@ -2485,7 +2497,7 @@ static void variable(bool can_assign)
             advance();
             expression();
             consume(TOKEN_RPAREN, "Expect ')' after matrix_t argument.");
-            emit_byte(OP_MATRIX_T);
+            emit_opcode(OP_MATRIX_T);
             return;
         }
         if (MATCH_BUILTIN(name, "matrix_inv"))
@@ -2493,7 +2505,7 @@ static void variable(bool can_assign)
             advance();
             expression();
             consume(TOKEN_RPAREN, "Expect ')' after matrix_inv argument.");
-            emit_byte(OP_MATRIX_INV);
+            emit_opcode(OP_MATRIX_INV);
             return;
         }
         if (MATCH_BUILTIN(name, "matrix_det"))
@@ -2501,7 +2513,7 @@ static void variable(bool can_assign)
             advance();
             expression();
             consume(TOKEN_RPAREN, "Expect ')' after matrix_det argument.");
-            emit_byte(OP_MATRIX_DET);
+            emit_opcode(OP_MATRIX_DET);
             return;
         }
         if (MATCH_BUILTIN(name, "matrix_trace"))
@@ -2509,7 +2521,7 @@ static void variable(bool can_assign)
             advance();
             expression();
             consume(TOKEN_RPAREN, "Expect ')' after matrix_trace argument.");
-            emit_byte(OP_MATRIX_TRACE);
+            emit_opcode(OP_MATRIX_TRACE);
             return;
         }
         if (MATCH_BUILTIN(name, "matrix_solve"))
@@ -2519,7 +2531,7 @@ static void variable(bool can_assign)
             consume(TOKEN_COMMA, "Expect ',' after A.");
             expression(); /* b */
             consume(TOKEN_RPAREN, "Expect ')' after matrix_solve arguments.");
-            emit_byte(OP_MATRIX_SOLVE);
+            emit_opcode(OP_MATRIX_SOLVE);
             return;
         }
 
@@ -2529,7 +2541,7 @@ static void variable(bool can_assign)
             advance();
             expression();
             consume(TOKEN_RPAREN, "Expect ')' after relu argument.");
-            emit_byte(OP_NN_RELU);
+            emit_opcode(OP_NN_RELU);
             return;
         }
         if (MATCH_BUILTIN(name, "sigmoid"))
@@ -2537,7 +2549,7 @@ static void variable(bool can_assign)
             advance();
             expression();
             consume(TOKEN_RPAREN, "Expect ')' after sigmoid argument.");
-            emit_byte(OP_NN_SIGMOID);
+            emit_opcode(OP_NN_SIGMOID);
             return;
         }
         if (MATCH_BUILTIN(name, "tanh"))
@@ -2545,7 +2557,7 @@ static void variable(bool can_assign)
             advance();
             expression();
             consume(TOKEN_RPAREN, "Expect ')' after tanh argument.");
-            emit_byte(OP_NN_TANH);
+            emit_opcode(OP_NN_TANH);
             return;
         }
         if (MATCH_BUILTIN(name, "softmax"))
@@ -2553,7 +2565,7 @@ static void variable(bool can_assign)
             advance();
             expression();
             consume(TOKEN_RPAREN, "Expect ')' after softmax argument.");
-            emit_byte(OP_NN_SOFTMAX);
+            emit_opcode(OP_NN_SOFTMAX);
             return;
         }
         if (MATCH_BUILTIN(name, "mse_loss"))
@@ -2563,7 +2575,7 @@ static void variable(bool can_assign)
             consume(TOKEN_COMMA, "Expect ',' after predictions.");
             expression(); /* targets */
             consume(TOKEN_RPAREN, "Expect ')' after mse_loss arguments.");
-            emit_byte(OP_NN_MSE_LOSS);
+            emit_opcode(OP_NN_MSE_LOSS);
             return;
         }
         if (MATCH_BUILTIN(name, "ce_loss"))
@@ -2573,7 +2585,7 @@ static void variable(bool can_assign)
             consume(TOKEN_COMMA, "Expect ',' after predictions.");
             expression();
             consume(TOKEN_RPAREN, "Expect ')' after ce_loss arguments.");
-            emit_byte(OP_NN_CE_LOSS);
+            emit_opcode(OP_NN_CE_LOSS);
             return;
         }
 
@@ -2582,7 +2594,7 @@ static void variable(bool can_assign)
         {
             advance();
             consume(TOKEN_RPAREN, "Expect ')' after grad_tape.");
-            emit_byte(OP_GRAD_TAPE);
+            emit_opcode(OP_GRAD_TAPE);
             return;
         }
     }

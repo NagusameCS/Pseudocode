@@ -820,6 +820,114 @@ static ObjString *json_stringify_value(VM *vm, Value val)
     return result;
 }
 
+/* ============ Value to String Helper ============ */
+/* Converts any value to a string representation (for str() builtin) */
+
+static void value_to_string_append(char **buf, size_t *len, size_t *cap, const char *str, size_t slen)
+{
+    while (*len + slen + 1 > *cap)
+    {
+        *cap = (*cap == 0) ? 64 : *cap * 2;
+        *buf = realloc(*buf, *cap);
+    }
+    memcpy(*buf + *len, str, slen);
+    *len += slen;
+    (*buf)[*len] = '\0';
+}
+
+static void value_to_string_impl(Value value, char **buf, size_t *len, size_t *cap)
+{
+    char tmp[64];
+    
+    if (IS_INT(value))
+    {
+        int n = snprintf(tmp, sizeof(tmp), "%d", as_int(value));
+        value_to_string_append(buf, len, cap, tmp, n);
+    }
+    else if (IS_NUM(value))
+    {
+        double d = as_num(value);
+        int n;
+        if (d == (int64_t)d)
+            n = snprintf(tmp, sizeof(tmp), "%lld", (long long)(int64_t)d);
+        else
+            n = snprintf(tmp, sizeof(tmp), "%g", d);
+        value_to_string_append(buf, len, cap, tmp, n);
+    }
+    else if (IS_NIL(value))
+    {
+        value_to_string_append(buf, len, cap, "nil", 3);
+    }
+    else if (IS_BOOL(value))
+    {
+        if (IS_TRUE(value))
+            value_to_string_append(buf, len, cap, "true", 4);
+        else
+            value_to_string_append(buf, len, cap, "false", 5);
+    }
+    else if (IS_OBJ(value))
+    {
+        Obj *obj = as_obj(value);
+        switch (obj->type)
+        {
+        case OBJ_STRING:
+            value_to_string_append(buf, len, cap, ((ObjString *)obj)->chars, ((ObjString *)obj)->length);
+            break;
+        case OBJ_ARRAY:
+        {
+            ObjArray *arr = (ObjArray *)obj;
+            value_to_string_append(buf, len, cap, "[", 1);
+            for (uint32_t i = 0; i < arr->count; i++)
+            {
+                if (i > 0)
+                    value_to_string_append(buf, len, cap, ", ", 2);
+                value_to_string_impl(arr->values[i], buf, len, cap);
+            }
+            value_to_string_append(buf, len, cap, "]", 1);
+            break;
+        }
+        case OBJ_DICT:
+        {
+            ObjDict *dict = (ObjDict *)obj;
+            value_to_string_append(buf, len, cap, "{", 1);
+            bool first = true;
+            for (uint32_t i = 0; i < dict->capacity; i++)
+            {
+                if (dict->keys[i] != NULL)
+                {
+                    if (!first)
+                        value_to_string_append(buf, len, cap, ", ", 2);
+                    first = false;
+                    value_to_string_append(buf, len, cap, "\"", 1);
+                    value_to_string_append(buf, len, cap, dict->keys[i]->chars, dict->keys[i]->length);
+                    value_to_string_append(buf, len, cap, "\": ", 3);
+                    value_to_string_impl(dict->values[i], buf, len, cap);
+                }
+            }
+            value_to_string_append(buf, len, cap, "}", 1);
+            break;
+        }
+        case OBJ_FUNCTION:
+        {
+            ObjFunction *fn = (ObjFunction *)obj;
+            int n = snprintf(tmp, sizeof(tmp), "<fn %s>", fn->name ? fn->name->chars : "script");
+            value_to_string_append(buf, len, cap, tmp, n);
+            break;
+        }
+        case OBJ_RANGE:
+        {
+            ObjRange *r = (ObjRange *)obj;
+            int n = snprintf(tmp, sizeof(tmp), "%d..%d", r->start, r->end);
+            value_to_string_append(buf, len, cap, tmp, n);
+            break;
+        }
+        default:
+            value_to_string_append(buf, len, cap, "<object>", 8);
+            break;
+        }
+    }
+}
+
 /* ============ Value Operations ============ */
 
 static void print_value(Value value)
@@ -1271,132 +1379,83 @@ InterpretResult vm_run(VM *vm)
         [OP_DECODE_UTF8] = &&op_decode_utf8,
         [OP_ENCODE_BASE64] = &&op_encode_base64,
         [OP_DECODE_BASE64] = &&op_decode_base64,
-        /* Regex */
-        [OP_REGEX_MATCH] = &&op_regex_match,
-        [OP_REGEX_FIND] = &&op_regex_find,
-        [OP_REGEX_REPLACE] = &&op_regex_replace,
-        /* Hashing */
-        [OP_HASH] = &&op_hash,
-        [OP_HASH_SHA256] = &&op_hash_sha256,
-        [OP_HASH_MD5] = &&op_hash_md5,
+        /* Extended opcode prefix - for opcodes >= 255 */
+        [OP_EXTENDED] = &&op_extended,
+    };
+
+    /* Secondary dispatch table for extended opcodes (>= 255) */
+    /* Index is (opcode - 255) */
+    static void *extended_dispatch_table[] = {
+        /* Regex - extended index 0-2 */
+        [OP_REGEX_MATCH - 255] = &&op_regex_match,
+        [OP_REGEX_FIND - 255] = &&op_regex_find,
+        [OP_REGEX_REPLACE - 255] = &&op_regex_replace,
+        /* Hashing - extended index 3-5 */
+        [OP_HASH - 255] = &&op_hash,
+        [OP_HASH_SHA256 - 255] = &&op_hash_sha256,
+        [OP_HASH_MD5 - 255] = &&op_hash_md5,
         /* Tensor operations */
-        [OP_TENSOR] = &&op_tensor,
-        [OP_TENSOR_ZEROS] = &&op_tensor_zeros,
-        [OP_TENSOR_ONES] = &&op_tensor_ones,
-        [OP_TENSOR_RAND] = &&op_tensor_rand,
-        [OP_TENSOR_RANDN] = &&op_tensor_randn,
-        [OP_TENSOR_ARANGE] = &&op_tensor_arange,
-        [OP_TENSOR_LINSPACE] = &&op_tensor_linspace,
-        [OP_TENSOR_EYE] = &&op_tensor_eye,
-        [OP_TENSOR_SHAPE] = &&op_tensor_shape,
-        [OP_TENSOR_RESHAPE] = &&op_tensor_reshape,
-        [OP_TENSOR_TRANSPOSE] = &&op_tensor_transpose,
-        [OP_TENSOR_FLATTEN] = &&op_tensor_flatten,
-        [OP_TENSOR_SQUEEZE] = &&op_tensor_squeeze,
-        [OP_TENSOR_UNSQUEEZE] = &&op_tensor_unsqueeze,
-        [OP_TENSOR_ADD] = &&op_tensor_add,
-        [OP_TENSOR_SUB] = &&op_tensor_sub,
-        [OP_TENSOR_MUL] = &&op_tensor_mul,
-        [OP_TENSOR_DIV] = &&op_tensor_div,
-        [OP_TENSOR_POW] = &&op_tensor_pow,
-        [OP_TENSOR_NEG] = &&op_tensor_neg,
-        [OP_TENSOR_ABS] = &&op_tensor_abs,
-        [OP_TENSOR_SQRT] = &&op_tensor_sqrt,
-        [OP_TENSOR_EXP] = &&op_tensor_exp,
-        [OP_TENSOR_LOG] = &&op_tensor_log,
-        [OP_TENSOR_SUM] = &&op_tensor_sum,
-        [OP_TENSOR_MEAN] = &&op_tensor_mean,
-        [OP_TENSOR_MIN] = &&op_tensor_min,
-        [OP_TENSOR_MAX] = &&op_tensor_max,
-        [OP_TENSOR_ARGMIN] = &&op_tensor_argmin,
-        [OP_TENSOR_ARGMAX] = &&op_tensor_argmax,
-        [OP_TENSOR_MATMUL] = &&op_tensor_matmul,
-        [OP_TENSOR_DOT] = &&op_tensor_dot,
-        [OP_TENSOR_NORM] = &&op_tensor_norm,
-        [OP_TENSOR_GET] = &&op_tensor_get,
-        [OP_TENSOR_SET] = &&op_tensor_set,
+        [OP_TENSOR - 255] = &&op_tensor,
+        [OP_TENSOR_ZEROS - 255] = &&op_tensor_zeros,
+        [OP_TENSOR_ONES - 255] = &&op_tensor_ones,
+        [OP_TENSOR_RAND - 255] = &&op_tensor_rand,
+        [OP_TENSOR_RANDN - 255] = &&op_tensor_randn,
+        [OP_TENSOR_ARANGE - 255] = &&op_tensor_arange,
+        [OP_TENSOR_LINSPACE - 255] = &&op_tensor_linspace,
+        [OP_TENSOR_EYE - 255] = &&op_tensor_eye,
+        [OP_TENSOR_SHAPE - 255] = &&op_tensor_shape,
+        [OP_TENSOR_RESHAPE - 255] = &&op_tensor_reshape,
+        [OP_TENSOR_TRANSPOSE - 255] = &&op_tensor_transpose,
+        [OP_TENSOR_FLATTEN - 255] = &&op_tensor_flatten,
+        [OP_TENSOR_SQUEEZE - 255] = &&op_tensor_squeeze,
+        [OP_TENSOR_UNSQUEEZE - 255] = &&op_tensor_unsqueeze,
+        [OP_TENSOR_ADD - 255] = &&op_tensor_add,
+        [OP_TENSOR_SUB - 255] = &&op_tensor_sub,
+        [OP_TENSOR_MUL - 255] = &&op_tensor_mul,
+        [OP_TENSOR_DIV - 255] = &&op_tensor_div,
+        [OP_TENSOR_POW - 255] = &&op_tensor_pow,
+        [OP_TENSOR_NEG - 255] = &&op_tensor_neg,
+        [OP_TENSOR_ABS - 255] = &&op_tensor_abs,
+        [OP_TENSOR_SQRT - 255] = &&op_tensor_sqrt,
+        [OP_TENSOR_EXP - 255] = &&op_tensor_exp,
+        [OP_TENSOR_LOG - 255] = &&op_tensor_log,
+        [OP_TENSOR_SUM - 255] = &&op_tensor_sum,
+        [OP_TENSOR_MEAN - 255] = &&op_tensor_mean,
+        [OP_TENSOR_MIN - 255] = &&op_tensor_min,
+        [OP_TENSOR_MAX - 255] = &&op_tensor_max,
+        [OP_TENSOR_ARGMIN - 255] = &&op_tensor_argmin,
+        [OP_TENSOR_ARGMAX - 255] = &&op_tensor_argmax,
+        [OP_TENSOR_MATMUL - 255] = &&op_tensor_matmul,
+        [OP_TENSOR_DOT - 255] = &&op_tensor_dot,
+        [OP_TENSOR_NORM - 255] = &&op_tensor_norm,
+        [OP_TENSOR_GET - 255] = &&op_tensor_get,
+        [OP_TENSOR_SET - 255] = &&op_tensor_set,
         /* Matrix operations */
-        [OP_MATRIX] = &&op_matrix,
-        [OP_MATRIX_ZEROS] = &&op_matrix_zeros,
-        [OP_MATRIX_ONES] = &&op_matrix_ones,
-        [OP_MATRIX_EYE] = &&op_matrix_eye,
-        [OP_MATRIX_RAND] = &&op_matrix_rand,
-        [OP_MATRIX_DIAG] = &&op_matrix_diag,
-        [OP_MATRIX_ADD] = &&op_matrix_add,
-        [OP_MATRIX_SUB] = &&op_matrix_sub,
-        [OP_MATRIX_MUL] = &&op_matrix_mul,
-        [OP_MATRIX_MATMUL] = &&op_matrix_matmul,
-        [OP_MATRIX_SCALE] = &&op_matrix_scale,
-        [OP_MATRIX_T] = &&op_matrix_t,
-        [OP_MATRIX_INV] = &&op_matrix_inv,
-        [OP_MATRIX_DET] = &&op_matrix_det,
-        [OP_MATRIX_TRACE] = &&op_matrix_trace,
-        [OP_MATRIX_SOLVE] = &&op_matrix_solve,
+        [OP_MATRIX - 255] = &&op_matrix,
+        [OP_MATRIX_ZEROS - 255] = &&op_matrix_zeros,
+        [OP_MATRIX_ONES - 255] = &&op_matrix_ones,
+        [OP_MATRIX_EYE - 255] = &&op_matrix_eye,
+        [OP_MATRIX_RAND - 255] = &&op_matrix_rand,
+        [OP_MATRIX_DIAG - 255] = &&op_matrix_diag,
+        [OP_MATRIX_ADD - 255] = &&op_matrix_add,
+        [OP_MATRIX_SUB - 255] = &&op_matrix_sub,
+        [OP_MATRIX_MUL - 255] = &&op_matrix_mul,
+        [OP_MATRIX_MATMUL - 255] = &&op_matrix_matmul,
+        [OP_MATRIX_SCALE - 255] = &&op_matrix_scale,
+        [OP_MATRIX_T - 255] = &&op_matrix_t,
+        [OP_MATRIX_INV - 255] = &&op_matrix_inv,
+        [OP_MATRIX_DET - 255] = &&op_matrix_det,
+        [OP_MATRIX_TRACE - 255] = &&op_matrix_trace,
+        [OP_MATRIX_SOLVE - 255] = &&op_matrix_solve,
         /* Autograd */
-        [OP_GRAD_TAPE] = &&op_grad_tape,
+        [OP_GRAD_TAPE - 255] = &&op_grad_tape,
         /* Neural network */
-        [OP_NN_RELU] = &&op_nn_relu,
-        [OP_NN_SIGMOID] = &&op_nn_sigmoid,
-        [OP_NN_TANH] = &&op_nn_tanh,
-        [OP_NN_SOFTMAX] = &&op_nn_softmax,
-        [OP_NN_MSE_LOSS] = &&op_nn_mse_loss,
-        [OP_NN_CE_LOSS] = &&op_nn_ce_loss,
-        [OP_TRY] = &&op_try,
-        [OP_TRY_END] = &&op_try_end,
-        [OP_THROW] = &&op_throw,
-        [OP_CATCH] = &&op_catch,
-        /* Classes */
-        [OP_CLASS] = &&op_class,
-        [OP_INHERIT] = &&op_inherit,
-        [OP_METHOD] = &&op_method,
-        [OP_FIELD] = &&op_field,
-        [OP_GET_FIELD] = &&op_get_field,
-        [OP_SET_FIELD] = &&op_set_field,
-        [OP_GET_FIELD_IC] = &&op_get_field_ic,
-        [OP_SET_FIELD_IC] = &&op_set_field_ic,
-        [OP_GET_FIELD_PIC] = &&op_get_field_pic,
-        [OP_SET_FIELD_PIC] = &&op_set_field_pic,
-        [OP_INVOKE] = &&op_invoke,
-        [OP_INVOKE_IC] = &&op_invoke_ic,
-        [OP_INVOKE_PIC] = &&op_invoke_pic,
-        [OP_SUPER_INVOKE] = &&op_super_invoke,
-        /* Super keyword */
-        [OP_GET_SUPER] = &&op_get_super,
-        /* Static methods/properties */
-        [OP_STATIC] = &&op_static,
-        [OP_GET_STATIC] = &&op_get_static,
-        [OP_SET_STATIC] = &&op_set_static,
-        [OP_BIND_METHOD] = &&op_bind_method,
-        /* Generators */
-        [OP_GENERATOR] = &&op_generator,
-        [OP_YIELD] = &&op_yield,
-        [OP_YIELD_FROM] = &&op_yield_from,
-        [OP_GEN_NEXT] = &&op_gen_next,
-        [OP_GEN_SEND] = &&op_gen_send,
-        [OP_GEN_RETURN] = &&op_gen_return,
-        /* Async/Await */
-        [OP_ASYNC] = &&op_async,
-        [OP_AWAIT] = &&op_await,
-        [OP_PROMISE] = &&op_promise,
-        [OP_RESOLVE] = &&op_resolve,
-        [OP_REJECT] = &&op_reject,
-        /* Decorators */
-        [OP_DECORATOR] = &&op_decorator,
-        /* Modules */
-        [OP_MODULE] = &&op_module,
-        [OP_EXPORT] = &&op_export,
-        [OP_IMPORT_FROM] = &&op_import_from,
-        [OP_IMPORT_AS] = &&op_import_as,
-        /* SIMD Array Operations */
-        [OP_ARRAY_ADD] = &&op_array_add,
-        [OP_ARRAY_SUB] = &&op_array_sub,
-        [OP_ARRAY_MUL] = &&op_array_mul,
-        [OP_ARRAY_DIV] = &&op_array_div,
-        [OP_ARRAY_SUM] = &&op_array_sum,
-        [OP_ARRAY_DOT] = &&op_array_dot,
-        [OP_ARRAY_MAP] = &&op_array_map,
-        [OP_ARRAY_FILTER] = &&op_array_filter,
-        [OP_ARRAY_REDUCE] = &&op_array_reduce,
+        [OP_NN_RELU - 255] = &&op_nn_relu,
+        [OP_NN_SIGMOID - 255] = &&op_nn_sigmoid,
+        [OP_NN_TANH - 255] = &&op_nn_tanh,
+        [OP_NN_SOFTMAX - 255] = &&op_nn_softmax,
+        [OP_NN_MSE_LOSS - 255] = &&op_nn_mse_loss,
+        [OP_NN_CE_LOSS - 255] = &&op_nn_ce_loss,
     };
 
 #define DISPATCH()                      \
@@ -2432,33 +2491,19 @@ InterpretResult vm_run(VM *vm)
     CASE(str) :
     {
         Value v = POP();
-        char buffer[64];
-        if (IS_INT(v))
-        {
-            snprintf(buffer, sizeof(buffer), "%d", as_int(v));
-        }
-        else if (IS_NUM(v))
-        {
-            snprintf(buffer, sizeof(buffer), "%g", as_num(v));
-        }
-        else if (IS_BOOL(v))
-        {
-            snprintf(buffer, sizeof(buffer), "%s", IS_TRUE(v) ? "true" : "false");
-        }
-        else if (IS_NIL(v))
-        {
-            snprintf(buffer, sizeof(buffer), "nil");
-        }
-        else if (IS_STRING(v))
+        /* If it's already a string, just return it */
+        if (IS_STRING(v))
         {
             PUSH(v);
             DISPATCH();
         }
-        else
-        {
-            snprintf(buffer, sizeof(buffer), "<object>");
-        }
-        PUSH(val_obj(copy_string(vm, buffer, strlen(buffer))));
+        /* Use helper to convert to string (handles arrays, dicts, etc.) */
+        char *buf = NULL;
+        size_t len = 0, cap = 0;
+        value_to_string_impl(v, &buf, &len, &cap);
+        ObjString *result = copy_string(vm, buf ? buf : "", buf ? len : 0);
+        free(buf);
+        PUSH(val_obj(result));
         DISPATCH();
     }
 
@@ -5079,6 +5124,13 @@ InterpretResult vm_run(VM *vm)
         bytes->length = j;
         PUSH(val_obj(bytes));
         DISPATCH();
+    }
+
+    /* Extended opcode handler - dispatches to extended opcodes (>= 255) */
+    CASE(extended) :
+    {
+        uint8_t ext_idx = READ_BYTE();
+        goto *extended_dispatch_table[ext_idx];
     }
 
     /* ============ REGEX ============ */

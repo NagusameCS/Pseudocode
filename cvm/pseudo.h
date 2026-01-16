@@ -800,13 +800,20 @@ typedef enum
     OP_DECODE_UTF8,   /* UTF-8 bytes to string */
     OP_ENCODE_BASE64, /* Encode to base64 */
     OP_DECODE_BASE64, /* Decode from base64 */
+    
+    /* Extended opcode prefix - opcodes >= 255 use this prefix + extended index */
+    OP_EXTENDED = 254, /* Extended opcode: next byte is extended opcode index */
 
-    /* Regex */
-    OP_REGEX_MATCH,   /* Check if string matches regex */
+    /* ============ EXTENDED OPCODES (index 255+) ============ */
+    /* These opcodes are emitted as: OP_EXTENDED, (opcode - 255) */
+    /* Total extended opcodes: ~65 (well within uint8_t range) */
+    
+    /* Regex - extended index 0-2 */
+    OP_REGEX_MATCH = 255,   /* Check if string matches regex */
     OP_REGEX_FIND,    /* Find all regex matches */
     OP_REGEX_REPLACE, /* Replace with regex */
 
-    /* Hashing */
+    /* Hashing - extended index 3-5 */
     OP_HASH,        /* Hash a value (fast) */
     OP_HASH_SHA256, /* SHA-256 hash */
     OP_HASH_MD5,    /* MD5 hash */
