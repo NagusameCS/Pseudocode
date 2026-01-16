@@ -1,33 +1,53 @@
+"use strict";
 /*
  * Pseudocode WASM - Main Entry Point
  *
  * This module provides a high-level API for compiling and running
  * Pseudocode programs using WebAssembly.
  */
-export * from './compiler';
-export * from './runtime';
-import { parse, compile } from './compiler';
-import { createVM } from './runtime';
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __exportStar = (this && this.__exportStar) || function(m, exports) {
+    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.VERSION = exports.PseudocodeRuntime = void 0;
+exports.compileToWasm = compileToWasm;
+exports.run = run;
+exports.createRuntime = createRuntime;
+__exportStar(require("./compiler"), exports);
+__exportStar(require("./runtime"), exports);
+const compiler_1 = require("./compiler");
+const runtime_1 = require("./runtime");
 /**
  * Compile Pseudocode source to WASM bytes.
  */
-export function compileToWasm(source) {
-    const ast = parse(source);
-    return compile(ast);
+function compileToWasm(source) {
+    const ast = (0, compiler_1.parse)(source);
+    return (0, compiler_1.compile)(ast);
 }
 /**
  * Run Pseudocode source code.
  */
-export async function run(source, options = {}) {
+async function run(source, options = {}) {
     const output = [];
     const errors = [];
     try {
         // Parse source
-        const ast = parse(source);
+        const ast = (0, compiler_1.parse)(source);
         // Check for parse errors
         // (Parser stores errors internally, would need to expose them)
         // Compile to WASM
-        const result = compile(ast);
+        const result = (0, compiler_1.compile)(ast);
         if (result.errors.length > 0) {
             return {
                 success: false,
@@ -40,7 +60,7 @@ export async function run(source, options = {}) {
             debug: options.debug,
             stdout: (msg) => output.push(msg)
         };
-        const vm = createVM(vmConfig);
+        const vm = (0, runtime_1.createVM)(vmConfig);
         // Load and run
         await vm.loadModule(result.wasm);
         const value = await vm.run();
@@ -63,17 +83,17 @@ export async function run(source, options = {}) {
 /**
  * Create a reusable Pseudocode runtime.
  */
-export function createRuntime(config) {
+function createRuntime(config) {
     return new PseudocodeRuntime(config);
 }
 /**
  * Reusable Pseudocode runtime for running multiple programs.
  */
-export class PseudocodeRuntime {
+class PseudocodeRuntime {
     vm;
     output = [];
     constructor(config) {
-        this.vm = createVM({
+        this.vm = (0, runtime_1.createVM)({
             ...config,
             stdout: (msg) => {
                 this.output.push(msg);
@@ -87,8 +107,8 @@ export class PseudocodeRuntime {
     async run(source) {
         this.output = [];
         try {
-            const ast = parse(source);
-            const result = compile(ast);
+            const ast = (0, compiler_1.parse)(source);
+            const result = (0, compiler_1.compile)(ast);
             if (result.errors.length > 0) {
                 return {
                     success: false,
@@ -126,6 +146,7 @@ export class PseudocodeRuntime {
         return this.vm.getStats();
     }
 }
+exports.PseudocodeRuntime = PseudocodeRuntime;
 // Version info
-export const VERSION = '1.0.0';
+exports.VERSION = '1.0.0';
 //# sourceMappingURL=index.js.map

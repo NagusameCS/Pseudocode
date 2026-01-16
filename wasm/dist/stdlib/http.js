@@ -1,24 +1,27 @@
+"use strict";
 /*
  * Pseudocode WASM Standard Library - HTTP Functions
  *
  * HTTP operations using fetch API (works in both browser and Node.js 18+).
  */
-import { valObject, isString, isObject, asPointer, valToString } from '../runtime/values';
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.createHttpFunctions = createHttpFunctions;
+const values_1 = require("../runtime/values");
 /**
  * Create HTTP functions for the runtime.
  */
-export function createHttpFunctions(memory) {
+function createHttpFunctions(memory) {
     // Helper to extract headers from a dictionary value
     const extractHeaders = (headersVal) => {
-        if (!headersVal || !isObject(headersVal)) {
+        if (!headersVal || !(0, values_1.isObject)(headersVal)) {
             return {};
         }
-        const ptr = asPointer(headersVal);
+        const ptr = (0, values_1.asPointer)(headersVal);
         const headers = {};
         for (const [key, value] of memory.dictEntries(ptr)) {
-            headers[key] = isString(value)
-                ? memory.getString(asPointer(value))
-                : valToString(value, memory);
+            headers[key] = (0, values_1.isString)(value)
+                ? memory.getString((0, values_1.asPointer)(value))
+                : (0, values_1.valToString)(value, memory);
         }
         return headers;
     };
@@ -36,20 +39,20 @@ export function createHttpFunctions(memory) {
         for (const [key, value] of Object.entries(headers)) {
             memory.dictSet(headersPtr, key.toLowerCase(), memory.allocString(value));
         }
-        memory.dictSet(ptr, 'headers', valObject(headersPtr));
-        return valObject(ptr);
+        memory.dictSet(ptr, 'headers', (0, values_1.valObject)(headersPtr));
+        return (0, values_1.valObject)(ptr);
     };
     return {
         /**
          * Perform HTTP GET request.
          */
         async http_get(url, options) {
-            if (!isString(url)) {
+            if (!(0, values_1.isString)(url)) {
                 throw new Error('http_get() requires a string URL');
             }
-            const urlStr = memory.getString(asPointer(url));
-            const headers = options && isObject(options)
-                ? extractHeaders(memory.dictGet(asPointer(options), 'headers'))
+            const urlStr = memory.getString((0, values_1.asPointer)(url));
+            const headers = options && (0, values_1.isObject)(options)
+                ? extractHeaders(memory.dictGet((0, values_1.asPointer)(options), 'headers'))
                 : {};
             try {
                 const response = await fetch(urlStr, {
@@ -71,15 +74,15 @@ export function createHttpFunctions(memory) {
          * Perform HTTP POST request.
          */
         async http_post(url, body, options) {
-            if (!isString(url)) {
+            if (!(0, values_1.isString)(url)) {
                 throw new Error('http_post() requires a string URL');
             }
-            const urlStr = memory.getString(asPointer(url));
-            const bodyStr = isString(body)
-                ? memory.getString(asPointer(body))
-                : valToString(body, memory);
-            const headers = options && isObject(options)
-                ? extractHeaders(memory.dictGet(asPointer(options), 'headers'))
+            const urlStr = memory.getString((0, values_1.asPointer)(url));
+            const bodyStr = (0, values_1.isString)(body)
+                ? memory.getString((0, values_1.asPointer)(body))
+                : (0, values_1.valToString)(body, memory);
+            const headers = options && (0, values_1.isObject)(options)
+                ? extractHeaders(memory.dictGet((0, values_1.asPointer)(options), 'headers'))
                 : {};
             // Default content-type for JSON
             if (!headers['content-type'] && !headers['Content-Type']) {
@@ -106,15 +109,15 @@ export function createHttpFunctions(memory) {
          * Perform HTTP PUT request.
          */
         async http_put(url, body, options) {
-            if (!isString(url)) {
+            if (!(0, values_1.isString)(url)) {
                 throw new Error('http_put() requires a string URL');
             }
-            const urlStr = memory.getString(asPointer(url));
-            const bodyStr = isString(body)
-                ? memory.getString(asPointer(body))
-                : valToString(body, memory);
-            const headers = options && isObject(options)
-                ? extractHeaders(memory.dictGet(asPointer(options), 'headers'))
+            const urlStr = memory.getString((0, values_1.asPointer)(url));
+            const bodyStr = (0, values_1.isString)(body)
+                ? memory.getString((0, values_1.asPointer)(body))
+                : (0, values_1.valToString)(body, memory);
+            const headers = options && (0, values_1.isObject)(options)
+                ? extractHeaders(memory.dictGet((0, values_1.asPointer)(options), 'headers'))
                 : {};
             if (!headers['content-type'] && !headers['Content-Type']) {
                 headers['Content-Type'] = 'application/json';
@@ -140,15 +143,15 @@ export function createHttpFunctions(memory) {
          * Perform HTTP PATCH request.
          */
         async http_patch(url, body, options) {
-            if (!isString(url)) {
+            if (!(0, values_1.isString)(url)) {
                 throw new Error('http_patch() requires a string URL');
             }
-            const urlStr = memory.getString(asPointer(url));
-            const bodyStr = isString(body)
-                ? memory.getString(asPointer(body))
-                : valToString(body, memory);
-            const headers = options && isObject(options)
-                ? extractHeaders(memory.dictGet(asPointer(options), 'headers'))
+            const urlStr = memory.getString((0, values_1.asPointer)(url));
+            const bodyStr = (0, values_1.isString)(body)
+                ? memory.getString((0, values_1.asPointer)(body))
+                : (0, values_1.valToString)(body, memory);
+            const headers = options && (0, values_1.isObject)(options)
+                ? extractHeaders(memory.dictGet((0, values_1.asPointer)(options), 'headers'))
                 : {};
             if (!headers['content-type'] && !headers['Content-Type']) {
                 headers['Content-Type'] = 'application/json';
@@ -174,12 +177,12 @@ export function createHttpFunctions(memory) {
          * Perform HTTP DELETE request.
          */
         async http_delete(url, options) {
-            if (!isString(url)) {
+            if (!(0, values_1.isString)(url)) {
                 throw new Error('http_delete() requires a string URL');
             }
-            const urlStr = memory.getString(asPointer(url));
-            const headers = options && isObject(options)
-                ? extractHeaders(memory.dictGet(asPointer(options), 'headers'))
+            const urlStr = memory.getString((0, values_1.asPointer)(url));
+            const headers = options && (0, values_1.isObject)(options)
+                ? extractHeaders(memory.dictGet((0, values_1.asPointer)(options), 'headers'))
                 : {};
             try {
                 const response = await fetch(urlStr, {
@@ -201,24 +204,24 @@ export function createHttpFunctions(memory) {
          * Perform generic HTTP request.
          */
         async http_request(url, options) {
-            if (!isString(url)) {
+            if (!(0, values_1.isString)(url)) {
                 throw new Error('http_request() requires a string URL');
             }
-            if (!isObject(options)) {
+            if (!(0, values_1.isObject)(options)) {
                 throw new Error('http_request() requires an options dictionary');
             }
-            const urlStr = memory.getString(asPointer(url));
-            const optionsPtr = asPointer(options);
+            const urlStr = memory.getString((0, values_1.asPointer)(url));
+            const optionsPtr = (0, values_1.asPointer)(options);
             // Extract options
             const methodVal = memory.dictGet(optionsPtr, 'method');
-            const method = methodVal && isString(methodVal)
-                ? memory.getString(asPointer(methodVal)).toUpperCase()
+            const method = methodVal && (0, values_1.isString)(methodVal)
+                ? memory.getString((0, values_1.asPointer)(methodVal)).toUpperCase()
                 : 'GET';
             const headersVal = memory.dictGet(optionsPtr, 'headers');
             const headers = extractHeaders(headersVal);
             const bodyVal = memory.dictGet(optionsPtr, 'body');
-            const body = bodyVal && isString(bodyVal)
-                ? memory.getString(asPointer(bodyVal))
+            const body = bodyVal && (0, values_1.isString)(bodyVal)
+                ? memory.getString((0, values_1.asPointer)(bodyVal))
                 : undefined;
             try {
                 const fetchOptions = { method, headers };
@@ -241,10 +244,10 @@ export function createHttpFunctions(memory) {
          * Simple GET that returns body string directly.
          */
         async fetch_text(url) {
-            if (!isString(url)) {
+            if (!(0, values_1.isString)(url)) {
                 throw new Error('fetch_text() requires a string URL');
             }
-            const urlStr = memory.getString(asPointer(url));
+            const urlStr = memory.getString((0, values_1.asPointer)(url));
             try {
                 const response = await fetch(urlStr);
                 if (!response.ok) {

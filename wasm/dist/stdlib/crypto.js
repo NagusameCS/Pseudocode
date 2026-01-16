@@ -1,11 +1,14 @@
+"use strict";
 /*
  * Pseudocode WASM Standard Library - Crypto Functions
  */
-import { isString, asPointer } from '../runtime/values';
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.createCryptoFunctions = createCryptoFunctions;
+const values_1 = require("../runtime/values");
 /**
  * Create crypto functions for the runtime.
  */
-export function createCryptoFunctions(memory) {
+function createCryptoFunctions(memory) {
     // Base64 encoding table
     const BASE64_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
     // Helper to convert string to Uint8Array
@@ -23,10 +26,10 @@ export function createCryptoFunctions(memory) {
          * Encode string to Base64.
          */
         encode_base64(data) {
-            if (!isString(data)) {
+            if (!(0, values_1.isString)(data)) {
                 throw new Error('encode_base64() requires a string');
             }
-            const str = memory.getString(asPointer(data));
+            const str = memory.getString((0, values_1.asPointer)(data));
             // Use native btoa if available
             if (typeof btoa !== 'undefined') {
                 // Handle unicode
@@ -55,10 +58,10 @@ export function createCryptoFunctions(memory) {
          * Decode Base64 to string.
          */
         decode_base64(data) {
-            if (!isString(data)) {
+            if (!(0, values_1.isString)(data)) {
                 throw new Error('decode_base64() requires a string');
             }
-            const str = memory.getString(asPointer(data));
+            const str = memory.getString((0, values_1.asPointer)(data));
             // Use native atob if available
             if (typeof atob !== 'undefined') {
                 try {
@@ -98,10 +101,10 @@ export function createCryptoFunctions(memory) {
          * Calculate SHA-256 hash (async in browser, sync in Node).
          */
         async sha256(data) {
-            if (!isString(data)) {
+            if (!(0, values_1.isString)(data)) {
                 throw new Error('sha256() requires a string');
             }
-            const str = memory.getString(asPointer(data));
+            const str = memory.getString((0, values_1.asPointer)(data));
             const bytes = stringToBytes(str);
             // Try Web Crypto API
             if (typeof crypto !== 'undefined' && crypto.subtle) {
@@ -127,10 +130,10 @@ export function createCryptoFunctions(memory) {
          * Calculate MD5 hash (for legacy compatibility).
          */
         async md5(data) {
-            if (!isString(data)) {
+            if (!(0, values_1.isString)(data)) {
                 throw new Error('md5() requires a string');
             }
-            const str = memory.getString(asPointer(data));
+            const str = memory.getString((0, values_1.asPointer)(data));
             // Try Node.js crypto
             try {
                 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -180,20 +183,20 @@ export function createCryptoFunctions(memory) {
          * URL-encode a string.
          */
         url_encode(data) {
-            if (!isString(data)) {
+            if (!(0, values_1.isString)(data)) {
                 throw new Error('url_encode() requires a string');
             }
-            const str = memory.getString(asPointer(data));
+            const str = memory.getString((0, values_1.asPointer)(data));
             return memory.allocString(encodeURIComponent(str));
         },
         /**
          * URL-decode a string.
          */
         url_decode(data) {
-            if (!isString(data)) {
+            if (!(0, values_1.isString)(data)) {
                 throw new Error('url_decode() requires a string');
             }
-            const str = memory.getString(asPointer(data));
+            const str = memory.getString((0, values_1.asPointer)(data));
             try {
                 return memory.allocString(decodeURIComponent(str));
             }
@@ -205,10 +208,10 @@ export function createCryptoFunctions(memory) {
          * Hex encode a string.
          */
         hex_encode(data) {
-            if (!isString(data)) {
+            if (!(0, values_1.isString)(data)) {
                 throw new Error('hex_encode() requires a string');
             }
-            const str = memory.getString(asPointer(data));
+            const str = memory.getString((0, values_1.asPointer)(data));
             const bytes = stringToBytes(str);
             const hex = Array.from(bytes)
                 .map(b => b.toString(16).padStart(2, '0'))
@@ -219,10 +222,10 @@ export function createCryptoFunctions(memory) {
          * Hex decode a string.
          */
         hex_decode(data) {
-            if (!isString(data)) {
+            if (!(0, values_1.isString)(data)) {
                 throw new Error('hex_decode() requires a string');
             }
-            const str = memory.getString(asPointer(data));
+            const str = memory.getString((0, values_1.asPointer)(data));
             if (str.length % 2 !== 0) {
                 throw new Error('Invalid hex string (odd length)');
             }

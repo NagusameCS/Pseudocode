@@ -23,7 +23,7 @@ Pseudocode is a compiled language with intuitive, readable syntax designed to lo
 
 - **Clean Syntax** — No semicolons, no braces, just readable code
 - **JIT Compilation** — Tracing JIT generates native x86-64 for hot loops
-- **80+ Built-ins** — HTTP, JSON, file I/O, crypto, math, and more
+- **140+ Built-ins** — HTTP, JSON, file I/O, crypto, math, and more
 - **First-class Functions** — Closures, lambdas, and higher-order functions
 - **Pattern Matching** — Expressive match/case with guards
 - **VS Code Extension** — Full IDE support with IntelliSense

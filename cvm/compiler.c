@@ -1535,7 +1535,7 @@ static void variable(bool can_assign)
             emit_byte(OP_RAND);
             return;
         }
-        if (MATCH_BUILTIN(name, "randint"))
+        if (MATCH_BUILTIN(name, "randint") || MATCH_BUILTIN(name, "random_int"))
         {
             advance();
             expression(); /* min */

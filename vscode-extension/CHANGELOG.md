@@ -2,6 +2,25 @@
 
 All notable changes to the Pseudocode Language extension will be documented in this file.
 
+## [1.7.0] - 2026-01-16
+
+### Added
+- **Cross-Platform WASM Runtime** — Pure TypeScript/WASM implementation that works on all platforms
+- **New Built-in Functions**:
+  - `randint(min, max)` — Generate random integers in a range
+  - `char_at(str, index)` — Get character at position in string
+  - `contains(str, substr)` — Check if string contains substring
+
+### Fixed
+- **All 33 Examples Pass** — Fixed issues in quicksort, text_analyzer, password_generator
+- **VSCode Extension Bundling** — Extension now bundles correctly with esbuild
+- **Extended Opcode System** — Opcodes above 255 now use extended opcode mechanism
+
+### Changed
+- Extension no longer requires platform-specific binaries
+- Updated bundling to use esbuild for smaller package size (244KB)
+- Moved base64 encode/decode to extended opcodes for opcode space optimization
+
 ## [1.5.0] - 2026-01-11
 
 ### Fixed

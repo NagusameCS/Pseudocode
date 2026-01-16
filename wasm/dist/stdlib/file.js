@@ -1,10 +1,13 @@
+"use strict";
 /*
  * Pseudocode WASM Standard Library - File I/O Functions
  *
  * File operations are only available in Node.js environments.
  * In browser environments, these will throw errors.
  */
-import { valBool, valArray, valInt, isString, asPointer, valToString } from '../runtime/values';
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.createFileFunctions = createFileFunctions;
+const values_1 = require("../runtime/values");
 // Dynamic require for Node.js
 let fs = null;
 try {
@@ -17,7 +20,7 @@ catch {
 /**
  * Create file I/O functions for the runtime.
  */
-export function createFileFunctions(memory) {
+function createFileFunctions(memory) {
     const checkNodeEnvironment = () => {
         if (!fs) {
             throw new Error('File operations are only available in Node.js environments');
@@ -29,10 +32,10 @@ export function createFileFunctions(memory) {
          */
         read_file(path) {
             checkNodeEnvironment();
-            if (!isString(path)) {
+            if (!(0, values_1.isString)(path)) {
                 throw new Error('read_file() requires a string path');
             }
-            const pathStr = memory.getString(asPointer(path));
+            const pathStr = memory.getString((0, values_1.asPointer)(path));
             try {
                 const content = fs.readFileSync(pathStr, 'utf8');
                 return memory.allocString(content);
@@ -46,16 +49,16 @@ export function createFileFunctions(memory) {
          */
         write_file(path, content) {
             checkNodeEnvironment();
-            if (!isString(path)) {
+            if (!(0, values_1.isString)(path)) {
                 throw new Error('write_file() requires a string path');
             }
-            const pathStr = memory.getString(asPointer(path));
-            const contentStr = isString(content)
-                ? memory.getString(asPointer(content))
-                : valToString(content, memory);
+            const pathStr = memory.getString((0, values_1.asPointer)(path));
+            const contentStr = (0, values_1.isString)(content)
+                ? memory.getString((0, values_1.asPointer)(content))
+                : (0, values_1.valToString)(content, memory);
             try {
                 fs.writeFileSync(pathStr, contentStr);
-                return valBool(true);
+                return (0, values_1.valBool)(true);
             }
             catch (error) {
                 throw new Error(`Failed to write file '${pathStr}': ${error instanceof Error ? error.message : String(error)}`);
@@ -66,16 +69,16 @@ export function createFileFunctions(memory) {
          */
         append_file(path, content) {
             checkNodeEnvironment();
-            if (!isString(path)) {
+            if (!(0, values_1.isString)(path)) {
                 throw new Error('append_file() requires a string path');
             }
-            const pathStr = memory.getString(asPointer(path));
-            const contentStr = isString(content)
-                ? memory.getString(asPointer(content))
-                : valToString(content, memory);
+            const pathStr = memory.getString((0, values_1.asPointer)(path));
+            const contentStr = (0, values_1.isString)(content)
+                ? memory.getString((0, values_1.asPointer)(content))
+                : (0, values_1.valToString)(content, memory);
             try {
                 fs.appendFileSync(pathStr, contentStr);
-                return valBool(true);
+                return (0, values_1.valBool)(true);
             }
             catch (error) {
                 throw new Error(`Failed to append to file '${pathStr}': ${error instanceof Error ? error.message : String(error)}`);
@@ -86,24 +89,24 @@ export function createFileFunctions(memory) {
          */
         file_exists(path) {
             checkNodeEnvironment();
-            if (!isString(path)) {
+            if (!(0, values_1.isString)(path)) {
                 throw new Error('file_exists() requires a string path');
             }
-            const pathStr = memory.getString(asPointer(path));
-            return valBool(fs.existsSync(pathStr));
+            const pathStr = memory.getString((0, values_1.asPointer)(path));
+            return (0, values_1.valBool)(fs.existsSync(pathStr));
         },
         /**
          * Delete a file.
          */
         delete_file(path) {
             checkNodeEnvironment();
-            if (!isString(path)) {
+            if (!(0, values_1.isString)(path)) {
                 throw new Error('delete_file() requires a string path');
             }
-            const pathStr = memory.getString(asPointer(path));
+            const pathStr = memory.getString((0, values_1.asPointer)(path));
             try {
                 fs.unlinkSync(pathStr);
-                return valBool(true);
+                return (0, values_1.valBool)(true);
             }
             catch (error) {
                 throw new Error(`Failed to delete file '${pathStr}': ${error instanceof Error ? error.message : String(error)}`);
@@ -114,14 +117,14 @@ export function createFileFunctions(memory) {
          */
         mkdir(path, recursive) {
             checkNodeEnvironment();
-            if (!isString(path)) {
+            if (!(0, values_1.isString)(path)) {
                 throw new Error('mkdir() requires a string path');
             }
-            const pathStr = memory.getString(asPointer(path));
+            const pathStr = memory.getString((0, values_1.asPointer)(path));
             const isRecursive = recursive ? Boolean(recursive) : false;
             try {
                 fs.mkdirSync(pathStr, { recursive: isRecursive });
-                return valBool(true);
+                return (0, values_1.valBool)(true);
             }
             catch (error) {
                 throw new Error(`Failed to create directory '${pathStr}': ${error instanceof Error ? error.message : String(error)}`);
@@ -132,14 +135,14 @@ export function createFileFunctions(memory) {
          */
         rmdir(path, recursive) {
             checkNodeEnvironment();
-            if (!isString(path)) {
+            if (!(0, values_1.isString)(path)) {
                 throw new Error('rmdir() requires a string path');
             }
-            const pathStr = memory.getString(asPointer(path));
+            const pathStr = memory.getString((0, values_1.asPointer)(path));
             const isRecursive = recursive ? Boolean(recursive) : false;
             try {
                 fs.rmdirSync(pathStr, { recursive: isRecursive });
-                return valBool(true);
+                return (0, values_1.valBool)(true);
             }
             catch (error) {
                 throw new Error(`Failed to remove directory '${pathStr}': ${error instanceof Error ? error.message : String(error)}`);
@@ -150,17 +153,17 @@ export function createFileFunctions(memory) {
          */
         list_dir(path) {
             checkNodeEnvironment();
-            if (!isString(path)) {
+            if (!(0, values_1.isString)(path)) {
                 throw new Error('list_dir() requires a string path');
             }
-            const pathStr = memory.getString(asPointer(path));
+            const pathStr = memory.getString((0, values_1.asPointer)(path));
             try {
                 const entries = fs.readdirSync(pathStr);
                 const arr = memory.allocArray(entries.length);
                 for (const entry of entries) {
                     memory.arrayPush(arr, memory.allocString(entry));
                 }
-                return valArray(arr);
+                return (0, values_1.valArray)(arr);
             }
             catch (error) {
                 throw new Error(`Failed to list directory '${pathStr}': ${error instanceof Error ? error.message : String(error)}`);
@@ -171,15 +174,15 @@ export function createFileFunctions(memory) {
          */
         is_file(path) {
             checkNodeEnvironment();
-            if (!isString(path)) {
+            if (!(0, values_1.isString)(path)) {
                 throw new Error('is_file() requires a string path');
             }
-            const pathStr = memory.getString(asPointer(path));
+            const pathStr = memory.getString((0, values_1.asPointer)(path));
             try {
-                return valBool(fs.statSync(pathStr).isFile());
+                return (0, values_1.valBool)(fs.statSync(pathStr).isFile());
             }
             catch {
-                return valBool(false);
+                return (0, values_1.valBool)(false);
             }
         },
         /**
@@ -187,15 +190,15 @@ export function createFileFunctions(memory) {
          */
         is_dir(path) {
             checkNodeEnvironment();
-            if (!isString(path)) {
+            if (!(0, values_1.isString)(path)) {
                 throw new Error('is_dir() requires a string path');
             }
-            const pathStr = memory.getString(asPointer(path));
+            const pathStr = memory.getString((0, values_1.asPointer)(path));
             try {
-                return valBool(fs.statSync(pathStr).isDirectory());
+                return (0, values_1.valBool)(fs.statSync(pathStr).isDirectory());
             }
             catch {
-                return valBool(false);
+                return (0, values_1.valBool)(false);
             }
         },
         /**
@@ -203,12 +206,12 @@ export function createFileFunctions(memory) {
          */
         file_size(path) {
             checkNodeEnvironment();
-            if (!isString(path)) {
+            if (!(0, values_1.isString)(path)) {
                 throw new Error('file_size() requires a string path');
             }
-            const pathStr = memory.getString(asPointer(path));
+            const pathStr = memory.getString((0, values_1.asPointer)(path));
             try {
-                return valInt(fs.statSync(pathStr).size);
+                return (0, values_1.valInt)(fs.statSync(pathStr).size);
             }
             catch (error) {
                 throw new Error(`Failed to get file size '${pathStr}': ${error instanceof Error ? error.message : String(error)}`);
@@ -219,14 +222,14 @@ export function createFileFunctions(memory) {
          */
         copy_file(src, dest) {
             checkNodeEnvironment();
-            if (!isString(src) || !isString(dest)) {
+            if (!(0, values_1.isString)(src) || !(0, values_1.isString)(dest)) {
                 throw new Error('copy_file() requires string paths');
             }
-            const srcStr = memory.getString(asPointer(src));
-            const destStr = memory.getString(asPointer(dest));
+            const srcStr = memory.getString((0, values_1.asPointer)(src));
+            const destStr = memory.getString((0, values_1.asPointer)(dest));
             try {
                 fs.copyFileSync(srcStr, destStr);
-                return valBool(true);
+                return (0, values_1.valBool)(true);
             }
             catch (error) {
                 throw new Error(`Failed to copy file '${srcStr}' to '${destStr}': ${error instanceof Error ? error.message : String(error)}`);
@@ -237,14 +240,14 @@ export function createFileFunctions(memory) {
          */
         move_file(src, dest) {
             checkNodeEnvironment();
-            if (!isString(src) || !isString(dest)) {
+            if (!(0, values_1.isString)(src) || !(0, values_1.isString)(dest)) {
                 throw new Error('move_file() requires string paths');
             }
-            const srcStr = memory.getString(asPointer(src));
-            const destStr = memory.getString(asPointer(dest));
+            const srcStr = memory.getString((0, values_1.asPointer)(src));
+            const destStr = memory.getString((0, values_1.asPointer)(dest));
             try {
                 fs.renameSync(srcStr, destStr);
-                return valBool(true);
+                return (0, values_1.valBool)(true);
             }
             catch (error) {
                 throw new Error(`Failed to move file '${srcStr}' to '${destStr}': ${error instanceof Error ? error.message : String(error)}`);

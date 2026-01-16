@@ -1,26 +1,29 @@
+"use strict";
 /*
  * Pseudocode WASM Standard Library - JSON Functions
  */
-import { valInt, valFloat, valBool, valNil, valArray, valObject, isString, isInt, isFloat, isArray, isObject, isBool, isNil, asPointer, asNumber, asBool, valToString } from '../runtime/values';
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.createJsonFunctions = createJsonFunctions;
+const values_1 = require("../runtime/values");
 /**
  * Create JSON functions for the runtime.
  */
-export function createJsonFunctions(memory) {
+function createJsonFunctions(memory) {
     /**
      * Convert a JavaScript value to a Pseudocode value.
      */
     const jsToValue = (js) => {
         if (js === null || js === undefined) {
-            return valNil();
+            return (0, values_1.valNil)();
         }
         if (typeof js === 'boolean') {
-            return valBool(js);
+            return (0, values_1.valBool)(js);
         }
         if (typeof js === 'number') {
             if (Number.isInteger(js) && Math.abs(js) < 2 ** 28) {
-                return valInt(js);
+                return (0, values_1.valInt)(js);
             }
-            return valFloat(js);
+            return (0, values_1.valFloat)(js);
         }
         if (typeof js === 'string') {
             return memory.allocString(js);
@@ -30,14 +33,14 @@ export function createJsonFunctions(memory) {
             for (const elem of js) {
                 memory.arrayPush(arrPtr, jsToValue(elem));
             }
-            return valArray(arrPtr);
+            return (0, values_1.valArray)(arrPtr);
         }
         if (typeof js === 'object') {
             const dictPtr = memory.allocDict();
             for (const [key, value] of Object.entries(js)) {
                 memory.dictSet(dictPtr, key, jsToValue(value));
             }
-            return valObject(dictPtr);
+            return (0, values_1.valObject)(dictPtr);
         }
         // Fallback: stringify
         return memory.allocString(String(js));
@@ -46,20 +49,20 @@ export function createJsonFunctions(memory) {
      * Convert a Pseudocode value to a JavaScript value.
      */
     const valueToJs = (val) => {
-        if (isNil(val)) {
+        if ((0, values_1.isNil)(val)) {
             return null;
         }
-        if (isBool(val)) {
-            return asBool(val);
+        if ((0, values_1.isBool)(val)) {
+            return (0, values_1.asBool)(val);
         }
-        if (isInt(val) || isFloat(val)) {
-            return asNumber(val);
+        if ((0, values_1.isInt)(val) || (0, values_1.isFloat)(val)) {
+            return (0, values_1.asNumber)(val);
         }
-        if (isString(val)) {
-            return memory.getString(asPointer(val));
+        if ((0, values_1.isString)(val)) {
+            return memory.getString((0, values_1.asPointer)(val));
         }
-        if (isArray(val)) {
-            const ptr = asPointer(val);
+        if ((0, values_1.isArray)(val)) {
+            const ptr = (0, values_1.asPointer)(val);
             const count = memory.arrayCount(ptr);
             const arr = [];
             for (let i = 0; i < count; i++) {
@@ -67,8 +70,8 @@ export function createJsonFunctions(memory) {
             }
             return arr;
         }
-        if (isObject(val)) {
-            const ptr = asPointer(val);
+        if ((0, values_1.isObject)(val)) {
+            const ptr = (0, values_1.asPointer)(val);
             const obj = {};
             for (const [key, value] of memory.dictEntries(ptr)) {
                 obj[key] = valueToJs(value);
@@ -83,10 +86,10 @@ export function createJsonFunctions(memory) {
          * Parse JSON string to Pseudocode value.
          */
         json_parse(jsonStr) {
-            if (!isString(jsonStr)) {
+            if (!(0, values_1.isString)(jsonStr)) {
                 throw new Error('json_parse() requires a string');
             }
-            const str = memory.getString(asPointer(jsonStr));
+            const str = memory.getString((0, values_1.asPointer)(jsonStr));
             try {
                 const parsed = JSON.parse(str);
                 return jsToValue(parsed);
@@ -100,7 +103,7 @@ export function createJsonFunctions(memory) {
          */
         json_stringify(value, pretty) {
             const js = valueToJs(value);
-            const indent = pretty && asBool(pretty) ? 2 : undefined;
+            const indent = pretty && (0, values_1.asBool)(pretty) ? 2 : undefined;
             try {
                 const json = JSON.stringify(js, null, indent);
                 return memory.allocString(json);
@@ -113,51 +116,51 @@ export function createJsonFunctions(memory) {
          * Check if a string is valid JSON.
          */
         json_valid(jsonStr) {
-            if (!isString(jsonStr)) {
-                return valBool(false);
+            if (!(0, values_1.isString)(jsonStr)) {
+                return (0, values_1.valBool)(false);
             }
-            const str = memory.getString(asPointer(jsonStr));
+            const str = memory.getString((0, values_1.asPointer)(jsonStr));
             try {
                 JSON.parse(str);
-                return valBool(true);
+                return (0, values_1.valBool)(true);
             }
             catch {
-                return valBool(false);
+                return (0, values_1.valBool)(false);
             }
         },
         /**
          * Get a value from JSON by path (e.g., "user.address.city" or "items[0].name").
          */
         json_get(value, path) {
-            if (!isString(path)) {
+            if (!(0, values_1.isString)(path)) {
                 throw new Error('json_get() requires a string path');
             }
-            const pathStr = memory.getString(asPointer(path));
+            const pathStr = memory.getString((0, values_1.asPointer)(path));
             const parts = pathStr.split(/\.|\[|\]/).filter(p => p !== '');
             let current = value;
             for (const part of parts) {
-                if (isArray(current)) {
+                if ((0, values_1.isArray)(current)) {
                     const idx = parseInt(part, 10);
                     if (isNaN(idx)) {
-                        return valNil();
+                        return (0, values_1.valNil)();
                     }
-                    const ptr = asPointer(current);
+                    const ptr = (0, values_1.asPointer)(current);
                     const count = memory.arrayCount(ptr);
                     if (idx < 0 || idx >= count) {
-                        return valNil();
+                        return (0, values_1.valNil)();
                     }
                     current = memory.arrayGet(ptr, idx);
                 }
-                else if (isObject(current)) {
-                    const ptr = asPointer(current);
+                else if ((0, values_1.isObject)(current)) {
+                    const ptr = (0, values_1.asPointer)(current);
                     const val = memory.dictGet(ptr, part);
                     if (val === undefined) {
-                        return valNil();
+                        return (0, values_1.valNil)();
                     }
                     current = val;
                 }
                 else {
-                    return valNil();
+                    return (0, values_1.valNil)();
                 }
             }
             return current;
@@ -166,10 +169,10 @@ export function createJsonFunctions(memory) {
          * Set a value in JSON by path.
          */
         json_set(value, path, newValue) {
-            if (!isString(path)) {
+            if (!(0, values_1.isString)(path)) {
                 throw new Error('json_set() requires a string path');
             }
-            const pathStr = memory.getString(asPointer(path));
+            const pathStr = memory.getString((0, values_1.asPointer)(path));
             const parts = pathStr.split(/\.|\[|\]/).filter(p => p !== '');
             if (parts.length === 0) {
                 return newValue;
@@ -178,15 +181,15 @@ export function createJsonFunctions(memory) {
             let current = value;
             for (let i = 0; i < parts.length - 1; i++) {
                 const part = parts[i];
-                if (isArray(current)) {
+                if ((0, values_1.isArray)(current)) {
                     const idx = parseInt(part, 10);
                     if (isNaN(idx)) {
                         throw new Error(`Invalid array index: ${part}`);
                     }
-                    current = memory.arrayGet(asPointer(current), idx);
+                    current = memory.arrayGet((0, values_1.asPointer)(current), idx);
                 }
-                else if (isObject(current)) {
-                    const ptr = asPointer(current);
+                else if ((0, values_1.isObject)(current)) {
+                    const ptr = (0, values_1.asPointer)(current);
                     const val = memory.dictGet(ptr, part);
                     if (val === undefined) {
                         throw new Error(`Path not found: ${part}`);
@@ -194,23 +197,23 @@ export function createJsonFunctions(memory) {
                     current = val;
                 }
                 else {
-                    throw new Error(`Cannot navigate into ${valToString(current, memory)}`);
+                    throw new Error(`Cannot navigate into ${(0, values_1.valToString)(current, memory)}`);
                 }
             }
             // Set the final key
             const lastPart = parts[parts.length - 1];
-            if (isArray(current)) {
+            if ((0, values_1.isArray)(current)) {
                 const idx = parseInt(lastPart, 10);
                 if (isNaN(idx)) {
                     throw new Error(`Invalid array index: ${lastPart}`);
                 }
-                memory.arraySet(asPointer(current), idx, newValue);
+                memory.arraySet((0, values_1.asPointer)(current), idx, newValue);
             }
-            else if (isObject(current)) {
-                memory.dictSet(asPointer(current), lastPart, newValue);
+            else if ((0, values_1.isObject)(current)) {
+                memory.dictSet((0, values_1.asPointer)(current), lastPart, newValue);
             }
             else {
-                throw new Error(`Cannot set property on ${valToString(current, memory)}`);
+                throw new Error(`Cannot set property on ${(0, values_1.valToString)(current, memory)}`);
             }
             return value;
         },
@@ -220,14 +223,14 @@ export function createJsonFunctions(memory) {
         json_merge(...values) {
             const result = memory.allocDict();
             for (const value of values) {
-                if (isObject(value)) {
-                    const ptr = asPointer(value);
+                if ((0, values_1.isObject)(value)) {
+                    const ptr = (0, values_1.asPointer)(value);
                     for (const [key, val] of memory.dictEntries(ptr)) {
                         memory.dictSet(result, key, val);
                     }
                 }
             }
-            return valObject(result);
+            return (0, values_1.valObject)(result);
         },
         /**
          * Deep clone a JSON value.
@@ -243,7 +246,7 @@ export function createJsonFunctions(memory) {
         json_equals(a, b) {
             const jsA = valueToJs(a);
             const jsB = valueToJs(b);
-            return valBool(JSON.stringify(jsA) === JSON.stringify(jsB));
+            return (0, values_1.valBool)(JSON.stringify(jsA) === JSON.stringify(jsB));
         },
     };
 }

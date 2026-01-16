@@ -1,31 +1,34 @@
+"use strict";
 /*
  * Pseudocode WASM Standard Library - Dictionary Functions
  */
-import { valInt, valBool, valNil, valArray, valObject, isObject, isString, isFunction, asPointer, isTruthy, valToString } from '../runtime/values';
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.createDictFunctions = createDictFunctions;
+const values_1 = require("../runtime/values");
 /**
  * Create dictionary functions for the runtime.
  */
-export function createDictFunctions(memory, callFunction) {
+function createDictFunctions(memory, callFunction) {
     return {
         /**
          * Create a new empty dictionary.
          */
         dict_new() {
             const ptr = memory.allocDict();
-            return valObject(ptr);
+            return (0, values_1.valObject)(ptr);
         },
         /**
          * Get a value from dictionary by key.
          */
         dict_get(dict, key, defaultValue) {
-            if (!isObject(dict)) {
+            if (!(0, values_1.isObject)(dict)) {
                 throw new Error('dict_get() requires a dictionary');
             }
-            const ptr = asPointer(dict);
-            const keyStr = isString(key) ? memory.getString(asPointer(key)) : valToString(key, memory);
+            const ptr = (0, values_1.asPointer)(dict);
+            const keyStr = (0, values_1.isString)(key) ? memory.getString((0, values_1.asPointer)(key)) : (0, values_1.valToString)(key, memory);
             const value = memory.dictGet(ptr, keyStr);
             if (value === undefined) {
-                return defaultValue !== undefined ? defaultValue : valNil();
+                return defaultValue !== undefined ? defaultValue : (0, values_1.valNil)();
             }
             return value;
         },
@@ -33,115 +36,115 @@ export function createDictFunctions(memory, callFunction) {
          * Set a value in dictionary.
          */
         dict_set(dict, key, value) {
-            if (!isObject(dict)) {
+            if (!(0, values_1.isObject)(dict)) {
                 throw new Error('dict_set() requires a dictionary');
             }
-            const ptr = asPointer(dict);
-            const keyStr = isString(key) ? memory.getString(asPointer(key)) : valToString(key, memory);
+            const ptr = (0, values_1.asPointer)(dict);
+            const keyStr = (0, values_1.isString)(key) ? memory.getString((0, values_1.asPointer)(key)) : (0, values_1.valToString)(key, memory);
             memory.dictSet(ptr, keyStr, value);
-            return valNil();
+            return (0, values_1.valNil)();
         },
         /**
          * Delete a key from dictionary.
          */
         dict_delete(dict, key) {
-            if (!isObject(dict)) {
+            if (!(0, values_1.isObject)(dict)) {
                 throw new Error('dict_delete() requires a dictionary');
             }
-            const ptr = asPointer(dict);
-            const keyStr = isString(key) ? memory.getString(asPointer(key)) : valToString(key, memory);
+            const ptr = (0, values_1.asPointer)(dict);
+            const keyStr = (0, values_1.isString)(key) ? memory.getString((0, values_1.asPointer)(key)) : (0, values_1.valToString)(key, memory);
             const existed = memory.dictDelete(ptr, keyStr);
-            return valBool(existed);
+            return (0, values_1.valBool)(existed);
         },
         /**
          * Check if dictionary has a key.
          */
         has_key(dict, key) {
-            if (!isObject(dict)) {
+            if (!(0, values_1.isObject)(dict)) {
                 throw new Error('has_key() requires a dictionary');
             }
-            const ptr = asPointer(dict);
-            const keyStr = isString(key) ? memory.getString(asPointer(key)) : valToString(key, memory);
-            return valBool(memory.dictHas(ptr, keyStr));
+            const ptr = (0, values_1.asPointer)(dict);
+            const keyStr = (0, values_1.isString)(key) ? memory.getString((0, values_1.asPointer)(key)) : (0, values_1.valToString)(key, memory);
+            return (0, values_1.valBool)(memory.dictHas(ptr, keyStr));
         },
         /**
          * Get all keys from dictionary.
          */
         keys(dict) {
-            if (!isObject(dict)) {
+            if (!(0, values_1.isObject)(dict)) {
                 throw new Error('keys() requires a dictionary');
             }
-            const ptr = asPointer(dict);
+            const ptr = (0, values_1.asPointer)(dict);
             const keys = memory.dictKeys(ptr);
             const arr = memory.allocArray(keys.length);
             for (const key of keys) {
                 memory.arrayPush(arr, memory.allocString(key));
             }
-            return valArray(arr);
+            return (0, values_1.valArray)(arr);
         },
         /**
          * Get all values from dictionary.
          */
         values(dict) {
-            if (!isObject(dict)) {
+            if (!(0, values_1.isObject)(dict)) {
                 throw new Error('values() requires a dictionary');
             }
-            const ptr = asPointer(dict);
+            const ptr = (0, values_1.asPointer)(dict);
             const values = memory.dictValues(ptr);
             const arr = memory.allocArray(values.length);
             for (const value of values) {
                 memory.arrayPush(arr, value);
             }
-            return valArray(arr);
+            return (0, values_1.valArray)(arr);
         },
         /**
          * Get all entries from dictionary as [key, value] pairs.
          */
         entries(dict) {
-            if (!isObject(dict)) {
+            if (!(0, values_1.isObject)(dict)) {
                 throw new Error('entries() requires a dictionary');
             }
-            const ptr = asPointer(dict);
+            const ptr = (0, values_1.asPointer)(dict);
             const entries = memory.dictEntries(ptr);
             const arr = memory.allocArray(entries.length);
             for (const [key, value] of entries) {
                 const pair = memory.allocArray(2);
                 memory.arrayPush(pair, memory.allocString(key));
                 memory.arrayPush(pair, value);
-                memory.arrayPush(arr, valArray(pair));
+                memory.arrayPush(arr, (0, values_1.valArray)(pair));
             }
-            return valArray(arr);
+            return (0, values_1.valArray)(arr);
         },
         /**
          * Get dictionary size.
          */
         dict_size(dict) {
-            if (!isObject(dict)) {
+            if (!(0, values_1.isObject)(dict)) {
                 throw new Error('dict_size() requires a dictionary');
             }
-            const ptr = asPointer(dict);
-            return valInt(memory.dictSize(ptr));
+            const ptr = (0, values_1.asPointer)(dict);
+            return (0, values_1.valInt)(memory.dictSize(ptr));
         },
         /**
          * Clear all entries from dictionary.
          */
         dict_clear(dict) {
-            if (!isObject(dict)) {
+            if (!(0, values_1.isObject)(dict)) {
                 throw new Error('dict_clear() requires a dictionary');
             }
-            const ptr = asPointer(dict);
+            const ptr = (0, values_1.asPointer)(dict);
             memory.dictClear(ptr);
-            return valNil();
+            return (0, values_1.valNil)();
         },
         /**
          * Merge two dictionaries (second overwrites first).
          */
         dict_merge(dict1, dict2) {
-            if (!isObject(dict1) || !isObject(dict2)) {
+            if (!(0, values_1.isObject)(dict1) || !(0, values_1.isObject)(dict2)) {
                 throw new Error('dict_merge() requires dictionaries');
             }
-            const ptr1 = asPointer(dict1);
-            const ptr2 = asPointer(dict2);
+            const ptr1 = (0, values_1.asPointer)(dict1);
+            const ptr2 = (0, values_1.asPointer)(dict2);
             // Create new dict with entries from both
             const newPtr = memory.allocDict();
             // Copy from first
@@ -152,21 +155,21 @@ export function createDictFunctions(memory, callFunction) {
             for (const [key, value] of memory.dictEntries(ptr2)) {
                 memory.dictSet(newPtr, key, value);
             }
-            return valObject(newPtr);
+            return (0, values_1.valObject)(newPtr);
         },
         /**
          * Update dictionary in place with entries from another.
          */
         dict_update(dict, other) {
-            if (!isObject(dict) || !isObject(other)) {
+            if (!(0, values_1.isObject)(dict) || !(0, values_1.isObject)(other)) {
                 throw new Error('dict_update() requires dictionaries');
             }
-            const ptr = asPointer(dict);
-            const otherPtr = asPointer(other);
+            const ptr = (0, values_1.asPointer)(dict);
+            const otherPtr = (0, values_1.asPointer)(other);
             for (const [key, value] of memory.dictEntries(otherPtr)) {
                 memory.dictSet(ptr, key, value);
             }
-            return valNil();
+            return (0, values_1.valNil)();
         },
         /**
          * Create dictionary from array of [key, value] pairs.
@@ -175,7 +178,7 @@ export function createDictFunctions(memory, callFunction) {
             if (!(entries && ((entries & 0x7n) === 5n))) {
                 throw new Error('dict_from_entries() requires an array');
             }
-            const arrPtr = asPointer(entries);
+            const arrPtr = (0, values_1.asPointer)(entries);
             const count = memory.arrayCount(arrPtr);
             const newPtr = memory.allocDict();
             for (let i = 0; i < count; i++) {
@@ -183,53 +186,53 @@ export function createDictFunctions(memory, callFunction) {
                 if ((pair & 0x7n) !== 5n) {
                     throw new Error('dict_from_entries() requires array of [key, value] pairs');
                 }
-                const pairPtr = asPointer(pair);
+                const pairPtr = (0, values_1.asPointer)(pair);
                 const key = memory.arrayGet(pairPtr, 0);
                 const value = memory.arrayGet(pairPtr, 1);
-                const keyStr = isString(key) ? memory.getString(asPointer(key)) : valToString(key, memory);
+                const keyStr = (0, values_1.isString)(key) ? memory.getString((0, values_1.asPointer)(key)) : (0, values_1.valToString)(key, memory);
                 memory.dictSet(newPtr, keyStr, value);
             }
-            return valObject(newPtr);
+            return (0, values_1.valObject)(newPtr);
         },
         /**
          * Map function over dictionary values.
          */
         dict_map(dict, func) {
-            if (!isObject(dict)) {
+            if (!(0, values_1.isObject)(dict)) {
                 throw new Error('dict_map() requires a dictionary');
             }
-            if (!isFunction(func)) {
+            if (!(0, values_1.isFunction)(func)) {
                 throw new Error('dict_map() requires a function');
             }
-            const ptr = asPointer(dict);
-            const funcIdx = asPointer(func);
+            const ptr = (0, values_1.asPointer)(dict);
+            const funcIdx = (0, values_1.asPointer)(func);
             const newPtr = memory.allocDict();
             for (const [key, value] of memory.dictEntries(ptr)) {
                 const result = callFunction(funcIdx, value, memory.allocString(key));
                 memory.dictSet(newPtr, key, result);
             }
-            return valObject(newPtr);
+            return (0, values_1.valObject)(newPtr);
         },
         /**
          * Filter dictionary by predicate.
          */
         dict_filter(dict, predicate) {
-            if (!isObject(dict)) {
+            if (!(0, values_1.isObject)(dict)) {
                 throw new Error('dict_filter() requires a dictionary');
             }
-            if (!isFunction(predicate)) {
+            if (!(0, values_1.isFunction)(predicate)) {
                 throw new Error('dict_filter() requires a function');
             }
-            const ptr = asPointer(dict);
-            const funcIdx = asPointer(predicate);
+            const ptr = (0, values_1.asPointer)(dict);
+            const funcIdx = (0, values_1.asPointer)(predicate);
             const newPtr = memory.allocDict();
             for (const [key, value] of memory.dictEntries(ptr)) {
                 const result = callFunction(funcIdx, value, memory.allocString(key));
-                if (isTruthy(result)) {
+                if ((0, values_1.isTruthy)(result)) {
                     memory.dictSet(newPtr, key, value);
                 }
             }
-            return valObject(newPtr);
+            return (0, values_1.valObject)(newPtr);
         },
     };
 }

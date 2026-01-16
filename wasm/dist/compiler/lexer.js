@@ -1,13 +1,17 @@
+"use strict";
 /*
  * Pseudocode WASM Compiler - Lexer
  *
  * Tokenizes Pseudocode source code into a stream of tokens.
  * Ported from the C implementation in cvm/lexer.c
  */
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.Lexer = exports.TokenType = void 0;
+exports.tokenize = tokenize;
 /**
  * Token types for Pseudocode language.
  */
-export var TokenType;
+var TokenType;
 (function (TokenType) {
     // Literals
     TokenType["INT"] = "INT";
@@ -86,7 +90,7 @@ export var TokenType;
     // Special
     TokenType["EOF"] = "EOF";
     TokenType["ERROR"] = "ERROR";
-})(TokenType || (TokenType = {}));
+})(TokenType || (exports.TokenType = TokenType = {}));
 /**
  * Keywords map for quick lookup.
  */
@@ -135,7 +139,7 @@ const KEYWORDS = new Map([
 /**
  * Lexer for Pseudocode source code.
  */
-export class Lexer {
+class Lexer {
     source;
     pos = 0;
     line = 1;
@@ -402,10 +406,11 @@ export class Lexer {
         return this.isAlpha(char) || this.isDigit(char);
     }
 }
+exports.Lexer = Lexer;
 /**
  * Tokenize source code and return tokens.
  */
-export function tokenize(source) {
+function tokenize(source) {
     const lexer = new Lexer(source);
     return lexer.tokenize();
 }

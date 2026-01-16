@@ -3,12 +3,18 @@
 src/**
 .gitignore
 tsconfig.json
+esbuild.js
 *.ts
 **/*.map
 node_modules/**
 .npm/**
+
 # Exclude platform-specific binaries (no longer needed with WASM)
 bin/**
 
-# Keep WASM bundle
+# Exclude wasm directory outside extension
+../wasm/**
+
+# Exclude test files
+**/*.test.js
 !out/**

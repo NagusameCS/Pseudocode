@@ -1,24 +1,27 @@
+"use strict";
 /*
  * Pseudocode WASM Standard Library - I/O Functions
  */
-import { isString, asPointer, valToString } from '../runtime/values';
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.createIOFunctions = createIOFunctions;
+const values_1 = require("../runtime/values");
 /**
  * Create I/O functions for the runtime.
  */
-export function createIOFunctions(memory, stdout, stdin) {
+function createIOFunctions(memory, stdout, stdin) {
     return {
         /**
          * Print a value to stdout.
          */
         print(value) {
-            const str = valToString(value, memory);
+            const str = (0, values_1.valToString)(value, memory);
             stdout(str);
         },
         /**
          * Print a value to stdout with newline.
          */
         println(value) {
-            const str = valToString(value, memory);
+            const str = (0, values_1.valToString)(value, memory);
             stdout(str + '\n');
         },
         /**
@@ -26,7 +29,7 @@ export function createIOFunctions(memory, stdout, stdin) {
          */
         async input(prompt) {
             if (prompt) {
-                stdout(valToString(prompt, memory));
+                stdout((0, values_1.valToString)(prompt, memory));
             }
             const line = await stdin();
             return memory.allocString(line);
@@ -35,11 +38,11 @@ export function createIOFunctions(memory, stdout, stdin) {
          * Print formatted output (like printf).
          */
         printf(format, ...args) {
-            if (!isString(format)) {
-                stdout(valToString(format, memory));
+            if (!(0, values_1.isString)(format)) {
+                stdout((0, values_1.valToString)(format, memory));
                 return;
             }
-            const formatStr = memory.getString(asPointer(format));
+            const formatStr = memory.getString((0, values_1.asPointer)(format));
             let result = '';
             let argIndex = 0;
             let i = 0;
@@ -55,17 +58,17 @@ export function createIOFunctions(memory, stdout, stdin) {
                         const arg = args[argIndex++];
                         switch (spec) {
                             case 's':
-                                result += valToString(arg, memory);
+                                result += (0, values_1.valToString)(arg, memory);
                                 break;
                             case 'd':
                             case 'i':
                                 result += Math.trunc(Number(arg >> 3n)).toString();
                                 break;
                             case 'f':
-                                result += valToString(arg, memory);
+                                result += (0, values_1.valToString)(arg, memory);
                                 break;
                             default:
-                                result += valToString(arg, memory);
+                                result += (0, values_1.valToString)(arg, memory);
                         }
                     }
                     i += 2;

@@ -1,3 +1,4 @@
+"use strict";
 /*
  * Pseudocode WASM Runtime - Virtual Machine
  *
@@ -7,12 +8,15 @@
  * - I/O operations
  * - Garbage collection integration
  */
-import { Memory } from './memory';
-import { valNil, valBool, valInt, valFloat, isInt, isFloat, isString, asNumber, asPointer, isTruthy, valToString, typeName } from './values';
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.VM = void 0;
+exports.createVM = createVM;
+const memory_1 = require("./memory");
+const values_1 = require("./values");
 /**
  * The Pseudocode WASM Virtual Machine.
  */
-export class VM {
+class VM {
     memory;
     config;
     // WASM instance
@@ -32,7 +36,7 @@ export class VM {
             stdin: async () => '',
             ...config
         };
-        this.memory = new Memory(this.config.memorySize);
+        this.memory = new memory_1.Memory(this.config.memorySize);
     }
     /**
      * Load and instantiate a WASM module.
@@ -68,7 +72,7 @@ export class VM {
         }
         try {
             const result = main();
-            return typeof result === 'bigint' ? result : valNil();
+            return typeof result === 'bigint' ? result : (0, values_1.valNil)();
         }
         catch (error) {
             if (this.config.debug) {
@@ -89,7 +93,7 @@ export class VM {
             throw new Error(`Function '${funcName}' not found`);
         }
         const result = func(...args);
-        return typeof result === 'bigint' ? result : valNil();
+        return typeof result === 'bigint' ? result : (0, values_1.valNil)();
     }
     /**
      * Get the memory manager.
@@ -101,7 +105,7 @@ export class VM {
      * Get global variable.
      */
     getGlobal(name) {
-        return this.globals.get(name) ?? valNil();
+        return this.globals.get(name) ?? (0, values_1.valNil)();
     }
     /**
      * Set global variable.
@@ -122,77 +126,77 @@ export class VM {
                 memory: new WebAssembly.Memory({ initial: 256, maximum: 2048 }),
                 // ============ Value Operations ============
                 value_add: (a, b) => {
-                    if (isInt(a) && isInt(b)) {
-                        return valInt(asNumber(a) + asNumber(b));
+                    if ((0, values_1.isInt)(a) && (0, values_1.isInt)(b)) {
+                        return (0, values_1.valInt)((0, values_1.asNumber)(a) + (0, values_1.asNumber)(b));
                     }
-                    if ((isInt(a) || isFloat(a)) && (isInt(b) || isFloat(b))) {
-                        return valFloat(asNumber(a) + asNumber(b));
+                    if (((0, values_1.isInt)(a) || (0, values_1.isFloat)(a)) && ((0, values_1.isInt)(b) || (0, values_1.isFloat)(b))) {
+                        return (0, values_1.valFloat)((0, values_1.asNumber)(a) + (0, values_1.asNumber)(b));
                     }
-                    if (isString(a) && isString(b)) {
-                        const sa = memory.getString(asPointer(a));
-                        const sb = memory.getString(asPointer(b));
+                    if ((0, values_1.isString)(a) && (0, values_1.isString)(b)) {
+                        const sa = memory.getString((0, values_1.asPointer)(a));
+                        const sb = memory.getString((0, values_1.asPointer)(b));
                         return memory.allocString(sa + sb);
                     }
-                    throw new Error(`Cannot add ${typeName(a)} and ${typeName(b)}`);
+                    throw new Error(`Cannot add ${(0, values_1.typeName)(a)} and ${(0, values_1.typeName)(b)}`);
                 },
                 value_sub: (a, b) => {
-                    return valFloat(asNumber(a) - asNumber(b));
+                    return (0, values_1.valFloat)((0, values_1.asNumber)(a) - (0, values_1.asNumber)(b));
                 },
                 value_mul: (a, b) => {
-                    return valFloat(asNumber(a) * asNumber(b));
+                    return (0, values_1.valFloat)((0, values_1.asNumber)(a) * (0, values_1.asNumber)(b));
                 },
                 value_div: (a, b) => {
-                    const divisor = asNumber(b);
+                    const divisor = (0, values_1.asNumber)(b);
                     if (divisor === 0) {
                         throw new Error('Division by zero');
                     }
-                    return valFloat(asNumber(a) / divisor);
+                    return (0, values_1.valFloat)((0, values_1.asNumber)(a) / divisor);
                 },
                 value_mod: (a, b) => {
-                    return valFloat(asNumber(a) % asNumber(b));
+                    return (0, values_1.valFloat)((0, values_1.asNumber)(a) % (0, values_1.asNumber)(b));
                 },
                 value_neg: (a) => {
-                    return valFloat(-asNumber(a));
+                    return (0, values_1.valFloat)(-(0, values_1.asNumber)(a));
                 },
                 value_eq: (a, b) => {
-                    if (isInt(a) && isInt(b)) {
-                        return valBool(asNumber(a) === asNumber(b));
+                    if ((0, values_1.isInt)(a) && (0, values_1.isInt)(b)) {
+                        return (0, values_1.valBool)((0, values_1.asNumber)(a) === (0, values_1.asNumber)(b));
                     }
-                    if ((isInt(a) || isFloat(a)) && (isInt(b) || isFloat(b))) {
-                        return valBool(asNumber(a) === asNumber(b));
+                    if (((0, values_1.isInt)(a) || (0, values_1.isFloat)(a)) && ((0, values_1.isInt)(b) || (0, values_1.isFloat)(b))) {
+                        return (0, values_1.valBool)((0, values_1.asNumber)(a) === (0, values_1.asNumber)(b));
                     }
-                    if (isString(a) && isString(b)) {
-                        const sa = memory.getString(asPointer(a));
-                        const sb = memory.getString(asPointer(b));
-                        return valBool(sa === sb);
+                    if ((0, values_1.isString)(a) && (0, values_1.isString)(b)) {
+                        const sa = memory.getString((0, values_1.asPointer)(a));
+                        const sb = memory.getString((0, values_1.asPointer)(b));
+                        return (0, values_1.valBool)(sa === sb);
                     }
-                    return valBool(a === b);
+                    return (0, values_1.valBool)(a === b);
                 },
                 value_lt: (a, b) => {
-                    return valBool(asNumber(a) < asNumber(b));
+                    return (0, values_1.valBool)((0, values_1.asNumber)(a) < (0, values_1.asNumber)(b));
                 },
                 value_gt: (a, b) => {
-                    return valBool(asNumber(a) > asNumber(b));
+                    return (0, values_1.valBool)((0, values_1.asNumber)(a) > (0, values_1.asNumber)(b));
                 },
                 value_lte: (a, b) => {
-                    return valBool(asNumber(a) <= asNumber(b));
+                    return (0, values_1.valBool)((0, values_1.asNumber)(a) <= (0, values_1.asNumber)(b));
                 },
                 value_gte: (a, b) => {
-                    return valBool(asNumber(a) >= asNumber(b));
+                    return (0, values_1.valBool)((0, values_1.asNumber)(a) >= (0, values_1.asNumber)(b));
                 },
                 value_not: (a) => {
-                    return valBool(!isTruthy(a));
+                    return (0, values_1.valBool)(!(0, values_1.isTruthy)(a));
                 },
                 value_truthy: (a) => {
-                    return isTruthy(a) ? 1 : 0;
+                    return (0, values_1.isTruthy)(a) ? 1 : 0;
                 },
                 // ============ I/O Functions ============
                 print: (value) => {
-                    const str = valToString(value, memory);
+                    const str = (0, values_1.valToString)(value, memory);
                     vm.config.stdout(str);
                 },
                 println: (value) => {
-                    const str = valToString(value, memory);
+                    const str = (0, values_1.valToString)(value, memory);
                     vm.config.stdout(str + '\n');
                 },
                 print_string: (ptr) => {
@@ -247,16 +251,16 @@ export class VM {
                 math_random: () => Math.random(),
                 // ============ Type Functions ============
                 type_of: (value) => {
-                    return memory.allocString(typeName(value));
+                    return memory.allocString((0, values_1.typeName)(value));
                 },
                 to_int: (value) => {
-                    return valInt(Math.trunc(asNumber(value)));
+                    return (0, values_1.valInt)(Math.trunc((0, values_1.asNumber)(value)));
                 },
                 to_float: (value) => {
-                    return valFloat(asNumber(value));
+                    return (0, values_1.valFloat)((0, values_1.asNumber)(value));
                 },
                 to_string: (value) => {
-                    return memory.allocString(valToString(value, memory));
+                    return memory.allocString((0, values_1.valToString)(value, memory));
                 },
                 // ============ Memory Functions ============
                 gc_collect: () => {
@@ -316,10 +320,11 @@ export class VM {
         };
     }
 }
+exports.VM = VM;
 /**
  * Create and configure a new VM instance.
  */
-export function createVM(config) {
+function createVM(config) {
     return new VM(config);
 }
 //# sourceMappingURL=vm.js.map

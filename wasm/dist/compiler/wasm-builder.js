@@ -1,31 +1,40 @@
+"use strict";
 /*
  * Pseudocode WASM Compiler - WASM Binary Builder
  *
  * Low-level utilities for constructing WebAssembly binary modules.
  * Implements the WASM binary format specification.
  */
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.WasmBuilder = exports.OP = exports.TYPE_EXTERNREF = exports.TYPE_FUNCREF = exports.TYPE_F64 = exports.TYPE_F32 = exports.TYPE_I64 = exports.TYPE_I32 = exports.SECTION_DATA = exports.SECTION_CODE = exports.SECTION_ELEMENT = exports.SECTION_START = exports.SECTION_EXPORT = exports.SECTION_GLOBAL = exports.SECTION_MEMORY = exports.SECTION_TABLE = exports.SECTION_FUNCTION = exports.SECTION_IMPORT = exports.SECTION_TYPE = exports.SECTION_CUSTOM = void 0;
+exports.encodeULEB128 = encodeULEB128;
+exports.encodeSLEB128 = encodeSLEB128;
+exports.encodeSLEB128BigInt = encodeSLEB128BigInt;
+exports.encodeString = encodeString;
+exports.encodeVector = encodeVector;
+exports.createWasmBuilder = createWasmBuilder;
 // WASM Section IDs
-export const SECTION_CUSTOM = 0;
-export const SECTION_TYPE = 1;
-export const SECTION_IMPORT = 2;
-export const SECTION_FUNCTION = 3;
-export const SECTION_TABLE = 4;
-export const SECTION_MEMORY = 5;
-export const SECTION_GLOBAL = 6;
-export const SECTION_EXPORT = 7;
-export const SECTION_START = 8;
-export const SECTION_ELEMENT = 9;
-export const SECTION_CODE = 10;
-export const SECTION_DATA = 11;
+exports.SECTION_CUSTOM = 0;
+exports.SECTION_TYPE = 1;
+exports.SECTION_IMPORT = 2;
+exports.SECTION_FUNCTION = 3;
+exports.SECTION_TABLE = 4;
+exports.SECTION_MEMORY = 5;
+exports.SECTION_GLOBAL = 6;
+exports.SECTION_EXPORT = 7;
+exports.SECTION_START = 8;
+exports.SECTION_ELEMENT = 9;
+exports.SECTION_CODE = 10;
+exports.SECTION_DATA = 11;
 // WASM Value Types
-export const TYPE_I32 = 0x7F;
-export const TYPE_I64 = 0x7E;
-export const TYPE_F32 = 0x7D;
-export const TYPE_F64 = 0x7C;
-export const TYPE_FUNCREF = 0x70;
-export const TYPE_EXTERNREF = 0x6F;
+exports.TYPE_I32 = 0x7F;
+exports.TYPE_I64 = 0x7E;
+exports.TYPE_F32 = 0x7D;
+exports.TYPE_F64 = 0x7C;
+exports.TYPE_FUNCREF = 0x70;
+exports.TYPE_EXTERNREF = 0x6F;
 // WASM Opcodes
-export const OP = {
+exports.OP = {
     // Control flow
     UNREACHABLE: 0x00,
     NOP: 0x01,
@@ -171,7 +180,7 @@ export const OP = {
 /**
  * Encodes an unsigned LEB128 integer.
  */
-export function encodeULEB128(value) {
+function encodeULEB128(value) {
     const bytes = [];
     do {
         let byte = value & 0x7F;
@@ -186,7 +195,7 @@ export function encodeULEB128(value) {
 /**
  * Encodes a signed LEB128 integer.
  */
-export function encodeSLEB128(value) {
+function encodeSLEB128(value) {
     const bytes = [];
     let more = true;
     while (more) {
@@ -207,7 +216,7 @@ export function encodeSLEB128(value) {
 /**
  * Encodes a signed LEB128 BigInt (for full 64-bit values).
  */
-export function encodeSLEB128BigInt(value) {
+function encodeSLEB128BigInt(value) {
     const bytes = [];
     let more = true;
     while (more) {
@@ -228,7 +237,7 @@ export function encodeSLEB128BigInt(value) {
 /**
  * Encodes a string with its length prefix.
  */
-export function encodeString(str) {
+function encodeString(str) {
     const encoder = new TextEncoder();
     const bytes = encoder.encode(str);
     return [...encodeULEB128(bytes.length), ...bytes];
@@ -236,7 +245,7 @@ export function encodeString(str) {
 /**
  * Encodes a vector (array with length prefix).
  */
-export function encodeVector(items) {
+function encodeVector(items) {
     const result = encodeULEB128(items.length);
     for (const item of items) {
         result.push(...item);
@@ -246,7 +255,7 @@ export function encodeVector(items) {
 /**
  * Builder for WASM binary modules.
  */
-export class WasmBuilder {
+class WasmBuilder {
     types = [];
     imports = [];
     functions = []; // Type indices for functions
@@ -315,7 +324,7 @@ export class WasmBuilder {
             ...encodeULEB128(localGroups.length),
             ...localGroups.flat(),
             ...body,
-            OP.END
+            exports.OP.END
         ];
         const code = [...encodeULEB128(codeBody.length), ...codeBody];
         this.codes.push(code);
@@ -339,7 +348,7 @@ export class WasmBuilder {
      */
     addGlobal(type, mutable, initExpr) {
         const globalIdx = this.globals.length;
-        this.globals.push([type, mutable ? 0x01 : 0x00, ...initExpr, OP.END]);
+        this.globals.push([type, mutable ? 0x01 : 0x00, ...initExpr, exports.OP.END]);
         return globalIdx;
     }
     /**
@@ -370,7 +379,7 @@ export class WasmBuilder {
         sections.push(0x01, 0x00, 0x00, 0x00); // version 1
         // Type section
         if (this.types.length > 0) {
-            sections.push(...this.encodeSection(SECTION_TYPE, encodeVector(this.types)));
+            sections.push(...this.encodeSection(exports.SECTION_TYPE, encodeVector(this.types)));
         }
         // Import section
         if (this.imports.length > 0) {
@@ -383,7 +392,7 @@ export class WasmBuilder {
                     ...encodeULEB128(imp.typeIdx)
                 ]);
             }
-            sections.push(...this.encodeSection(SECTION_IMPORT, encodeVector(importBytes)));
+            sections.push(...this.encodeSection(exports.SECTION_IMPORT, encodeVector(importBytes)));
         }
         // Function section
         if (this.functions.length > 0) {
@@ -391,15 +400,15 @@ export class WasmBuilder {
                 ...encodeULEB128(this.functions.length),
                 ...this.functions.flatMap(idx => encodeULEB128(idx))
             ];
-            sections.push(...this.encodeSection(SECTION_FUNCTION, funcBytes));
+            sections.push(...this.encodeSection(exports.SECTION_FUNCTION, funcBytes));
         }
         // Memory section
         if (this.memories.length > 0) {
-            sections.push(...this.encodeSection(SECTION_MEMORY, encodeVector(this.memories)));
+            sections.push(...this.encodeSection(exports.SECTION_MEMORY, encodeVector(this.memories)));
         }
         // Global section
         if (this.globals.length > 0) {
-            sections.push(...this.encodeSection(SECTION_GLOBAL, encodeVector(this.globals)));
+            sections.push(...this.encodeSection(exports.SECTION_GLOBAL, encodeVector(this.globals)));
         }
         // Export section
         if (this.exports.length > 0) {
@@ -411,11 +420,11 @@ export class WasmBuilder {
                     ...encodeULEB128(exp.index)
                 ]);
             }
-            sections.push(...this.encodeSection(SECTION_EXPORT, encodeVector(exportBytes)));
+            sections.push(...this.encodeSection(exports.SECTION_EXPORT, encodeVector(exportBytes)));
         }
         // Start section
         if (this.startFunc !== null) {
-            sections.push(...this.encodeSection(SECTION_START, encodeULEB128(this.startFunc)));
+            sections.push(...this.encodeSection(exports.SECTION_START, encodeULEB128(this.startFunc)));
         }
         // Code section
         if (this.codes.length > 0) {
@@ -423,7 +432,7 @@ export class WasmBuilder {
                 ...encodeULEB128(this.codes.length),
                 ...this.codes.flat()
             ];
-            sections.push(...this.encodeSection(SECTION_CODE, codeBytes));
+            sections.push(...this.encodeSection(exports.SECTION_CODE, codeBytes));
         }
         // Data section
         if (this.data.length > 0) {
@@ -431,12 +440,12 @@ export class WasmBuilder {
             for (const seg of this.data) {
                 dataBytes.push([
                     0x00, // memory index (always 0)
-                    OP.I32_CONST, ...encodeSLEB128(seg.offset), OP.END,
+                    exports.OP.I32_CONST, ...encodeSLEB128(seg.offset), exports.OP.END,
                     ...encodeULEB128(seg.bytes.length),
                     ...seg.bytes
                 ]);
             }
-            sections.push(...this.encodeSection(SECTION_DATA, encodeVector(dataBytes)));
+            sections.push(...this.encodeSection(exports.SECTION_DATA, encodeVector(dataBytes)));
         }
         return new Uint8Array(sections);
     }
@@ -444,10 +453,11 @@ export class WasmBuilder {
         return [id, ...encodeULEB128(content.length), ...content];
     }
 }
+exports.WasmBuilder = WasmBuilder;
 /**
  * Create a new WASM builder.
  */
-export function createWasmBuilder() {
+function createWasmBuilder() {
     return new WasmBuilder();
 }
 //# sourceMappingURL=wasm-builder.js.map

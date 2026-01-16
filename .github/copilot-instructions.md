@@ -172,7 +172,7 @@ end
 - **Logical**: `and`, `or`, `not`
 - **String concatenation**: `+`
 
-### Built-in Functions (80+)
+### Built-in Functions (140+)
 
 **I/O:**
 - `print(value)` - print to stdout

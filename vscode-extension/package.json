@@ -2,7 +2,7 @@
     "name": "pseudocode-lang",
     "displayName": "Pseudocode Language",
     "description": "Full language support for Pseudocode - IntelliSense, autocomplete, diagnostics, formatting, and a blazingly fast runtime",
-    "version": "1.6.3",
+    "version": "1.7.0",
     "publisher": "NagusameCS",
     "author": {
         "name": "NagusameCS"
@@ -495,9 +495,11 @@
         ]
     },
     "scripts": {
-        "vscode:prepublish": "npm run compile",
+        "vscode:prepublish": "npm run build:wasm && npm run bundle",
         "compile": "tsc -p ./",
-        "watch": "tsc -watch -p ./",
+        "bundle": "node esbuild.js --production",
+        "watch": "node esbuild.js --watch",
+        "build:wasm": "cd ../wasm && npm run build",
         "package": "vsce package",
         "publish": "vsce publish"
     },
@@ -511,6 +513,7 @@
         "@types/node": "^18.0.0",
         "@types/vscode": "^1.74.0",
         "typescript": "^5.0.0",
-        "@vscode/vsce": "^2.22.0"
+        "@vscode/vsce": "^2.22.0",
+        "esbuild": "^0.19.0"
     }
 }

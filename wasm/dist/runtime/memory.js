@@ -1,3 +1,4 @@
+"use strict";
 /*
  * Pseudocode WASM Runtime - Memory Management
  *
@@ -23,17 +24,19 @@
  * │  [0]                                                │
  * └─────────────────────────────────────────────────────┘
  */
-import { valString } from './values';
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.Memory = exports.OBJ_HEADER_SIZE = exports.OBJ_BYTES = exports.OBJ_GENERATOR = exports.OBJ_INSTANCE = exports.OBJ_CLOSURE = exports.OBJ_DICT = exports.OBJ_ARRAY = exports.OBJ_STRING = void 0;
+const values_1 = require("./values");
 // Object type tags for heap objects
-export const OBJ_STRING = 0;
-export const OBJ_ARRAY = 1;
-export const OBJ_DICT = 2;
-export const OBJ_CLOSURE = 3;
-export const OBJ_INSTANCE = 4;
-export const OBJ_GENERATOR = 5;
-export const OBJ_BYTES = 6;
+exports.OBJ_STRING = 0;
+exports.OBJ_ARRAY = 1;
+exports.OBJ_DICT = 2;
+exports.OBJ_CLOSURE = 3;
+exports.OBJ_INSTANCE = 4;
+exports.OBJ_GENERATOR = 5;
+exports.OBJ_BYTES = 6;
 // Object header size (type tag + size + GC mark)
-export const OBJ_HEADER_SIZE = 12; // 4 + 4 + 4 bytes
+exports.OBJ_HEADER_SIZE = 12; // 4 + 4 + 4 bytes
 // Memory region sizes (in bytes)
 const DEFAULT_MEMORY_SIZE = 16 * 1024 * 1024; // 16 MB
 const STACK_SIZE = 1 * 1024 * 1024; // 1 MB
@@ -42,7 +45,7 @@ const STRING_POOL_SIZE = 1 * 1024 * 1024; // 1 MB
  * Memory manager for the WASM runtime.
  * Handles stack, heap, and string interning.
  */
-export class Memory {
+class Memory {
     buffer;
     view;
     bytes;
@@ -149,7 +152,7 @@ export class Memory {
      * Returns pointer to the usable area (after header).
      */
     alloc(type, dataSize) {
-        const totalSize = OBJ_HEADER_SIZE + dataSize;
+        const totalSize = exports.OBJ_HEADER_SIZE + dataSize;
         const aligned = (totalSize + 7) & ~7; // 8-byte alignment
         // Check if we need GC
         if (this.bytesAllocated + aligned > this.nextGC) {
@@ -173,13 +176,13 @@ export class Memory {
         // Track object for GC
         this.objects.add(ptr);
         // Return pointer to data area
-        return ptr + OBJ_HEADER_SIZE;
+        return ptr + exports.OBJ_HEADER_SIZE;
     }
     /**
      * Read object header from a data pointer.
      */
     getHeader(dataPtr) {
-        const headerPtr = dataPtr - OBJ_HEADER_SIZE;
+        const headerPtr = dataPtr - exports.OBJ_HEADER_SIZE;
         return {
             type: this.view.getUint32(headerPtr, true),
             size: this.view.getUint32(headerPtr + 4, true),
@@ -201,7 +204,7 @@ export class Memory {
         // Check if already interned
         const existing = this.stringTable.get(str);
         if (existing !== undefined) {
-            return valString(existing);
+            return (0, values_1.valString)(existing);
         }
         // Encode string as UTF-8
         const encoder = new TextEncoder();
@@ -216,17 +219,17 @@ export class Memory {
         }
         else {
             // Allocate on heap
-            ptr = this.alloc(OBJ_STRING, strSize) - OBJ_HEADER_SIZE;
+            ptr = this.alloc(exports.OBJ_STRING, strSize) - exports.OBJ_HEADER_SIZE;
         }
         // Write string: [length: u32][data: bytes][null: u8]
-        const dataPtr = ptr + (ptr < this.heapStart ? 0 : OBJ_HEADER_SIZE);
+        const dataPtr = ptr + (ptr < this.heapStart ? 0 : exports.OBJ_HEADER_SIZE);
         this.view.setUint32(dataPtr, encoded.length, true);
         this.bytes.set(encoded, dataPtr + 4);
         this.bytes[dataPtr + 4 + encoded.length] = 0;
         // Intern the string
         const valuePtr = dataPtr;
         this.stringTable.set(str, valuePtr);
-        return valString(valuePtr);
+        return (0, values_1.valString)(valuePtr);
     }
     /**
      * Get a string from a string pointer.
@@ -249,7 +252,7 @@ export class Memory {
     allocArray(capacity) {
         // Array layout: [count: u32][capacity: u32][values: Value[]]
         const dataSize = 8 + (capacity * 8);
-        const ptr = this.alloc(OBJ_ARRAY, dataSize);
+        const ptr = this.alloc(exports.OBJ_ARRAY, dataSize);
         this.view.setUint32(ptr, 0, true); // count = 0
         this.view.setUint32(ptr + 4, capacity, true); // capacity
         return ptr;
@@ -459,4 +462,5 @@ export class Memory {
         this.view.setFloat64(addr, value, true);
     }
 }
+exports.Memory = Memory;
 //# sourceMappingURL=memory.js.map
