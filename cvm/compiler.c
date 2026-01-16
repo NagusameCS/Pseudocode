@@ -3627,7 +3627,11 @@ static void while_statement(void)
     int exit_jump = emit_jump(OP_JMP_FALSE);
     emit_pop_for_jump(exit_jump); /* Skip POP if fused */
 
+    /* Create scope for while body - ensures locals declared inside
+     * the loop are properly re-initialized on each iteration */
+    begin_scope();
     block();
+    end_scope();
 
     emit_loop(loop_start);
     patch_jump(exit_jump);
