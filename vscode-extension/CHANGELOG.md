@@ -2,6 +2,12 @@
 
 All notable changes to the Pseudocode Language extension will be documented in this file.
 
+## [2.2.0] - 2026-01-16
+
+### Fixed
+- **No Native Dependencies** — WASM runtime eliminates libpcre2/dynamic library errors on macOS/Linux
+- Removed all platform-specific binary fallbacks
+
 ## [2.1.0] - 2026-01-16
 
 ### Fixed

@@ -2,7 +2,7 @@
     "name": "pseudocode-lang",
     "displayName": "Pseudocode Language",
     "description": "Full language support for Pseudocode - IntelliSense, autocomplete, diagnostics, formatting, and a blazingly fast runtime",
-    "version": "2.1.0",
+    "version": "2.2.0",
     "publisher": "NagusameCS",
     "author": {
         "name": "NagusameCS"
