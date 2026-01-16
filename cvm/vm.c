@@ -3800,6 +3800,7 @@ InterpretResult vm_run(VM *vm)
         Value callee = PEEK(arg_count);
 
         ObjFunction *function = NULL;
+        ObjClosure *closure = NULL;  /* Track closure for upvalue access */
 
         if (IS_FUNCTION(callee))
         {
@@ -3807,7 +3808,8 @@ InterpretResult vm_run(VM *vm)
         }
         else if (IS_CLOSURE(callee))
         {
-            function = AS_CLOSURE(callee)->function;
+            closure = AS_CLOSURE(callee);
+            function = closure->function;
         }
         else
         {
@@ -3829,6 +3831,14 @@ InterpretResult vm_run(VM *vm)
         if (vm->frame_count > 0)
         {
             new_base = vm->frames[vm->frame_count - 1].slots;
+            /* Close any upvalues that point to the slots we're about to overwrite.
+             * This is critical for closures: if an outer function captured variables
+             * that are about to be overwritten by the tail call, those upvalues need
+             * to be "closed" (copy value to upvalue's closed field) before we clobber them. */
+            close_upvalues(vm, new_base);
+            /* Update frame's closure to the new callee's closure */
+            vm->frames[vm->frame_count - 1].closure = closure;
+            vm->frames[vm->frame_count - 1].function = function;
         }
         else
         {
