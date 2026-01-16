@@ -2,6 +2,22 @@
 
 All notable changes to the Pseudocode Language extension will be documented in this file.
 
+## [2.0.0] - 2026-01-16
+
+### Changed
+- **Major Release** — Production-ready Pseudocode language support
+- **Pure WASM Runtime** — No native binaries required, works on any platform
+- **Cleaned Repository** — Removed unnecessary build artifacts and archives
+- **145 Built-in Functions** — Comprehensive standard library
+- **331 VM Opcodes** — Full-featured bytecode instruction set
+
+### Highlights
+- Cross-platform compatibility (Windows, macOS, Linux, ARM, x64)
+- Syntax highlighting, IntelliSense, diagnostics, formatting
+- Code snippets and symbol navigation
+- Integrated debugger support
+- Bundled with esbuild for optimal package size
+
 ## [1.7.0] - 2026-01-16
 
 ### Added
