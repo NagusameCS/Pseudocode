@@ -3632,7 +3632,7 @@ InterpretResult vm_run(VM *vm)
         }
 
         /* Use cached base pointer - no branch! */
-        int32_t counter, end_val;
+        int32_t counter = 0, end_val = 0;
         FAST_INT(bp[counter_slot], counter);
         FAST_INT(bp[end_slot], end_val);
 
@@ -3659,7 +3659,7 @@ InterpretResult vm_run(VM *vm)
         uint16_t offset = READ_SHORT();
 
         /* Get values from local slots */
-        int32_t counter, end_val, step;
+        int32_t counter = 0, end_val = 0, step = 0;
         FAST_INT(bp[counter_slot], counter);
         FAST_INT(bp[end_slot], end_val);
         FAST_INT(bp[step_slot], step);
@@ -3703,7 +3703,7 @@ InterpretResult vm_run(VM *vm)
         int8_t delta = (int8_t)READ_BYTE();
 
         /* Use cached bp - no branch! */
-        int32_t val;
+        int32_t val = 0;
         FAST_INT(bp[slot], val);
         bp[slot] = val_int(val + delta);
         DISPATCH();
@@ -3778,7 +3778,7 @@ InterpretResult vm_run(VM *vm)
         uint16_t offset = READ_SHORT();
 
         /* Use cached bp - no branch! */
-        int32_t a, b;
+        int32_t a = 0, b = 0;
         FAST_INT(bp[slot_a], a);
         FAST_INT(bp[slot_b], b);
 
@@ -3801,7 +3801,7 @@ InterpretResult vm_run(VM *vm)
         Value iter_val = POP();
         Value x_val = POP();
 
-        int32_t x, iterations;
+        int32_t x = 0, iterations = 0;
         FAST_INT(x_val, x);
         FAST_INT(iter_val, iterations);
 
@@ -3819,7 +3819,7 @@ InterpretResult vm_run(VM *vm)
         Value iter_val = POP();
         Value x_val = POP();
 
-        int32_t x, iterations;
+        int32_t x = 0, iterations = 0;
         FAST_INT(x_val, x);
         FAST_INT(iter_val, iterations);
 
@@ -3837,7 +3837,7 @@ InterpretResult vm_run(VM *vm)
         Value iter_val = POP();
         Value x_val = POP();
 
-        int32_t x, iterations;
+        int32_t x = 0, iterations = 0;
         FAST_INT(x_val, x);
         FAST_INT(iter_val, iterations);
 
