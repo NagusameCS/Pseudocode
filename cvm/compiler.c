@@ -4319,11 +4319,11 @@ static void lambda(bool can_assign)
     {
         do
         {
-            current->function->arity++;
-            if (current->function->arity > 255)
+            if (current->function->arity == 255)
             {
                 error_at_current("Can't have more than 255 parameters.");
             }
+            current->function->arity++;
             uint8_t constant = parse_variable("Expect parameter name.");
             (void)constant;
             if (match(TOKEN_COLON))
@@ -4380,11 +4380,11 @@ static void function(FunctionType type)
     {
         do
         {
-            current->function->arity++;
-            if (current->function->arity > 255)
+            if (current->function->arity == 255)
             {
                 error_at_current("Can't have more than 255 parameters.");
             }
+            current->function->arity++;
             uint8_t constant = parse_variable("Expect parameter name.");
             (void)constant;
             if (match(TOKEN_COLON))
