@@ -2,6 +2,13 @@
 
 All notable changes to the Pseudocode Language extension will be documented in this file.
 
+## [2.3.0] - 2026-01-18
+
+### Fixed
+- **Removed Native Binary Code** — Completely removed all native VM fallback code that caused libpcre2 errors
+- **REPL Now Uses WASM** — Interactive REPL uses the cross-platform WASM runtime
+- Cleaned up unused code and imports
+
 ## [2.2.0] - 2026-01-16
 
 ### Fixed

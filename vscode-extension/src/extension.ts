@@ -11,7 +11,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { exec, spawn } from 'child_process';
+import { spawn } from 'child_process';
 import {
     PseudocodeCompletionProvider,
     PseudocodeHoverProvider,
@@ -34,7 +34,6 @@ let diagnosticCollection: vscode.DiagnosticCollection;
 let diagnosticsTimeout: NodeJS.Timeout | undefined;
 let activeChildProcesses: Set<import('child_process').ChildProcess> = new Set();
 let useLspServer = false;
-let useWasmRuntime = true; // Default to WASM for cross-platform
 
 export async function activate(context: vscode.ExtensionContext) {
     outputChannel = vscode.window.createOutputChannel('Pseudocode');
@@ -174,7 +173,7 @@ export async function activate(context: vscode.ExtensionContext) {
     // Register WASM commands (always available)
     registerWasmCommands(context);
 
-    // Register run command (uses WASM by default, falls back to native)
+    // Register run command (uses WASM runtime exclusively)
     const runCommand = vscode.commands.registerCommand('pseudocode.run', async () => {
         const editor = vscode.window.activeTextEditor;
         if (!editor || editor.document.languageId !== 'pseudocode') {
@@ -182,37 +181,23 @@ export async function activate(context: vscode.ExtensionContext) {
             return;
         }
 
-        // Use WASM runtime by default
-        if (useWasmRuntime) {
-            try {
-                const runtime = await getWasmRuntime();
-                runtime.clearOutput();
-                runtime.showOutput();
-                
-                const result = await runtime.runSource(editor.document.getText());
-                
-                if (!result.success) {
-                    vscode.window.showErrorMessage(`Execution failed: ${result.errors[0]}`);
-                }
-                return;
-            } catch (wasmError) {
-                // Fall back to native if WASM fails
-                console.warn('WASM runtime failed, falling back to native:', wasmError);
+        // Use WASM runtime - no fallback to native binaries
+        try {
+            const runtime = await getWasmRuntime();
+            runtime.clearOutput();
+            runtime.showOutput();
+            
+            const result = await runtime.runSource(editor.document.getText());
+            
+            if (!result.success) {
+                vscode.window.showErrorMessage(`Execution failed: ${result.errors[0]}`);
             }
-        }
-
-        // Fall back to native binary
-        await editor.document.save();
-
-        const filePath = editor.document.fileName;
-        const vmPath = await findVmPath(context.extensionPath);
-
-        if (!vmPath) {
-            vscode.window.showErrorMessage('Pseudocode VM not found. Try enabling WASM runtime in settings.');
             return;
+        } catch (wasmError) {
+            const errorMsg = wasmError instanceof Error ? wasmError.message : String(wasmError);
+            vscode.window.showErrorMessage(`WASM runtime error: ${errorMsg}`);
+            console.error('WASM runtime failed:', wasmError);
         }
-
-        runPseudocode(vmPath, filePath);
     });
 
     // Register build command
@@ -275,240 +260,11 @@ export async function activate(context: vscode.ExtensionContext) {
     // Register debugger
     registerDebugger(context);
 
-    // Register REPL - pass a wrapper that includes extension path
-    const findVmPathWithContext = () => findVmPath(context.extensionPath);
-    registerRepl(context, findVmPathWithContext);
+    // Register REPL (uses WASM runtime)
+    registerRepl(context);
 
     // Show activation message
     console.log('Pseudocode extension activated');
-}
-
-// Get the bundled VM binary name for the current platform
-function getBundledVmName(): string {
-    const platform = process.platform; // 'darwin', 'linux', 'win32'
-    const arch = process.arch; // 'arm64', 'x64'
-    
-    if (platform === 'win32') {
-        return arch === 'arm64' ? 'pseudo-win32-arm64.exe' : 'pseudo-win32-x64.exe';
-    } else if (platform === 'darwin') {
-        return arch === 'arm64' ? 'pseudo-darwin-arm64' : 'pseudo-darwin-x64';
-    } else {
-        return arch === 'arm64' ? 'pseudo-linux-arm64' : 'pseudo-linux-x64';
-    }
-}
-
-async function findVmPath(extensionPath?: string): Promise<string | null> {
-    const config = vscode.workspace.getConfiguration('pseudocode');
-    const configuredPath = config.get<string>('vmPath');
-
-    // Check configured path first
-    if (configuredPath && fs.existsSync(configuredPath)) {
-        return configuredPath;
-    }
-    
-    // Check for bundled VM binary in extension (PRIORITY - works out of the box)
-    if (extensionPath) {
-        const bundledName = getBundledVmName();
-        const bundledVm = path.join(extensionPath, 'bin', bundledName);
-        if (fs.existsSync(bundledVm)) {
-            // Ensure it's executable on Unix
-            if (process.platform !== 'win32') {
-                try {
-                    fs.chmodSync(bundledVm, 0o755);
-                } catch (e) {
-                    // Ignore chmod errors
-                }
-            }
-            return bundledVm;
-        }
-        
-        // Also check for generic 'pseudo' name as fallback
-        const genericVm = path.join(extensionPath, 'bin', process.platform === 'win32' ? 'pseudo.exe' : 'pseudo');
-        if (fs.existsSync(genericVm)) {
-            if (process.platform !== 'win32') {
-                try {
-                    fs.chmodSync(genericVm, 0o755);
-                } catch (e) {}
-            }
-            return genericVm;
-        }
-    }
-
-    // On Windows, look for .exe extension
-    const isWindows = process.platform === 'win32';
-    const exeNames = isWindows ? ['pseudo.exe', 'pseudo'] : ['pseudo'];
-    
-    // Helper to check multiple paths
-    const checkPaths = (basePath: string): string | null => {
-        for (const exeName of exeNames) {
-            // Check cvm/pseudo (main VM location)
-            const vmInCvm = path.join(basePath, 'cvm', exeName);
-            if (fs.existsSync(vmInCvm)) {
-                return vmInCvm;
-            }
-
-            // Check cvm/pseudo_debug (debug build)
-            const vmDebugName = isWindows ? exeName.replace('pseudo', 'pseudo_debug') : 'pseudo_debug';
-            const vmDebug = path.join(basePath, 'cvm', vmDebugName);
-            if (fs.existsSync(vmDebug)) {
-                return vmDebug;
-            }
-
-            // Check bin/pseudo (installed location)
-            const vmInBin = path.join(basePath, 'bin', exeName);
-            if (fs.existsSync(vmInBin)) {
-                return vmInBin;
-            }
-
-            // Check root pseudo
-            const vmInRoot = path.join(basePath, exeName);
-            if (fs.existsSync(vmInRoot)) {
-                return vmInRoot;
-            }
-
-            // Check build/pseudo (CMake build)
-            const vmInBuild = path.join(basePath, 'build', exeName);
-            if (fs.existsSync(vmInBuild)) {
-                return vmInBuild;
-            }
-        }
-        return null;
-    };
-
-    // Check workspace folders for compiled VM
-    const workspaceFolders = vscode.workspace.workspaceFolders;
-    if (workspaceFolders) {
-        for (const folder of workspaceFolders) {
-            const result = checkPaths(folder.uri.fsPath);
-            if (result) return result;
-        }
-    }
-    
-    // Check from the active file's directory (traverse up to find project root)
-    const activeEditor = vscode.window.activeTextEditor;
-    if (activeEditor) {
-        let dir = path.dirname(activeEditor.document.fileName);
-        // Traverse up looking for cvm folder
-        for (let i = 0; i < 5; i++) {
-            const result = checkPaths(dir);
-            if (result) return result;
-            const parent = path.dirname(dir);
-            if (parent === dir) break;
-            dir = parent;
-        }
-    }
-
-    // Check common installation paths (Unix)
-    if (!isWindows) {
-        const commonPaths = [
-            '/usr/local/bin/pseudo',
-            '/usr/bin/pseudo',
-            path.join(process.env.HOME || '', '.local', 'bin', 'pseudo'),
-            path.join(process.env.HOME || '', 'bin', 'pseudo')
-        ];
-
-        for (const p of commonPaths) {
-            if (fs.existsSync(p)) {
-                return p;
-            }
-        }
-    }
-
-    // Check if pseudo is in PATH
-    return new Promise((resolve) => {
-        const cmd = isWindows ? 'where pseudo.exe' : 'which pseudo';
-        exec(cmd, (error, stdout) => {
-            if (!error && stdout.trim()) {
-                resolve(stdout.trim().split('\n')[0].trim());
-            } else {
-                // Try without .exe on Windows as fallback
-                if (isWindows) {
-                    exec('where pseudo', (error2, stdout2) => {
-                        if (!error2 && stdout2.trim()) {
-                            resolve(stdout2.trim().split('\n')[0].trim());
-                        } else {
-                            resolve(null);
-                        }
-                    });
-                } else {
-                    resolve(null);
-                }
-            }
-        });
-    });
-}
-
-function runPseudocode(vmPath: string, filePath: string): void {
-    outputChannel.clear();
-    outputChannel.show(true);
-
-    const config = vscode.workspace.getConfiguration('pseudocode');
-    const showTime = config.get<boolean>('showExecutionTime', true);
-    const enableJIT = config.get<boolean>('enableJIT', true);
-    const debugMode = config.get<boolean>('debugMode', false);
-
-    outputChannel.appendLine(`Running: ${path.basename(filePath)}`);
-    outputChannel.appendLine('─'.repeat(50));
-
-    const startTime = Date.now();
-
-    // Build command line arguments
-    const args: string[] = [];
-
-    if (enableJIT) {
-        args.push('-j');  // Enable JIT (default, but explicit)
-    } else {
-        args.push('-i');  // Interpreter only mode (more stable)
-    }
-
-    if (debugMode) {
-        args.push('-d');  // Debug mode
-    }
-
-    args.push(filePath);
-
-    // On Windows, need to handle paths with spaces properly
-    const isWindows = process.platform === 'win32';
-
-    const childProcess = spawn(vmPath, args, {
-        cwd: path.dirname(filePath),
-        shell: isWindows,  // Use shell on Windows to handle paths properly
-        windowsVerbatimArguments: false
-    });
-
-    // Track for cleanup
-    activeChildProcesses.add(childProcess);
-
-    childProcess.stdout.on('data', (data: Buffer) => {
-        outputChannel.append(data.toString());
-    });
-
-    childProcess.stderr.on('data', (data: Buffer) => {
-        outputChannel.append(data.toString());
-    });
-
-    childProcess.on('close', (code: number) => {
-        // Remove from tracking
-        activeChildProcesses.delete(childProcess);
-        
-        outputChannel.appendLine('');
-        outputChannel.appendLine('─'.repeat(50));
-
-        if (code === 0) {
-            if (showTime) {
-                const elapsed = Date.now() - startTime;
-                outputChannel.appendLine(`✓ Completed in ${elapsed}ms`);
-            } else {
-                outputChannel.appendLine('✓ Completed successfully');
-            }
-        } else {
-            outputChannel.appendLine(`✗ Exited with code ${code}`);
-        }
-    });
-
-    childProcess.on('error', (err: Error) => {
-        outputChannel.appendLine(`Error: ${err.message}`);
-    });
 }
 
 function buildVm(cvmPath: string): void {
