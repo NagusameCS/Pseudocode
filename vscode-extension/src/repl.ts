@@ -69,7 +69,7 @@ export async function startRepl(): Promise<void> {
 
                     try {
                         const runtime = await getWasmRuntime();
-                        const result = runtime.run(input);
+                        const result = await runtime.runSource(input);
                         if (result.output) {
                             // Replace \n with \r\n for terminal
                             const output = result.output.replace(/\n/g, '\r\n');
@@ -78,8 +78,8 @@ export async function startRepl(): Promise<void> {
                                 writeEmitter.fire('\r\n');
                             }
                         }
-                        if (result.error) {
-                            writeEmitter.fire(`\x1b[31mError: ${result.error}\x1b[0m\r\n`);
+                        if (!result.success && result.errors.length > 0) {
+                            writeEmitter.fire(`\x1b[31mError: ${result.errors[0]}\x1b[0m\r\n`);
                         }
                     } catch (err) {
                         writeEmitter.fire(`\x1b[31mError: ${err}\x1b[0m\r\n`);
